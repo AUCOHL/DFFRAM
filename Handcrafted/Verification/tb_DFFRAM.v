@@ -1,3 +1,11 @@
+/* 
+    A testbench to verify DFFRAM 
+*/
+
+/*
+    Author: Mohamed Shalan (mshalan@aucegypt.edu)
+*/
+
 /*
     Create an instance of OpenRAM memory model in addition to DFFRAM
     1) fill both memories with a word that matches the block (256bytes) number. 
