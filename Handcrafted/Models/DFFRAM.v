@@ -30,7 +30,7 @@ module DFFRAM #( parameter COLS=1)
 
     generate
         genvar i;
-        for (i=0; i<COLS; i=i+1) begin
+        for (i=0; i<COLS; i=i+1) begin : COLUMN
             DFFRAM_COL4 RAMCOLS (   .CLK(CLK), 
                                     .WE(WE), 
                                     .EN(EN_lines[i]), 
@@ -45,11 +45,15 @@ module DFFRAM #( parameter COLS=1)
         end
         else if(COLS==2) begin
             MUX2x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .S(A[8]), .X(Do_pre) );
-            sky130_fd_sc_hd__inv_4 DEC0 ( .Y(EN_lines[0]), .A(A[8]) );
-            sky130_fd_sc_hd__clkbuf_4 DEC1 (.X(EN_lines[1]), .A(A[8]) );
+            //sky130_fd_sc_hd__inv_4 DEC0 ( .Y(EN_lines[0]), .A(A[8]) );
+            //sky130_fd_sc_hd__clkbuf_4 DEC1 (.X(EN_lines[1]), .A(A[8]) );
+            DEC1x2 DEC ( .EN(EN), .A(A[8]), .SEL(EN_lines[1:0]) );
+            
         end
-        else
+        else begin
             PASS MUX ( .A(DOUT[0]), .X(Do_pre) );
+            sky130_fd_sc_hd__clkbuf_4 ENBUF (.X(EN_lines[0]), .A(EN) );
+        end
     endgenerate
     
     sky130_fd_sc_hd__clkbuf_4 DOBUF[31:0] (.X(Do), .A(Do_pre));

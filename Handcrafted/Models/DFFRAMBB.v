@@ -56,6 +56,16 @@ module WORD32 (
     
 endmodule 
 
+module DEC1x2 (
+    input           EN,
+    input   [0:0]   A,
+    output  [1:0]   SEL
+);
+    sky130_fd_sc_hd__and2b_2    AND1 ( .X(SEL[0]), .A_N(A), .B(EN) );
+    sky130_fd_sc_hd__and2_2     AND3 ( .X(SEL[1]), .A(A), .B(A[0]) );
+    
+endmodule
+
 module DEC2x4 (
     input           EN,
     input   [1:0]   A,
@@ -106,7 +116,7 @@ endmodule
 
 module MUX2x1_32(
     input   [31:0]      A0, A1,
-    input   [1:0]       S,
+    input   [0:0]       S,
     output  [31:0]      X
 );
     sky130_fd_sc_hd__mux2_1 MUX[31:0] (.A0(A0), .A1(A1), .S(S[0]), .X(X) );
@@ -203,7 +213,7 @@ module DFFRAM_COL4
     sky130_fd_sc_hd__clkbuf_8 WEBUF[3:0] (.X(WE_buf), .A(WE));
     sky130_fd_sc_hd__clkbuf_8 DIBUF[31:0] (.X(Di_buf), .A(Di));
 
-    sky130_fd_sc_hd__clkbuf_16 ABUF[2:0] ( .X(A_buf), .A(A[5:3) );
+    sky130_fd_sc_hd__clkbuf_16 ABUF[2:0] ( .X(A_buf), .A(A[5:3]) );
     
     DEC2x4 DEC ( .EN(EN), .A(A[7:6]), .SEL(row_sel) );
 
