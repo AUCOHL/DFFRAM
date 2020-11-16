@@ -8,8 +8,9 @@
 
 set_cmd_units -time ns -capacitance pF -current mA -voltage V -resistance kOhm -distance um
 
+set PDK_PATH /ef/tech/SW/sky130A
 set DESIGN  DFFRAM
-set SCL		./syn/sc_hd_tt.lib
+set SCL		$PDK_PATH/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_liberty -min $SCL
 read_liberty -max $SCL
