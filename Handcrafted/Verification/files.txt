@@ -1,5 +1,0 @@
-./tb_DFFRAM.v
-../Models/DFFRAMBB.v
-../Models/DFFRAM.v
-../../Tech/hd_primitives.v
-../../Tech/hd_functional.v
