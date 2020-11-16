@@ -22,7 +22,9 @@ Two modules are provided:
 | Di  | input  | 32  | Data in |
 | Do  | output  | 32  | Data out |
 
+
 The following waveforms diagram shows memory write and read transactions. 
+
 ![Memory waveform](./docs/waveform.png)
 
 ### Simulating the Memory
