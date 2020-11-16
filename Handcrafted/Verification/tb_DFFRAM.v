@@ -10,6 +10,14 @@
 `define     VERBOSE_1
 `define     VERBOSE_2
 
+`define UNIT_DELAY #1
+
+`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
+`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+
+`include "DFFRAM.v"
+`include "DFFRAMBB.v"
+`include "DFFRAM_256x32.v"
 
 module tb_DFFRAM;
     
