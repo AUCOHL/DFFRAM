@@ -1,4 +1,4 @@
-# DFFRAM
+# DFFRAM Compiler
 Standard Cell Library based Memory Compiler using DFF cells
 
 The objective of this project is to develop DFF-based RAM and Register File (RegF) compiler that utilizes standard cell libraries following a standard ASIC implementation approach. The compiler generates different views (HDL netlist, HDL functional models, LEF, GDS, Timing, …) for a given configuration set. 
