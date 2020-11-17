@@ -8,7 +8,7 @@ The layout generated from the compiler will be highly compacted (we target over 
 Currenly, the repo has only a handcrafted parameterized memory (1, 2 or 4 kbytes) targeting the SKY130 PDK. Also, it contains all the building blocks and a self-checking testbench. 
 
 ## Handcrafted Memory
-Two modules are provided:
+Two modules (single RW port RAM) are provided:
 - [DFFRAM](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM.v#L1 "DFFRAM"): parameterized 1 (256x32), 2 (512x32) or 4 (1024x32) kbytes memory module.
 - [DFFRAM_256x32](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM_256x32.v#L1 "DFFRAM_256x32"): 1kbyte memory module
 
@@ -37,5 +37,17 @@ To run the simulation, you need to have the SKY130 open PDK installed. A [makefi
 ### Hardening the Memory
 Untill the compiler is ready, you may use [OpenLANE](https://github.com/efabless/openlane "OpenLANE") to harden the memory. Make sure that the flow configuration parameter `SYNTH_READ_BLACKBOX_LIB` is set to 1. A smaple OpenLANE design configuration file can be found [here](https://github.com/shalan/DFFRAM/blob/22d62832ef3b4b1d53bcfc8cb2460ff20d21449f/Handcrafted/OpenLANE/config.tcl#L1 "here").
 
-When hardened using OpenLANE, the DFFRAM_256x32 achieved a placement density of 85%. We target above 95% placement density using the DDFRAM compiler custom placer. 
+The following table compares the hardened handcrafted memories to the equivalent hardened RTL synthesized memories. Both hardened using OpenLANE.
+
+|  Memory Type | No. of Instances  |  Placement Density | Dimensions X (um) x Y (um)
+| ------------ | ------------ | ------------ |------------ |
+| HC 1 kbyte  |  19,897 | 87.2%  | 425	x 820|
+| HC 2 kbytes  |  40,554 | 84.8%  |1,210 x 610|
+| HC 4 kbytes  | 81,044  | 84.8%  | 1,628 x 911|
+| RTL 1 kbyte  |  51,972 | 61%  | 1,050 x 1,060|
+| RTL 2 kbytes*  |  103,933 | 61%  |1,470 x 1,481|
+| RTL 4 kbytes  | 207,822 | 61%  | 2,074 x 2,085|
+* OpenLANE did not produce a clean GDSII
+
+We target above 95% placement density using the DDFRAM compiler custom placer. 
 
