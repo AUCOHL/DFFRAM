@@ -49,7 +49,8 @@ The following table compares the hardened handcrafted memories to the equivalent
 | RTL 1 kbyte  |  51,972 | 61%  | 1,050 x 1,060|
 | RTL 2 kbytes*  |  103,933 | 61%  |1,470 x 1,481|
 | RTL 4 kbytes  | 207,822 | 61%  | 2,074 x 2,085|
-* OpenLANE did not produce a clean GDSII
+
+`*` OpenLANE did not produce a clean GDSII
 
 We target above 95% placement density using the DDFRAM compiler custom placer. 
 
