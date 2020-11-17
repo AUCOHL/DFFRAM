@@ -54,3 +54,8 @@ The following table compares the hardened handcrafted memories to the equivalent
 
 We target above 95% placement density using the DDFRAM compiler custom placer. 
 
+### Building Blocks
+![byte](./docs/byte.png)
+![word](./docs/word.png)
+![block](./docs/block.png)
+![column](./docs/column.png)
