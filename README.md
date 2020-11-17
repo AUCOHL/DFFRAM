@@ -23,9 +23,11 @@ Two modules are provided:
 | Do  | output  | 32  | Data out |
 
 
-The following waveforms diagram shows memory write and read transactions. 
+The following waveform diagram shows memory write and read transactions. 
 
 ![Memory waveform](./docs/waveform.png)
+
+To perform a memory write, the memory has to be enabled (`EN=1`), `WE` must be set to reflect the bytes to be written, `A` has the address of the word that contains the bytes to be written and `Di` has the data  to be written. The write will rake place with the positive edge of the clock. To read from the memory, the memory has to be enabled, `WE` lines must be cleared and `A` has the memory address. The read word will be available on the `Do` lines immediately after the positive edge of the clock.
 
 ### Simulating the Memory
 This [file](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Verification/tb_DFFRAM.v#L1 "file") contains a self checking testbench that can be simulated using [Icarus Verilog](https://iverilog.fandom.com/wiki/Main_Page). Also, it contains a [behavioral model ](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Verification/tb_DFFRAM.v#L50-L60) for the memory. 
