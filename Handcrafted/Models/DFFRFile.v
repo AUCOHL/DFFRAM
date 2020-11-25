@@ -1,3 +1,36 @@
+/* 
+	DFFRFile
+	32x32 Register File with 2RW1W ports and clock gating for SKY130A 
+	~ 3550 Cells
+	< 2ns (no input or output delays)
+*/
+/*
+    	Author: Mohamed Shalan (mshalan@aucegypt.edu)
+*/
+
+module DFFRFile (
+	input [4:0] 	R1, R2, RW,
+	input [31:0] 	DW,
+	output [31:0]	D1, D2,
+	input CLK,
+	input WE
+);
+
+	wire [31:0] sel1, sel2, selw;
+
+	DEC5x32 DEC0 ( .A(R1), .SEL(sel1) );
+	DEC5x32 DEC1 ( .A(R2), .SEL(sel2) );
+	DEC5x32 DEC2 ( .A(RW), .SEL(selw) );
+	
+	RFWORD0 RFW0 ( .CLK(CLK), .WE(), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(), .D1(D1), .D2(D2), .DW() );	
+
+	generate
+		genvar e;
+		for(e=1; e<32; e=e+1)
+			RFWORD RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(D1), .D2(D2), .DW(DW) );	
+	endgenerate
+
+endmodule
 module RFWORD (
     input CLK,
     input WE,
@@ -101,31 +134,3 @@ module DEC5x32 (
 	DEC2x4 D ( .A(A[4:3]), .SEL(EN), .EN(1'b1) );
 endmodule
 
-/*
-	~ 3550 Cells
-	< 2ns (no input or output delays)
-	Uses clock gating; hence, it consumes less power!
-*/
-module DFFRFile (
-	input [4:0] 	R1, R2, RW,
-	input [31:0] 	DW,
-	output [31:0]	D1, D2,
-	input CLK,
-	input WE
-);
-
-	wire [31:0] sel1, sel2, selw;
-
-	DEC5x32 DEC0 ( .A(R1), .SEL(sel1) );
-	DEC5x32 DEC1 ( .A(R2), .SEL(sel2) );
-	DEC5x32 DEC2 ( .A(RW), .SEL(selw) );
-	
-	RFWORD0 RFW0 ( .CLK(CLK), .WE(), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(), .D1(D1), .D2(D2), .DW() );	
-
-	generate
-		genvar e;
-		for(e=1; e<32; e=e+1)
-			RFWORD RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(D1), .D2(D2), .DW(DW) );	
-	endgenerate
-
-endmodule
