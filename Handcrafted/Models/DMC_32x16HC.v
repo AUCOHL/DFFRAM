@@ -8,7 +8,11 @@
     It can operate @ 200MHz clock!
     Number of instances: 10654
     ICG cells are used to reduce dynamic power consumption
-    A custom clock tree is embedded
+    A custom clock tree is embedded inside the module
+*/
+
+/*
+    Author: Mohamed Shalan (mshalan@aucegypt.edu)
 */
 
 module HWORD (
