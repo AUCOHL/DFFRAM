@@ -8,6 +8,9 @@
     	Author: Mohamed Shalan (mshalan@aucegypt.edu)
 */
 
+`timescale 1ns / 1ps
+`default_nettype none
+
 module DFFRFile (
 	input [4:0] 	R1, R2, RW,
 	input [31:0] 	DW,
