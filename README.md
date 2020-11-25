@@ -69,9 +69,9 @@ We target above 95% placement density using the DDFRAM compiler custom placer.
 
 
 ## Handcrafted Register File (32x32)
-A 32x32 register file with two r/w ports and one write port can be found ![here](https://github.com/shalan/DFFRAM/blob/3cc619ff1f49cdf8ee3414688eb096bd9cca4e30/Handcrafted/Models/DFFRFile.v#L1).
+A 32x32 register file with two r/w ports and one write port can be found [here](https://github.com/shalan/DFFRAM/blob/3cc619ff1f49cdf8ee3414688eb096bd9cca4e30/Handcrafted/Models/DFFRFile.v#L1).
 This register file uses clock gating. Comparing it to the synthesized and mapped RTL model, the DFFRFile consumes very little power (to be quantified) and has less number of instances (~50%).
 
 ## Handcrafted Direct Mapped Cache (512 bytes: 32 lines x 16 bytes)
-Can be found ![here](https://github.com/shalan/DFFRAM/blob/3cc619ff1f49cdf8ee3414688eb096bd9cca4e30/Handcrafted/Models/DMC_32x16HC.v#L1). 
+Can be found [here](https://github.com/shalan/DFFRAM/blob/3cc619ff1f49cdf8ee3414688eb096bd9cca4e30/Handcrafted/Models/DMC_32x16HC.v#L1). 
 
