@@ -6,6 +6,9 @@
     Author: Mohamed Shalan (mshalan@aucegypt.edu)
 */
 
+`timescale 1ns / 1ps
+`default_nettype none
+
 module DFFRAM_256x32 #( parameter COLS=1, parameter ROWS=4)
 (
     CLK,
