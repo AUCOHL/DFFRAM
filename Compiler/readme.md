@@ -1,5 +1,6 @@
 ## Placement Script
-This is a python script that places the intsances of a 64x32 DFFRAM.
+This is the custom placer for the SKY130A DFFRAM compiler. At the moment it is capable pf placing the cells of DFFRAM 64x32 block. A sample output is given below:
+[](../docs)
 
 ## Dependancies
 This script makes use of [OpenDB](https://github.com/The-OpenROAD-Project/OpenDB). It is a design database to support tools for physical chip design. You can visit their [github repository](https://github.com/The-OpenROAD-Project/OpenDB) for instructions regarding installation.
