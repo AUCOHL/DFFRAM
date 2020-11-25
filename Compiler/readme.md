@@ -1,4 +1,4 @@
-## Placement Script
+## placeRAM
 This is the custom placer for the SKY130A DFFRAM compiler. At the moment it is capable pf placing the cells of DFFRAM 64x32 block. A sample output is given below:
 ![](../docs/block_placement.png)
 
