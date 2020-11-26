@@ -56,13 +56,13 @@ We target above 95% placement density using the DDFRAM compiler custom placer.
 
 ### Building Blocks
 #### Byte
-<img src="./docs/byte.png" width="60%" height="60%">
+<img src="./docs/byte.png" width="70%" height="70%">
 
 #### Word
 ![word](./docs/word.png)
 
 #### Block (32x64)
-<img src="./docs/block.png" width="35%" height="35%">
+<img src="./docs/block.png" width="40%" height="40%">
 
 #### Column (1 kbytes)
 <img src="./docs/column.png" width="30%" height="30%">
