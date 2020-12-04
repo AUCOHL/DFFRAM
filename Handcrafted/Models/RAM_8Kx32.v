@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-
 module RAM_8Kx32 (
     CLK,
     WE,
@@ -30,6 +29,8 @@ module RAM_8Kx32 (
         .A(A[9:0])
     );
 
+    integer i;
+    
     always @* begin
         _EN_ = 8'd0;
         for(i=0; i<8; i=i+1)
