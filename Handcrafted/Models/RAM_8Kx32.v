@@ -16,28 +16,32 @@ module RAM_8Kx32 (
     output  [31:0]  Do;
     input   [12:0]   A;
 
-    reg         _EN_ [7:0];
+    reg  [7:0]       _EN_ ;
     wire [31:0] _Do_ [7:0];
     reg [31:0]  Do;
 
-    DFFRAM #(.COLS(4)) RAM [7:0] (
-        .CLK(CLK),
-        .WE(WE),
-        .EN(_EN_),
-        .Di(Di),
-        .Do(_Do_),
-        .A(A[9:0])
-    );
-
+    generate 
+        genvar gi;
+        for(gi=0; gi<8; gi=gi+1) 
+            DFFRAM #(.COLS(4)) RAM (
+                .CLK(CLK),
+                .WE(WE),
+                .EN(_EN_[gi]),
+                .Di(Di),
+                .Do(_Do_[gi]),
+                .A(A[9:0])
+            );
+    endgenerate 
     integer i;
-    
+
     always @* begin
-        _EN_ = 8'd0;
         for(i=0; i<8; i=i+1)
             if(i==A[12:10]) _EN_[i]=1'b1;
+            else _EN_[i] = 1'b0;
     end
 
     always @* begin
+        Do = 32'h0;
         for(i=0; i<8; i=i+1)
             if(i==A[12:10]) Do=_Do_[i];
     end
