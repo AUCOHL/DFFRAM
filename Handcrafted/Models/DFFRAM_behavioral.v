@@ -17,7 +17,6 @@ module DFFRAM_behavioral #( parameter COLS=1)
     input   wire    [(A_WIDTH - 1): 0]   A;
 
     reg [31:0] RAM[(256*COLS)-1 : 0];
-    reg [31:0] RAM_DATA;
     
     always @(posedge CLK) 
         if(EN) begin
