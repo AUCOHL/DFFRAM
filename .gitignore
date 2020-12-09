@@ -3,4 +3,4 @@ Tech
 *.vcd
 *.out
 Work
-
+*.code-workspace
