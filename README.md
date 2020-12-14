@@ -9,11 +9,13 @@ Currenly, the repo has only a handcrafted parameterized memory (1, 2 or 4 kbytes
 
 ## Handcrafted Memory
 Two modules (single RW port RAM) are provided:
-- [DFFRAM](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM.v#L1 "DFFRAM"): parameterized 1 (256x32), 2 (512x32) or 4 (1024x32) kbytes memory module.
-- [DFFRAM_256x32](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM_256x32.v#L1 "DFFRAM_256x32"): 1kbyte memory module
-- [RAM_4Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 16Kbytes RAM (2 configurations)
-- [RAM_5Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 20Kbytes RAM
-- [RAM_6Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 24Kbytes RAM
+- [DFFRAM](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM.v#L1 "DFFRAM"): parameterized 1 (256x32), 2 (512x32) or 4 (1024x32) Kbytes RAM module.
+- [DFFRAM_256x32](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM_256x32.v#L1 "DFFRAM_256x32"): 1Kbyte memory module
+- [RAM_4Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 16Kbytes RAM
+  - [2.5 x 2.6 mm^2](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros/16KB_4Kx32_2.5x2.6)
+  - [2.9 x 2.1 mm^2](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros/16KB_4Kx32_2.9x2.1)
+- [RAM_5Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 20Kbytes RAM (2.9 x 2.6 mm^2)
+- [RAM_6Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 24Kbytes RAM (2.9 x 3.1 mm^2)
 
 ### Memory Interface
 | Port  | Direction  | Size  | Function |
