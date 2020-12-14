@@ -11,6 +11,8 @@ Currenly, the repo has only a handcrafted parameterized memory (1, 2 or 4 kbytes
 Two modules (single RW port RAM) are provided:
 - [DFFRAM](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM.v#L1 "DFFRAM"): parameterized 1 (256x32), 2 (512x32) or 4 (1024x32) kbytes memory module.
 - [DFFRAM_256x32](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM_256x32.v#L1 "DFFRAM_256x32"): 1kbyte memory module
+- [RAM_4Kx32] () 16Kbytes memory
+- [RAM_5Kx32] () 20Kbytes memory
 
 ### Memory Interface
 | Port  | Direction  | Size  | Function |
