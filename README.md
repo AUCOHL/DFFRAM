@@ -55,7 +55,7 @@ The following table compares the hardened handcrafted memories to the equivalent
 
 We target above 95% placement density using the DDFRAM compiler custom placer. 
 
-### Pre-hardened MAcros
+### Pre-hardened Macros
 - [RAM_4Kx32](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros): 16Kbytes RAM
   - [2.5 x 2.6 mm^2](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros/16KB_4Kx32_2.5x2.6)
   - [2.9 x 2.1 mm^2](https://github.com/shalan/DFFRAM/tree/main/Handcrafted/Macros/16KB_4Kx32_2.9x2.1)
