@@ -5,8 +5,6 @@ The objective of this project is to develop DFF-based RAM and Register File (Reg
 
 The layout generated from the compiler will be highly compacted (we target over 95% placement density) as the cells are placed on the floor plan using a custom placer. Moreover, the custom placer ensures that the routing will be a seamless one. The project will consider the creation of a custom router if automatic routing using open-source global and detailed routers does not give good results. 
 
-Currenly, the repo has only a handcrafted parameterized memory (1, 2 or 4 kbytes) targeting the SKY130 PDK. Also, it contains all the building blocks and a self-checking testbench. 
-
 ## Handcrafted Memory
 Two modules (single RW port RAM) are provided:
 - [DFFRAM](https://github.com/shalan/DFFRAM/blob/ec4cad3cc4d421492ec9dbf9eb5d70b53d24aa03/Handcrafted/Models/DFFRAM.v#L1 "DFFRAM"): parameterized 1 (256x32), 2 (512x32) or 4 (1024x32) Kbytes RAM module.

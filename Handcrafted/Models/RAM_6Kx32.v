@@ -1,5 +1,5 @@
 //`define USE_DFFRAM_BEH
-module RAM_5Kx32 (
+module RAM_6Kx32 (
     CLK,
     WE,
     EN,
@@ -14,7 +14,7 @@ module RAM_5Kx32 (
     output  [31:0]  Do;
     input   [12:0]   A;
 
-    localparam BLOCKS=5;
+    localparam BLOCKS=6;
 
     wire  [BLOCKS-1:0]       _EN_ ;
     wire [31:0] _Do_ [BLOCKS-1:0];
@@ -46,7 +46,7 @@ module RAM_5Kx32 (
     assign _EN_[2] = A[12:10] == 3'd2;
     assign _EN_[3] = A[12:10] == 3'd3;
     assign _EN_[4] = A[12:10] == 3'd4;
-    //assign _EN_[5] = A[12:10] == 3'd5;
+    assign _EN_[5] = A[12:10] == 3'd5;
     
     
     // Output Data multiplexor
@@ -55,7 +55,7 @@ module RAM_5Kx32 (
                 (A[12:10] == 3'd2) ? _Do_[2] :
                 (A[12:10] == 3'd3) ? _Do_[3] : 
                 (A[12:10] == 3'd4) ? _Do_[4] : 
-                //(A[12:10] == 3'd5) ? _Do_[5] : 
+                (A[12:10] == 3'd5) ? _Do_[5] : 
                 32'd0;
 
     sky130_fd_sc_hd__clkbuf_4 DOBUF[31:0] (.X(Do), .A(Do_pre));

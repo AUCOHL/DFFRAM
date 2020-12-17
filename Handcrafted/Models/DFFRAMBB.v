@@ -200,7 +200,7 @@ module DFFRAM_COL4
     wire [31:0]     Do_pre;
     wire            CLK_buf;
     wire [3:0]      WE_buf;
-    wire [5:3]      A_buf;
+    wire [7:0]      A_buf;
 
     wire [31:0]     Do_B_0_0;
     wire [31:0]     Do_B_0_1;
@@ -213,16 +213,16 @@ module DFFRAM_COL4
     sky130_fd_sc_hd__clkbuf_8 WEBUF[3:0] (.X(WE_buf), .A(WE));
     sky130_fd_sc_hd__clkbuf_8 DIBUF[31:0] (.X(Di_buf), .A(Di));
 
-    sky130_fd_sc_hd__clkbuf_16 ABUF[2:0] ( .X(A_buf), .A(A[5:3]) );
-    
+    sky130_fd_sc_hd__clkbuf_8 ABUF[7:0] ( .X(A_buf), .A(A[7:0]) );
+  
     DEC2x4 DEC ( .EN(EN), .A(A[7:6]), .SEL(row_sel) );
 
-    SRAM64x32 B_0_0 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[0]), .Di(Di_buf), .Do(Do_B_0_0), .A({A_buf,A[2:0]}) );
-    SRAM64x32 B_0_1 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[1]), .Di(Di_buf), .Do(Do_B_0_1), .A({A_buf,A[2:0]}) );
-    SRAM64x32 B_0_2 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[2]), .Di(Di_buf), .Do(Do_B_0_2), .A({A_buf,A[2:0]}) );
-    SRAM64x32 B_0_3 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[3]), .Di(Di_buf), .Do(Do_B_0_3), .A({A_buf,A[2:0]}) );
+    SRAM64x32 B_0_0 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[0]), .Di(Di_buf), .Do(Do_B_0_0), .A(A_buf[5:0]) );
+    SRAM64x32 B_0_1 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[1]), .Di(Di_buf), .Do(Do_B_0_1), .A(A_buf[5:0]) );
+    SRAM64x32 B_0_2 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[2]), .Di(Di_buf), .Do(Do_B_0_2), .A(A_buf[5:0]) );
+    SRAM64x32 B_0_3 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[3]), .Di(Di_buf), .Do(Do_B_0_3), .A(A_buf[5:0]) );
 
-    MUX4x1_32 MUX ( .A0(Do_B_0_0), .A1(Do_B_0_1), .A2(Do_B_0_2), .A3(Do_B_0_3), .S(A[7:6]), .X(Do) );
+    MUX4x1_32 MUX ( .A0(Do_B_0_0), .A1(Do_B_0_1), .A2(Do_B_0_2), .A3(Do_B_0_3), .S(A_buf[7:6]), .X(Do) );
 
 endmodule
 

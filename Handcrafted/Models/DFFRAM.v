@@ -31,6 +31,8 @@ module DFFRAM #( parameter COLS=1)
     wire [31:0]     Do_pre;
     wire [COLS-1:0] EN_lines;
 
+    wire [9:8]      A_buf;
+
     generate
         genvar i;
         for (i=0; i<COLS; i=i+1) begin : COLUMN
@@ -43,11 +45,13 @@ module DFFRAM #( parameter COLS=1)
                                 );    
         end
         if(COLS==4) begin
-            MUX4x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .A2(DOUT[2]), .A3(DOUT[3]), .S(A[9:8]), .X(Do_pre) );
+            sky130_fd_sc_hd__clkbuf_8 ABUF[1:0] (.X(A_buf[9:8]), .A(A[9:8]) );
+            MUX4x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .A2(DOUT[2]), .A3(DOUT[3]), .S(A_buf[9:8]), .X(Do_pre) );
             DEC2x4 DEC ( .EN(EN), .A(A[9:8]), .SEL(EN_lines) );
         end
         else if(COLS==2) begin
-            MUX2x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .S(A[8]), .X(Do_pre) );
+            sky130_fd_sc_hd__clkbuf_8 ABUF[8:8] (.X(A_buf[8]), .A(A[8]) );
+            MUX2x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .S(A_buf[8]), .X(Do_pre) );
             //sky130_fd_sc_hd__inv_4 DEC0 ( .Y(EN_lines[0]), .A(A[8]) );
             //sky130_fd_sc_hd__clkbuf_4 DEC1 (.X(EN_lines[1]), .A(A[8]) );
             DEC1x2 DEC ( .EN(EN), .A(A[8]), .SEL(EN_lines[1:0]) );
