@@ -20,7 +20,8 @@ module RAM_4Kx32 (
     wire  [BLOCKS-1:0]       _EN_ ;
     wire [31:0] _Do_ [BLOCKS-1:0];
     wire [31:0] Do_pre;
-
+    wire [11:10] A_buf;
+    
     generate 
         genvar gi;
         for(gi=0; gi<BLOCKS; gi=gi+1) 
@@ -41,7 +42,9 @@ module RAM_4Kx32 (
         
     endgenerate 
     
-    MUX4x1_32 MUX ( .A0(_Do_[0]), .A1(_Do_[1]), .A2(_Do_[2]), .A3(_Do_[3]), .S(A[11:10]), .X(Do_pre) );
+    sky130_fd_sc_hd__clkbuf_8 ABUF[11:10] (.X(A_buf), .A(A[11:10]));
+
+    MUX4x1_32 MUX ( .A0(_Do_[0]), .A1(_Do_[1]), .A2(_Do_[2]), .A3(_Do_[3]), .S(A_buf), .X(Do_pre) );
     DEC2x4 DEC ( .EN(EN), .A(A[11:10]), .SEL(_EN_) );
 
     sky130_fd_sc_hd__clkbuf_4 DOBUF[31:0] (.X(Do), .A(Do_pre));
