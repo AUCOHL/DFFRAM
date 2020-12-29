@@ -1,5 +1,5 @@
 
-PDK_PATH?=/ef/tech/SW/sky130A
+PDK_PATH?=../../pdk
 RTL_PATH=../Models
 
 .SUFFIXES:
@@ -9,8 +9,8 @@ PATTERN = tb_DFFRAM
 all:  ${PATTERN:=.vcd}
 
 %.vvp: %.v
-	iverilog -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
-	$< -o $@
+	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
+	$< 
 
 %.vcd: %.vvp
 	vvp $<

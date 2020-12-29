@@ -40,8 +40,35 @@ module BYTE (
 
 endmodule
 
+module BYTE_LATCH (
+    input CLK,
+    input WE,
+    input SEL,
+    input [7:0] Di,
+    output [7:0] Do
+);
 
-module WORD32 (
+    wire [7:0]  q_wire;
+    wire        we_wire;
+    wire        SEL_B;
+    wire        GCLK;
+
+    sky130_fd_sc_hd__inv_1 INV(.Y(SEL_B), .A(SEL));
+    sky130_fd_sc_hd__and2_1 CGAND( .A(SEL), .B(WE), .X(we_wire) );
+    sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
+
+    generate 
+        genvar i;
+        for(i=0; i<8; i=i+1) begin : BIT
+            //sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di[i]), .Q(q_wire[i]), .CLK(GCLK) );
+            sky130_fd_sc_hd__dlxtp LATCH (.Q(q_wire[i]), .D(Di[i]), .GATE(GCLK) );
+            sky130_fd_sc_hd__ebufn_2 OBUF ( .A(q_wire[i]), .Z(Do[i]), .TE_B(SEL_B) );
+        end
+    endgenerate 
+
+endmodule
+
+module WORD32 #(parameter USE_LATCH=1)(
     input CLK,
     input [3:0] WE,
     input SEL,
@@ -49,11 +76,19 @@ module WORD32 (
     output [31:0] Do
 );
 
-    BYTE B0 ( .CLK(CLK), .WE(WE[0]), .SEL(SEL), .Di(Di[7:0]), .Do(Do[7:0]) );
-    BYTE B1 ( .CLK(CLK), .WE(WE[1]), .SEL(SEL), .Di(Di[15:8]), .Do(Do[15:8]) );
-    BYTE B2 ( .CLK(CLK), .WE(WE[2]), .SEL(SEL), .Di(Di[23:16]), .Do(Do[23:16]) );
-    BYTE B3 ( .CLK(CLK), .WE(WE[3]), .SEL(SEL), .Di(Di[31:24]), .Do(Do[31:24]) );
-    
+    generate
+        if(USE_LATCH == 1) begin
+            BYTE_LATCH B0 ( .CLK(CLK), .WE(WE[0]), .SEL(SEL), .Di(Di[7:0]), .Do(Do[7:0]) );
+            BYTE_LATCH B1 ( .CLK(CLK), .WE(WE[1]), .SEL(SEL), .Di(Di[15:8]), .Do(Do[15:8]) );
+            BYTE_LATCH B2 ( .CLK(CLK), .WE(WE[2]), .SEL(SEL), .Di(Di[23:16]), .Do(Do[23:16]) );
+            BYTE_LATCH B3 ( .CLK(CLK), .WE(WE[3]), .SEL(SEL), .Di(Di[31:24]), .Do(Do[31:24]) );
+        end else begin
+            BYTE B0 ( .CLK(CLK), .WE(WE[0]), .SEL(SEL), .Di(Di[7:0]), .Do(Do[7:0]) );
+            BYTE B1 ( .CLK(CLK), .WE(WE[1]), .SEL(SEL), .Di(Di[15:8]), .Do(Do[15:8]) );
+            BYTE B2 ( .CLK(CLK), .WE(WE[2]), .SEL(SEL), .Di(Di[23:16]), .Do(Do[23:16]) );
+            BYTE B3 ( .CLK(CLK), .WE(WE[3]), .SEL(SEL), .Di(Di[31:24]), .Do(Do[31:24]) );
+        end
+    endgenerate
 endmodule 
 
 module DEC1x2 (
@@ -134,7 +169,7 @@ module PASS (input [31:0] A, output [31:0] X);
     assign X = A;
 endmodule
 
-module SRAM64x32(
+module SRAM64x32 #(parameter USE_LATCH=0) (
     input CLK,
     input [3:0] WE,
     input EN,
@@ -158,7 +193,7 @@ module SRAM64x32(
     generate
         genvar i;
         for (i=0; i< 64; i=i+1) begin : WORD
-            WORD32 W ( .CLK(CLK_buf), .WE(WE_buf), .SEL(SEL[i]), .Di(Di_buf), .Do(Do_pre) );
+            WORD32 #(.USE_LATCH(USE_LATCH)) W ( .CLK(CLK_buf), .WE(WE_buf), .SEL(SEL[i]), .Di(Di_buf), .Do(Do_pre) );
         end
     endgenerate
 
@@ -178,7 +213,7 @@ module SRAM64x32(
 
 endmodule
 
-module DFFRAM_COL4 
+module DFFRAM_COL4 #( parameter USE_LATCH=0 )
 (
     CLK,
     WE,
@@ -217,10 +252,10 @@ module DFFRAM_COL4
   
     DEC2x4 DEC ( .EN(EN), .A(A[7:6]), .SEL(row_sel) );
 
-    SRAM64x32 B_0_0 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[0]), .Di(Di_buf), .Do(Do_B_0_0), .A(A_buf[5:0]) );
-    SRAM64x32 B_0_1 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[1]), .Di(Di_buf), .Do(Do_B_0_1), .A(A_buf[5:0]) );
-    SRAM64x32 B_0_2 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[2]), .Di(Di_buf), .Do(Do_B_0_2), .A(A_buf[5:0]) );
-    SRAM64x32 B_0_3 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[3]), .Di(Di_buf), .Do(Do_B_0_3), .A(A_buf[5:0]) );
+    SRAM64x32 #(.USE_LATCH(USE_LATCH)) B_0_0 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[0]), .Di(Di_buf), .Do(Do_B_0_0), .A(A_buf[5:0]) );
+    SRAM64x32 #(.USE_LATCH(USE_LATCH)) B_0_1 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[1]), .Di(Di_buf), .Do(Do_B_0_1), .A(A_buf[5:0]) );
+    SRAM64x32 #(.USE_LATCH(USE_LATCH)) B_0_2 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[2]), .Di(Di_buf), .Do(Do_B_0_2), .A(A_buf[5:0]) );
+    SRAM64x32 #(.USE_LATCH(USE_LATCH)) B_0_3 ( .CLK(CLK_buf), .WE(WE_buf), .EN(row_sel[3]), .Di(Di_buf), .Do(Do_B_0_3), .A(A_buf[5:0]) );
 
     MUX4x1_32 MUX ( .A0(Do_B_0_0), .A1(Do_B_0_1), .A2(Do_B_0_2), .A3(Do_B_0_3), .S(A_buf[7:6]), .X(Do) );
 

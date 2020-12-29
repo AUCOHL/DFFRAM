@@ -3,4 +3,5 @@ Tech
 *.vcd
 *.out
 Work
+/pdk/*
 *.code-workspace

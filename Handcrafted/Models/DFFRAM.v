@@ -10,7 +10,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module DFFRAM #( parameter COLS=1)
+module DFFRAM #( parameter COLS=4, USE_LATCH=0)
 (
     CLK,
     WE,
@@ -36,7 +36,8 @@ module DFFRAM #( parameter COLS=1)
     generate
         genvar i;
         for (i=0; i<COLS; i=i+1) begin : COLUMN
-            DFFRAM_COL4 RAMCOLS (   .CLK(CLK), 
+            DFFRAM_COL4 #(.USE_LATCH(USE_LATCH)) 
+                        RAMCOLS (   .CLK(CLK), 
                                     .WE(WE), 
                                     .EN(EN_lines[i]), 
                                     .Di(Di), 

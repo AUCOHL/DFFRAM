@@ -12,8 +12,13 @@
 
 `define UNIT_DELAY #1
 
-`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+`define     USE_LATCH 1
+
+//`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
+//`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+
+`include "hd_primitives.v"
+`include "hd_functional.v"
 
 `include "DFFRAM.v"
 `include "DFFRAMBB.v"
@@ -35,7 +40,7 @@ module tb_DFFRAM;
 
     event   done;
     
-    DFFRAM #(`COLS) SRAM (
+    DFFRAM #(.COLS(`COLS), .USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
