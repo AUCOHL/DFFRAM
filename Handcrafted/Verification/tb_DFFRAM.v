@@ -127,10 +127,10 @@ module tb_DFFRAM;
         WE = (1 << addr[1:0]);
         Di = (byte << (addr[1:0] * 8));
         @(posedge CLK);
-        WE = 4'b0;
 `ifdef  VERBOSE_2
         $display("WRITE BYTE: 0x%X to %0D (0x%X, %B)", byte, addr, Di, WE);
 `endif
+        WE = 4'b0;
     end
     endtask
     
@@ -141,10 +141,10 @@ module tb_DFFRAM;
         WE = {{2{addr[1]}},{2{~addr[1]}}};
         Di = (hword << (addr[1] * 16));
         @(posedge CLK);
-        WE = 4'b0;
 `ifdef  VERBOSE_2
         $display("WRITE HWORD: 0x%X to %0D (0x%X, %B)", hword, addr, Di, WE);
 `endif
+        WE = 4'b0;
     end
     endtask
     
@@ -155,10 +155,10 @@ module tb_DFFRAM;
         WE = 4'b1111;
         Di = word; 
         @(posedge CLK);
-        WE = 4'b0;
 `ifdef  VERBOSE_2
         $display("WRITE WORD: 0x%X to %0D (0x%X, %B)", word, addr, Di, WE);
 `endif
+        WE = 4'b0;
     end
     endtask
     
@@ -178,8 +178,8 @@ module tb_DFFRAM;
     
     task check; begin
         if(RAM_DATA != Do) begin
-            $display("Test Failed! (Pahse: %d, Iteration: %d", Phase, i);
-            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A]);
+            $display("Test Failed! (Pahse: %0d, Iteration: %0d", Phase, i);
+            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/4]);
             -> done;
         end
     end
