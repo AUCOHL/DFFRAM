@@ -5,3 +5,5 @@ Tech
 Work
 /pdk/*
 *.code-workspace
+log.txt
+*.gl.v
