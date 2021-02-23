@@ -1,11 +1,12 @@
 import opendbpy as odb
-import math
+
 import os 
+import math
 import pprint
 import argparse
 
 class Placer:
-    def __init__(self,lef_file_name, tech_lef_file_name, def_file_name):
+    def __init__(self, lef_file_name, tech_lef_file_name, def_file_name):
          # create a database
         self.db = odb.dbDatabase.create()
         # read LEF files
@@ -38,13 +39,14 @@ class Placer:
         # Reverse the order of the rows so that placement starts at the top instead of the bottom
         self.rows.reverse()
         self.cells = self.macro_lef.getMasters()
+        
         # Extract the tap cell
         self.tapCellName = "sky130_fd_sc_hd__tapvpwrvgnd_1"
         self.tapCell = [cell for cell in self.cells if cell.getName() == self.tapCellName]
         self.tapCell = self.tapCell[0]
 
-    def writeDef(self):
-        result = odb.write_def(self.chip.getBlock(), "placedSRAM64x32.def")
+    def writeDef(self, file):
+        result = odb.write_def(self.chip.getBlock(), file)
         assert result==1, "DEF not written"
 
     def parse(self):
@@ -265,23 +267,25 @@ class Placer:
         self.placeBuffers(remianingCells, currentRowIndex)
     
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='A python script that customly places the cells for 64x32 DFFRAM')
-    parser.add_argument('--lef_file', '-l', required=True,
-                        help='Input LEF file')
+    parser = argparse.ArgumentParser(description='A python script that customly places the cells for 64x32 DFFRAM')
 
-    parser.add_argument('--tech_lef_file', '-t', required=True,
-                        help='Input Technology LEF file')
+    parser.add_argument('--lef', '-l', dest="lef_file", required=True, help='Input LEF file')
 
-    parser.add_argument('--def_file', '-d',  required=True,
-                        help='Input DEF file')
+    parser.add_argument('--tech-lef', '-t', dest="tech_lef_file", required=True, help='Input Technology LEF file')
+
+    parser.add_argument('--def', '-d',  dest="def_file", required=True, help='Input DEF file')
+
+    parser.add_argument('--output-def', '-o', dest="output_def_file", required=True, help='Output DEF file')
+
     args = parser.parse_args()
 
     lef_file_name = args.lef_file
     tech_lef_file_name = args.tech_lef_file
     def_file_name = args.def_file
 
+    output_file_name = args.output_def_file
+
     placement = Placer(lef_file_name, tech_lef_file_name, def_file_name)
     placement.parse()
     placement.place()
-    placement.writeDef()
+    placement.writeDef(output_file_name)
