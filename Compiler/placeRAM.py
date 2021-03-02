@@ -1,291 +1,284 @@
-import opendbpy as odb
+try:
+    import opendbpy as odb
+except ImportError:
+    print(
+    """
+    You need to install opendb (Ahmed Ghazy's fork):
+    https://github.com/ax3ghazy/opendb
+    Build normally then go to ./build/src/swig/python and run setup.py
 
-import os 
+    (On macOS rename the .dylib to .so first)
+    """)
+    exit(-1)
+
+try:
+    import click
+except ImportError:
+    print("You need to install click: python3 -m pip install click")
+    exit(-1)
+
+
+import os
+import re
 import math
 import pprint
 import argparse
+import traceback
+from functools import reduce
+
+class Cluster:
+    def __init__(self, number):
+        self.number = number
+
+        self.words = {}
+        self.webufs = []
+        self.dibufs = []
+        self.clkbufs = []
+
+        self.floatbufs = []
+
+        self.decoders = []
+        self.decoder_abufs = []
 
 class Placer:
-    def __init__(self, lef_file_name, tech_lef_file_name, def_file_name):
-         # create a database
+    TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
+    TAP_DISTANCE = 6
+
+    def __init__(self, lef, tech_lef, df):
+        # Initialize Database
         self.db = odb.dbDatabase.create()
-        # read LEF files
-        self.tech_lef = odb.read_lef(self.db, tech_lef_file_name)
-        self.macro_lef = odb.read_lef(self.db, lef_file_name)
-        # read and empty def file with an initialized diearea
-        self.def_file = odb.read_def(self.db, def_file_name)
-        # get technology
+
+        # Process LEF Data
+        self.tlef = odb.read_lef(self.db, tech_lef)
+        self.lef = odb.read_lef(self.db, lef)
+
         self.tech = self.db.getTech()
-        # get site dimensions from LEF
-        self.sites = self.tech_lef.getSites()
+
+        self.sites = self.tlef.getSites()
         self.regular_site = self.sites[0]
-        self.siteWidth = self.regular_site.getWidth()
-        self.siteHeight = self.regular_site.getHeight()
-        # get the chip from the def file
+
+        self.site_width = self.regular_site.getWidth()
+        self.site_height = self.regular_site.getHeight()
+
+        self.cells = self.lef.getMasters()
+
+        ## Extract the tap cell for later use
+        self.tap_cell = list(filter(lambda x: x.getName() == Placer.TAP_CELL_NAME, self.cells))[0]
+        self.tap_cell_counter = 0
+
+        # Process DEF data
+        self.df = odb.read_def(self.db, df)
+
         self.chip = self.db.getChip()
-        # get the block designfrom the chip
         self.block = self.chip.getBlock()
+
         self.clusters = {}
-        self.decoders = {}
-        self.decoderBuffers = []
-        self.floatbuffers = {}
-        self.outputs = {}
-        self.remaining = []
-        # Get all the instances in the DEF file
+
+        self.outputs = []
+
+        self.miscellaneous = []
+
         self.instances = self.block.getInsts()
-        self.tapCounter = 0
-        # Get all the rows in the floorplan
+
         self.rows = self.block.getRows()
-        # Reverse the order of the rows so that placement starts at the top instead of the bottom
-        self.rows.reverse()
-        self.cells = self.macro_lef.getMasters()
-        
-        # Extract the tap cell
-        self.tapCellName = "sky130_fd_sc_hd__tapvpwrvgnd_1"
-        self.tapCell = [cell for cell in self.cells if cell.getName() == self.tapCellName]
-        self.tapCell = self.tapCell[0]
+        self.rows.reverse() # Reverse the order of the rows so that placement starts at the top instead of the bottom
 
-    def writeDef(self, file):
-        result = odb.write_def(self.chip.getBlock(), file)
-        assert result==1, "DEF not written"
+        # Parse DEF instances
+        def gi(str):
+            rx = r"\w+\\\[(\d+)\\\]"
+            result = re.match(rx, str)
+            if result is None:
+                return None
+            return int(result[1])
 
-    def parse(self):
-        # Loop over the instances and parse them to be stored in accessible data structures 
-        for inst in self.instances:
+        def ag(dictionary, key):
+            if dictionary.get(key) is None:
+                dictionary[key] = []
+            return dictionary[key]
 
-            nameNotSplit = inst.getName()
-            name = nameNotSplit.split('.')
-            if 'DEC.DEC' in nameNotSplit:
-                if nameNotSplit not in self.decoders:
-                    self.decoders[nameNotSplit] = []
-                self.decoders[nameNotSplit].append(nameNotSplit)
+        def dg(dictionary, key):
+            if dictionary.get(key) is None:
+                dictionary[key] = {}
+            return dictionary[key]
 
-            elif 'DEC.ABUF' in nameNotSplit:
-                self.decoderBuffers.append(nameNotSplit)
+        def cg(dictionary, key, number):
+            if dictionary.get(key) is None:
+                dictionary[key] = Cluster(number)
+            return dictionary[key]
 
+        def has_prefix(namec, prefix):
+            for el in namec:
+                if el.startswith(prefix):
+                    return el
+            return None
 
-            elif (name[0] == 'C0') or (name[0] == 'C1') or (name[0] == 'C2') or (name[0] == 'C3'):
-                if name[0] not in self.clusters:
-                    self.clusters[name[0]] = {}
+        print("Found %i instances." % len(self.instances))
+
+        for instance in self.instances:
+            name = instance.getName()
+            namec = name.split('.')
+            top = namec[0]
+
+            if top.startswith("COLUMN"):
+                number = gi(top)
+                cluster = cg(self.clusters, top, number)
                 
-                if 'WORD' in name[1]:
-                    if 'words' not in self.clusters[name[0]]:
-                        self.clusters[name[0]]['words'] = {}
-
-                    if name[1] not in self.clusters[name[0]]['words']:
-                        self.clusters[name[0]]['words'][name[1]] = []
-                    self.clusters[name[0]]['words'][name[1]].append(name)
-
-                elif 'WEBUF' in name[1]:
-                    if 'webufs' not in self.clusters[name[0]]:
-                        self.clusters[name[0]]['webufs'] = []
-
-                    self.clusters[name[0]]['webufs'].append(name)
-
-                elif 'DIBUF' in name[1]:
-                    if 'dibufs' not in self.clusters[name[0]]:
-                        self.clusters[name[0]]['dibufs'] = []
-
-                    self.clusters[name[0]]['dibufs'].append(name)
-
-                elif 'CLKBUF' in name[1]:
-                    if 'clkbufs' not in self.clusters[name[0]]:
-                        self.clusters[name[0]]['clkbufs'] = []
-
-                    self.clusters[name[0]]['clkbufs'].append(name)
-
-            elif 'FLOATBUF' in name[0]:
-                if name[0] not in self.floatbuffers:
-                    self.floatbuffers[name[0]] = []
-                self.floatbuffers[name[0]].append(name)
-            elif 'OUT' in name[0]:
-                if name[0] not in self.outputs:
-                    self.outputs[name[0]] = []
-                self.outputs[name[0]].append(name)
+                if word_name := has_prefix(namec, "WORD"):
+                    current_word = ag(cluster.words, word_name)
+                    current_word.append(name)
+                elif webuf_name := has_prefix(namec, "WEBUF"):
+                    cluster.webufs.append(name)
+                elif dibuf_name := has_prefix(namec, "DIBUF"):
+                    cluster.dibufs.append(name)
+                elif clkbuf_name := has_prefix(namec, "CLKBUF"):
+                    cluster.clkbufs.append(name)
+                elif floatbuf_name := has_prefix(namec, "FLOATBUF"):
+                    cluster.floatbufs.append(name)
+                elif "DEC" in namec:
+                    if abuf_name := has_prefix(namec, "ABUF"):
+                        cluster.decoder_abufs.append(name)
+                    else:
+                        cluster.decoders.append(name)
+                else:
+                    self.miscellaneous.append(name)
+            elif output_name := has_prefix(namec, "Do"):
+                ag(self.outputs, top).append(name)
             else:
-                self.remaining.append(name)
+                self.miscellaneous.append(name)
 
-    # A function to place a tap cell at a given point on a row
-    def createTapCell(self, currnetRow, startingPoint):
-        self.tapCounter = self.tapCounter + 1
-        # create tapCell
-        currentTapCell = odb.dbInst_create(self.block, self.tapCell, "tap_cell_" + str(self.tapCounter))
+    def create_tap(self, current_row, current_point):
+        instance = odb.dbInst_create(self.block, self.tap_cell, "tap_cell_%i" % self.tap_cell_counter)
+        self.tap_cell_counter += 1
 
-        rowOrientation = currnetRow.getOrient()
-        currentTapCell.setOrient(rowOrientation)
-        currentTapCell.setLocation(startingPoint[0], startingPoint[1])
-        currentTapCell.setPlacementStatus("PLACED")
-        startingPoint[0] = startingPoint[0] + self.siteWidth * math.ceil(currentTapCell.getMaster().getWidth() / self.siteWidth)
+        row_orientation = current_row.getOrient()
 
-        return startingPoint
+        instance.setOrient(row_orientation)
+        instance.setLocation(current_point[0], current_point[1])
+        instance.setPlacementStatus("PLACED")
 
-    # A function that places the cells representing the words in a cluster
-    # These cells will be placed on 16 rows where each row would have: 8 flipflops, 
-    # 8 tristate buffers, an inverter and 1 or 2 AND gates
-    def placeWordsInCluster(self, words, currentRowIndex, clusterNumber):
-        for i in range(16):
-            wordIdentifier = "WORD\[" + str(i) + "\]"
-            currentRow = self.rows[currentRowIndex]
-            rowOrigin = currentRow.getOrigin()
-            rowOrientation = currentRow.getOrient()
-            currentPoint = rowOrigin
+        current_point[0] += self.site_width * math.ceil(instance.getMaster().getWidth() / self.site_width)
 
-            currentPoint = self.placeWord(words[wordIdentifier], currentRowIndex, currentPoint)
+        return current_point
 
-            level0 = 2 * clusterNumber + int(i / 8)
-            level1 = i % 8
-            decoder0Identifier = "DEC.DEC_L0.AND" + str(level0) 
-            decoder1Identifier = "DEC.DEC_L1\[" + str(level0) + "\].U.AND" + str(level1)
+    def place_generic(self, cells, current_row_index, current_point):
+        row = self.rows[current_row_index]
+        row_orientation = row.getOrient()
 
-            # check if 1 or 2 buffers will be placed in this row:
-            if i % 8 == 0:
-                decoder0Name = ".".join(self.decoders[decoder0Identifier])
-                decoder1Name = ".".join(self.decoders[decoder1Identifier])
+        for i, cell in enumerate(cells):
+            instance = self.block.findInst(cell)
+            if (current_row_index % Placer.TAP_DISTANCE) == 0:
+                if (i % Placer.TAP_DISTANCE == 0):
+                    current_point = self.create_tap(row, current_point)
+            
+            if ((current_row_index + Placer.TAP_DISTANCE / 2) % Placer.TAP_DISTANCE == 0):
+                if ((i + Placer.TAP_DISTANCE / 2) % Placer.TAP_DISTANCE == 0):
+                    current_point = self.create_tap(row, current_point)
+                
+            instance.setOrient(row_orientation)
+            instance.setLocation(current_point[0], current_point[1])
+            instance.setPlacementStatus("PLACED")
 
-                decoderInstanceNames = [decoder1Name, decoder0Name]
-                for decoderName in decoderInstanceNames:
-
-                    currentInstance = self.block.findInst(decoderName)
-                    currentInstance.setOrient(rowOrientation)
-                    currentInstance.setLocation(currentPoint[0], currentPoint[1])
-                    currentInstance.setPlacementStatus("PLACED")
-
-                    currentPoint[0] = currentPoint[0] + self.siteWidth * math.ceil(currentInstance.getMaster().getWidth() / self.siteWidth )
-
-            # place 1 AND gate for decoder
-            else:
-                decoder1Name = ".".join(self.decoders[decoder1Identifier])
-
-                decoderInstanceNames = [decoder1Name]
-                for decoderName in decoderInstanceNames:
-
-                    currentInstance = self.block.findInst(decoderName)
-                    currentInstance.setOrient(rowOrientation)
-                    currentInstance.setLocation(currentPoint[0], currentPoint[1])
-                    currentInstance.setPlacementStatus("PLACED")
-                    currentPoint[0] = currentPoint[0] + self.siteWidth * math.ceil(currentInstance.getMaster().getWidth() / self.siteWidth )
-
-            currentRowIndex = currentRowIndex + 1
-        return currentRowIndex
-
-    # A function that takes a list of cells and places them on a row next to one another
-    # This is used for 2 tasks:
-    #       1- Place the buffers required for each cluster
-    #       2- Place all the remaining cells that are not part of a single cluster.
-    def placeBuffers(self, listOfBuffers, currentRowIndex):
-    
-        row = self.rows[currentRowIndex]
-        rowOrigin = row.getOrigin()
-        rowOrientation = row.getOrient()
-
-        currentPoint = rowOrigin
-
-        rowOrientation = row.getOrient()
-        for i in range(len(listOfBuffers)):
-
-            if(i%9 == 0) and (currentRowIndex % 2 == 0):
-                currentPoint = self.createTapCell(row, currentPoint)
-
-            if(i%9 == 1) and (currentRowIndex % 2 == 1):
-                currentPoint = self.createTapCell(row, currentPoint)
-            bufferInstance = listOfBuffers[i]
-            currentInstance = self.block.findInst(bufferInstance)
-            currentInstance.setOrient(rowOrientation)
-            currentInstance.setLocation(currentPoint[0], currentPoint[1])
-            currentInstance.setPlacementStatus("PLACED")
-            currentPoint[0] = currentPoint[0] + self.siteWidth * math.ceil(currentInstance.getMaster().getWidth() / self.siteWidth)
-
-    # A function that places a cluster given its number
-    def placeCluster(self, clusterNumber, currentRowIndex):
+            current_point[0] += self.site_width * math.ceil(instance.getMaster().getWidth() / self.site_width)
         
-        clusterName = 'C' + str(clusterNumber)
-        cluster = self.clusters[clusterName]
-        buffersList = []
-        buffersList.append(".".join(cluster['clkbufs'][0]))
-        for buf in cluster['dibufs']:
-            buffersList.append(".".join(buf))
-        for buf in cluster['webufs']:
-            buffersList.append(".".join(buf))
+        return current_row_index
 
-        self.placeBuffers(buffersList, currentRowIndex)
-        currentRowIndex = self.placeWordsInCluster(cluster['words'], currentRowIndex + 1, clusterNumber)
-        return currentRowIndex
+    def place_buffers(self, buffers, current_row_index):
+        row = self.rows[current_row_index]
+        row_origin = row.getOrigin()
+        current_row_index = self.place_generic(buffers, current_row_index, row_origin)
+        return current_row_index
 
-    # A function that places all cells in a word given a list of the cells in the word
-    # It firstly splits the word into 4 bytes and then places them in sequence
-    def placeWord(self, word, currentRowIndex, currentPoint):
+    # Places cells of a 4-byte word
+    def place_word(self, word, current_row_index, current_point):
+        bytes = [[], [], [], []]
 
-        row = self.rows[currentRowIndex]
-        B0 = [".".join(word[i]) for i in range(len(word)) if word[i][3] == 'B0']
-        B1 = [".".join(word[i]) for i in range(len(word)) if word[i][3] == 'B1']
-        B2 = [".".join(word[i]) for i in range(len(word)) if word[i][3] == 'B2']
-        B3 = [".".join(word[i]) for i in range(len(word)) if word[i][3] == 'B3']
-        B0.sort()
-        B1.sort()
-        B2.sort()
-        B3.sort()
-        # Define the order of the cells in the word
-        order = [-2, -1, -3, 14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1]
-        B0 = [B0[i] for i in order]
-        B1 = [B1[i] for i in order]
-        B2 = [B2[i] for i in order]
-        B3 = [B3[i] for i in order]
-        bytesInWord = [B3, B2, B1, B0]
-        rowOrientation = row.getOrient()
-        for byte in bytesInWord:   
-            for i in range(len(byte)):
-                # These 2 IF statements are used to place tap cells every 2 consecutive cells while
-                # trying to prevent tap cells in consecutive rows from touching one another.
-                if(i%2 == 0) and (currentRowIndex % 2 == 0):
-                    currentPoint = self.createTapCell(row, currentPoint)
+        def gb(str):
+            rx = r".+?\.B(\d+)\."
+            result = re.match(rx, str)
+            if result is None:
+                return None
+            return int(result[1])
+        
+        for cell in word:
+            bytes[gb(cell)].append(cell)
 
-                if(i%2 == 1) and (currentRowIndex % 2 == 1):
-                    currentPoint = self.createTapCell(row, currentPoint)
-                instanceName = byte[i]
-                currentInstance = self.block.findInst(instanceName)
-                currentInstance.setOrient(rowOrientation)
-                currentInstance.setLocation(currentPoint[0], currentPoint[1])
-                currentInstance.setPlacementStatus("PLACED")
-                currentPoint[0] = currentPoint[0] + self.siteWidth * math.ceil(currentInstance.getMaster().getWidth() / self.siteWidth)
-        return currentPoint
-    
-    # A function that loops over the 4 clusters and places them with all their cells
-    def placeClusters(self):
-        currentRowIndex = 0
-        for i in range(4):
-            currentRowIndex = self.placeCluster(i, currentRowIndex)
-            currentRowIndex = currentRowIndex + 2
-        return currentRowIndex
+        bytes.reverse()
+        current_row_index = self.place_generic(reduce(lambda x, y: x + y, bytes), current_row_index, current_point)
+
+        return (current_point, current_row_index)
 
 
-    # A function that places all the cells in the DEF file.
+    def place_cluster(self, cluster, current_row_index):
+        buffers = []
+        buffers += cluster.clkbufs
+        buffers += cluster.dibufs
+        buffers += cluster.webufs
+        buffers += cluster.floatbufs
+
+        current_row_index = self.place_buffers(buffers, current_row_index)
+        row = self.rows[current_row_index]
+        row_origin = row.getOrigin()
+        row_orientation = row.getOrient()
+
+        current_point = row_origin
+        word_count = len(cluster.words)
+
+        print("Placing cluster %i: %i words…" % (cluster.number, word_count))
+
+        decoder_cells = cluster.decoders + cluster.decoder_abufs
+
+        decoder_cells_per_row = math.ceil(float(len(decoder_cells)) / word_count)
+
+        row_tracker = 0
+
+        for (_, word) in cluster.words.items():
+            current_point, current_row_index = self.place_word(word, current_row_index, current_point)
+
+            start = decoder_cells_per_row * row_tracker
+            finish = (decoder_cells_per_row * row_tracker) + decoder_cells_per_row - 1
+
+            current_row_index = self.place_generic(decoder_cells[start:finish], current_row_index, current_point)
+            current_row_index += 1
+
+        return current_row_index
+
+    def place_clusters(self, current_row_index):
+        for cluster in self.clusters.values():
+            current_row_index = self.place_cluster(cluster, current_row_index)
+            current_row_index += 2 # why?
+        return current_row_index
+
     def place(self):
-        currentRowIndex = self.placeClusters()
-        currentRowIndex = currentRowIndex +  2
-        remianingCells = [x[0] for x in self.remaining] + self.decoderBuffers + [self.outputs[key][0][0] for key in self.outputs]
-        remianingCells = remianingCells + [self.floatbuffers[key][0][0] for key in self.floatbuffers]
-        self.placeBuffers(remianingCells, currentRowIndex)
-    
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A python script that customly places the cells for 64x32 DFFRAM')
+        current_row_index = self.place_clusters(0)
+        
+        print("Placing miscellaneous instances (%i)…" % len(self.miscellaneous))
+        current_row_index = self.place_buffers(self.miscellaneous, current_row_index)
+        print("Placed %i rows." % current_row_index)
+        print("Placed %i tap cells." % self.tap_cell_counter)
 
-    parser.add_argument('--lef', '-l', dest="lef_file", required=True, help='Input LEF file')
+    def write_def(self, output):
+        return odb.write_def(self.chip.getBlock(), output) == 1
 
-    parser.add_argument('--tech-lef', '-t', dest="tech_lef_file", required=True, help='Input Technology LEF file')
+@click.command()
+@click.option('-o', '--output', required=True)
+@click.option('-l', '--lef', required=True)
+@click.option('-t', '--tech-lef', "tlef", required=True)
+@click.argument('def_file', required=True, nargs=1)
+def cli(output, lef, tlef, def_file):
+    placer = Placer(lef, tlef, def_file)
+    placer.place()
+    if not placer.write_def(output):
+        raise Exception("Failed to write output DEF file.")
+    else:
+        print("Wrote %s." % output)
+        print("Done.")
 
-    parser.add_argument('--def', '-d',  dest="def_file", required=True, help='Input DEF file')
+def main():
+    try:
+        cli()
+    except Exception:
+        print("An unexpected exception has occurred.", traceback.format_exc())
+        exit(-1)
 
-    parser.add_argument('--output-def', '-o', dest="output_def_file", required=True, help='Output DEF file')
-
-    args = parser.parse_args()
-
-    lef_file_name = args.lef_file
-    tech_lef_file_name = args.tech_lef_file
-    def_file_name = args.def_file
-
-    output_file_name = args.output_def_file
-
-    placement = Placer(lef_file_name, tech_lef_file_name, def_file_name)
-    placement.parse()
-    placement.place()
-    placement.writeDef(output_file_name)
+if __name__ == '__main__':
+    main()
