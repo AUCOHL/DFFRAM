@@ -81,6 +81,7 @@ class Placer:
         self.instances = self.block.getInsts()
 
         self.rows = self.block.getRows()
+        print("Found %i rows…" % len(self.rows))
         self.rows.reverse() # Reverse the order of the rows so that placement starts at the top instead of the bottom
 
         # Parse DEF instances
@@ -112,6 +113,13 @@ class Placer:
                     return el
             return None
 
+        def has_word(name):
+            rx = r"([\w.\\\[\]].+\.WORD\\\[\d+\\\])"
+            result = re.match(rx, name)
+            if result is None:
+                return None
+            return result[1]
+
         print("Found %i instances." % len(self.instances))
 
         for instance in self.instances:
@@ -122,8 +130,9 @@ class Placer:
             if top.startswith("COLUMN"):
                 number = gi(top)
                 cluster = cg(self.clusters, top, number)
+
                 
-                if word_name := has_prefix(namec, "WORD"):
+                if word_name := has_word(name):
                     current_word = ag(cluster.words, word_name)
                     current_word.append(name)
                 elif webuf_name := has_prefix(namec, "WEBUF"):
@@ -146,50 +155,63 @@ class Placer:
             else:
                 self.miscellaneous.append(name)
 
-    def create_tap(self, current_row, current_point):
-        instance = odb.dbInst_create(self.block, self.tap_cell, "tap_cell_%i" % self.tap_cell_counter)
-        self.tap_cell_counter += 1
+        self.word_count = reduce(lambda x, y: x + len(y.words), self.clusters.values(), 0)
+        self.words_per_row = math.ceil(float(self.word_count) / len(self.rows))
+        self.current_row_index = 0
+        self.current_point = self.rows[0].getOrigin()
+        self.x_max = self.rows[0].getBBox().xMax()
+        print("Found %i words. Doing %i words per row." % (self.word_count, self.words_per_row))
 
-        row_orientation = current_row.getOrient()
+    def current_row(self):
+        assert self.current_row_index <= self.rows
 
-        instance.setOrient(row_orientation)
-        instance.setLocation(current_point[0], current_point[1])
+        if self.current_row_index == len(self.rows):
+            print("Row count exceeded.")
+            exit(-1)
+
+        return self.rows[self.current_row_index]
+
+    def next_row(self):
+        self.current_row_index += 1
+        self.current_point = self.current_row().getOrigin()
+
+    def place_one(self, instance):
+        width = self.site_width * math.ceil(instance.getMaster().getWidth() / self.site_width)
+        end_location = self.current_point[0] + width
+        
+        if end_location > self.x_max:
+            self.next_row()
+
+        orientation = self.current_row().getOrient()
+
+        instance.setOrient(orientation)
+        instance.setLocation(self.current_point[0], self.current_point[1])
         instance.setPlacementStatus("PLACED")
 
-        current_point[0] += self.site_width * math.ceil(instance.getMaster().getWidth() / self.site_width)
+        self.current_point[0] += width
 
-        return current_point
+    def create_tap(self):
+        instance = odb.dbInst_create(self.block, self.tap_cell, "tap_cell_%i" % self.tap_cell_counter)
+        self.tap_cell_counter += 1
+        self.place_one(instance)
 
-    def place_generic(self, cells, current_row_index, current_point):
-        row = self.rows[current_row_index]
-        row_orientation = row.getOrient()
+    def place_generic(self, cells):
+        row_orientation = self.current_row().getOrient()
 
         for i, cell in enumerate(cells):
-            instance = self.block.findInst(cell)
-            if (current_row_index % Placer.TAP_DISTANCE) == 0:
+            if (self.current_row_index % Placer.TAP_DISTANCE) == 0:
                 if (i % Placer.TAP_DISTANCE == 0):
-                    current_point = self.create_tap(row, current_point)
+                    self.create_tap()
             
-            if ((current_row_index + Placer.TAP_DISTANCE / 2) % Placer.TAP_DISTANCE == 0):
+            if ((self.current_row_index + Placer.TAP_DISTANCE / 2) % Placer.TAP_DISTANCE == 0):
                 if ((i + Placer.TAP_DISTANCE / 2) % Placer.TAP_DISTANCE == 0):
-                    current_point = self.create_tap(row, current_point)
-                
-            instance.setOrient(row_orientation)
-            instance.setLocation(current_point[0], current_point[1])
-            instance.setPlacementStatus("PLACED")
+                    self.create_tap()
 
-            current_point[0] += self.site_width * math.ceil(instance.getMaster().getWidth() / self.site_width)
-        
-        return current_row_index
-
-    def place_buffers(self, buffers, current_row_index):
-        row = self.rows[current_row_index]
-        row_origin = row.getOrigin()
-        current_row_index = self.place_generic(buffers, current_row_index, row_origin)
-        return current_row_index
+            instance = self.block.findInst(cell)
+            self.place_one(instance)
 
     # Places cells of a 4-byte word
-    def place_word(self, word, current_row_index, current_point):
+    def place_word(self, word):
         bytes = [[], [], [], []]
 
         def gb(str):
@@ -203,24 +225,16 @@ class Placer:
             bytes[gb(cell)].append(cell)
 
         bytes.reverse()
-        current_row_index = self.place_generic(reduce(lambda x, y: x + y, bytes), current_row_index, current_point)
-
-        return (current_point, current_row_index)
+        self.place_generic(reduce(lambda x, y: x + y, bytes))
 
 
-    def place_cluster(self, cluster, current_row_index):
+    def place_cluster(self, cluster):
         buffers = []
         buffers += cluster.clkbufs
         buffers += cluster.dibufs
         buffers += cluster.webufs
         buffers += cluster.floatbufs
 
-        current_row_index = self.place_buffers(buffers, current_row_index)
-        row = self.rows[current_row_index]
-        row_origin = row.getOrigin()
-        row_orientation = row.getOrient()
-
-        current_point = row_origin
         word_count = len(cluster.words)
 
         print("Placing cluster %i: %i words…" % (cluster.number, word_count))
@@ -230,30 +244,31 @@ class Placer:
         decoder_cells_per_row = math.ceil(float(len(decoder_cells)) / word_count)
 
         row_tracker = 0
+        wpr_counter = 0
 
         for (_, word) in cluster.words.items():
-            current_point, current_row_index = self.place_word(word, current_row_index, current_point)
+            self.place_word(word)
 
             start = decoder_cells_per_row * row_tracker
             finish = (decoder_cells_per_row * row_tracker) + decoder_cells_per_row - 1
 
-            current_row_index = self.place_generic(decoder_cells[start:finish], current_row_index, current_point)
-            current_row_index += 1
+            self.place_generic(decoder_cells[start:finish])
 
-        return current_row_index
+            wpr_counter += 1
+            if wpr_counter == self.words_per_row:
+                wpr_counter = 0
+                self.next_row()
 
-    def place_clusters(self, current_row_index):
-        for cluster in self.clusters.values():
-            current_row_index = self.place_cluster(cluster, current_row_index)
-            current_row_index += 2 # why?
-        return current_row_index
-
+        self.place_generic(buffers)
+                
     def place(self):
-        current_row_index = self.place_clusters(0)
+        for cluster in self.clusters.values():
+            self.place_cluster(cluster)
+            self.next_row()
         
         print("Placing miscellaneous instances (%i)…" % len(self.miscellaneous))
-        current_row_index = self.place_buffers(self.miscellaneous, current_row_index)
-        print("Placed %i rows." % current_row_index)
+        self.place_generic(self.miscellaneous)
+        print("Placed %i rows." % self.current_row_index)
         print("Placed %i tap cells." % self.tap_cell_counter)
 
     def write_def(self, output):
