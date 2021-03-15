@@ -3,8 +3,10 @@ if [ ! -d ./example_support ]; then
      tar -xJf ./example_support.tar.xz
 fi
 
+export DESIGN=SRAM8x32
+
 # # 1. Synthesis
-# (cd ../Handcrafted/Models; yosys ../Synth/syn.tcl)
+# (cd ../Handcrafted/Models; DESIGN=SRAM8x32 yosys ../Synth/syn.tcl)
 
 # # 2. Floorplan Initialization
 # cat <<HEREDOC > ./example_support/openroad_script.tcl
@@ -12,9 +14,9 @@ fi
 
 # read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
-# read_verilog ../Handcrafted/Models/DFFRAM.gl.v
+# read_verilog ../Handcrafted/Models/$DESIGN.gl.v
 
-# link_design DFFRAM
+# link_design $DESIGN
 
 # initialize_floorplan -die_area "0 0 2000 2000" -core_area "100 100 1900 1900" -site unithd -tracks ./example_support/tracks_hd.info
 
@@ -24,7 +26,7 @@ fi
 
 # report_checks -fields {input slew capacitance} -format full_clock
 
-# write_def ./DFFRAM.def
+# write_def ./$DESIGN.def
 # HEREDOC
 
 # docker run\
@@ -34,7 +36,7 @@ fi
 #      efabless/openlane\
 #      openroad ./example_support/openroad_script.tcl
 
-## Interactive 
+# # Interactive 
 # docker run -ti\
 #      -v $PDK_ROOT:$PDK_ROOT\
 #      -v $(realpath ..):/mnt/dffram\
@@ -51,8 +53,9 @@ fi
 #      --tech-lef $PDK_ROOT/sky130/sky130A/libs.ref/sky130_fd_sc_hd/techlef/sky130_fd_sc_hd.tlef\
 #      --output-def ./placed.def
 ## New
-python3 placeRAM.py\
-     --output ./DFFRAM.placed.def\
+python3 -m placeram\
+     --output ./$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
-     ./DFFRAM.def
+     --size 8x32\
+     ./$DESIGN.def

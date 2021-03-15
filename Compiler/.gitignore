@@ -1,3 +1,4 @@
 openroad_script.tcl
 example_support
 *.def
+__pycache__
