@@ -29,7 +29,6 @@ import argparse
 import traceback
 from functools import reduce
 
-
 class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
     TAP_DISTANCE_MICRONS = 15
@@ -37,6 +36,7 @@ class Placer:
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width != 32:
             eprint("Only 32-bit words are supported for now.")
+            exit(69)
 
         # Initialize Database
         self.db = odb.dbDatabase.create()
@@ -66,7 +66,7 @@ class Placer:
         self.miscellaneous = []
 
         self.instances = self.block.getInsts()
-        eprint("Found %i instances." % len(self.instances)) 
+        eprint("Found %i instances…" % len(self.instances)) 
 
         def create_tap(name):
             return odb.dbInst_create(self.block, self.tap_cell, name)
@@ -78,6 +78,7 @@ class Placer:
         self.hierarchy = Slice(self.instances)
 
     def place(self):
+        eprint("Starting placement…")
         self.hierarchy.place(self.rows)
 
     def write_def(self, output):
@@ -109,7 +110,7 @@ def cli(output, lef, tlef, size, def_file):
         eprint("Failed to write output DEF file.")
         exit(73)
     else:
-        eprint("Wrote %s." % output)
+        eprint("Wrote to %s." % output)
         eprint("Done.")
 
 def main():

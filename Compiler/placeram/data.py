@@ -39,7 +39,7 @@ class Row(object):
             self.since_last_tap += width
 
     def place(self, instance, placing_tap=False):
-        width = Row.sw * math.ceil(instance.getMaster().getWidth() / Row.sw)
+        width = instance.getMaster().getWidth()
         if not placing_tap:
             self.tap(width)
 
@@ -47,9 +47,7 @@ class Row(object):
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
 
-        width = Row.sw * math.ceil(instance.getMaster().getWidth() / Row.sw)
-        self.x = self.x + width
-
+        self.x += width
         self.cell_counter += 1
 
     @staticmethod
