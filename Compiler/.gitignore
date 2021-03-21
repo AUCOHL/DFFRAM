@@ -1,4 +1,10 @@
 openroad_script.tcl
 example_support
 *.def
+*.ref
+*.guide
+*.rpt
+*.drc
+*.params
 __pycache__
+build/

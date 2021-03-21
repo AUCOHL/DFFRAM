@@ -3,13 +3,20 @@ if [ ! -d ./example_support ]; then
      tar -xJf ./example_support.tar.xz
 fi
 
-export DESIGN=SRAM8x32
+set -e
+
+DESIGN=SRAM8x32
+
+mkdir -p ./build/
+
+BUILD_FOLDER=./build/$DESIGN
+mkdir -p $BUILD_FOLDER
 
 # 1. Synthesis
 (cd ../Handcrafted/Models; DESIGN=SRAM8x32 yosys ../Synth/syn.tcl)
 
 # 2. Floorplan Initialization
-cat <<HEREDOC > ./example_support/openroad_fp_script.tcl
+cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
 read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
@@ -18,11 +25,27 @@ read_verilog ../Handcrafted/Models/$DESIGN.gl.v
 
 link_design $DESIGN
 
-initialize_floorplan -die_area "0 0 2000 2000" -core_area "100 100 1900 1900" -site unithd -tracks ./example_support/tracks_hd.info
+initialize_floorplan\
+     -die_area "0 0 500 500"\
+     -core_area "0 0 500 500"\
+     -site unithd\
+     -tracks ./example_support/sky130hd.tracks
 
 remove_buffers
 
-auto_place_pins met1
+ppl::set_hor_length 4
+ppl::set_ver_length 4
+ppl::set_hor_length_extend 2
+ppl::set_ver_length_extend 2
+ppl::set_ver_thick_multiplier 4
+ppl::set_hor_thick_multiplier 4
+
+place_pins\
+     -random \
+ 	-random_seed 42 \
+ 	-min_distance 5 \
+ 	-hor_layers 4\
+ 	-ver_layers 3
 
 report_checks -fields {input slew capacitance} -format full_clock
 
@@ -34,7 +57,7 @@ docker run\
      -v $(realpath ..):/mnt/dffram\
      -w /mnt/dffram/Compiler\
      efabless/openlane\
-     openroad ./example_support/openroad_fp_script.tcl
+     openroad $BUILD_FOLDER/fp_init.tcl
 
 # # Interactive 
 # docker run -ti\
@@ -53,7 +76,7 @@ python3 -m placeram\
      ./$DESIGN.def
 
 # 4. Verify Placement
-cat <<HEREDOC > ./example_support/openroad_vp_script.tcl
+cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
 read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
@@ -72,4 +95,45 @@ docker run\
      -v $(realpath ..):/mnt/dffram\
      -w /mnt/dffram/Compiler\
      efabless/openlane\
-     openroad ./example_support/openroad_vp_script.tcl
+     openroad $BUILD_FOLDER/verify.tcl
+
+# 5. Attempt Routing
+cat <<HEREDOC > $BUILD_FOLDER/route.tcl
+source ./example_support/sky130hd.vars
+
+read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+
+read_def ./$DESIGN.placed.def
+
+global_route \
+  -guide_file $BUILD_FOLDER/route.guide \
+  -layers \$global_routing_layers \
+  -clock_layers \$global_routing_clock_layers \
+  -unidirectional_routing \
+  -overflow_iterations 100
+
+tr::detailed_route_cmd $BUILD_FOLDER/tr.param
+HEREDOC
+
+cat <<HEREDOC > $BUILD_FOLDER/tr.param
+lef:./example_support/sky130_fd_sc_hd.merged.lef
+def:./$DESIGN.placed.def
+guide:$BUILD_FOLDER/route.guide
+output:$DESIGN.routed.def
+outputguide:$BUILD_FOLDER/$DESIGN.guide
+outputDRC:$BUILD_FOLDER/$DESIGN.drc
+threads:8
+verbose:1
+HEREDOC
+
+docker run\
+     -v $PDK_ROOT:$PDK_ROOT\
+     -v $(realpath ..):/mnt/dffram\
+     -w /mnt/dffram/Compiler\
+     efabless/openlane\
+     openroad $BUILD_FOLDER/route.tcl
+
+
+     # def -> gdsII (magic) and def -> lef (magic)
