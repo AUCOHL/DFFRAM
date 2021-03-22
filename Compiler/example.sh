@@ -1,3 +1,4 @@
+#!/usr/bin/bash
 if [ ! -d ./example_support ]; then
      echo "Untarring support files…"
      tar -xJf ./example_support.tar.xz
@@ -5,7 +6,18 @@ fi
 
 set -e
 
-DESIGN=SRAM8x32
+export DESIGN=SRAM8x32
+
+export SAFE_ZONE=50
+
+export DESIGN_WIDTH=600
+export DESIGN_HEIGHT=100
+
+# ---
+(( FULL_SAFE_AREA=$SAFE_ZONE * 2 ))
+
+(( FULL_WIDTH=$DESIGN_WIDTH + $FULL_SAFE_AREA ))
+(( FULL_HEIGHT=$DESIGN_HEIGHT + $FULL_SAFE_AREA ))
 
 mkdir -p ./build/
 
@@ -26,8 +38,8 @@ read_verilog ../Handcrafted/Models/$DESIGN.gl.v
 link_design $DESIGN
 
 initialize_floorplan\
-     -die_area "0 0 500 500"\
-     -core_area "0 0 500 500"\
+     -die_area "0 0 $FULL_WIDTH $FULL_HEIGHT"\
+     -core_area "$SAFE_ZONE $SAFE_ZONE $DESIGN_WIDTH $DESIGN_HEIGHT"\
      -site unithd\
      -tracks ./example_support/sky130hd.tracks
 
@@ -85,9 +97,10 @@ read_def ./$DESIGN.placed.def
 
 if [check_placement -verbose] {
     puts "Placement failed: Check placement returned a nonzero value."
-} else {
-    puts "Placement successful!"
+    exit 65
 }
+
+puts "Placement successful."
 HEREDOC
 
 docker run\
