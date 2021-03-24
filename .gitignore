@@ -7,3 +7,4 @@ Work
 *.code-workspace
 log.txt
 *.gl.v
+.vscode/
