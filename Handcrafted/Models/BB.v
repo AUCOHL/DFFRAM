@@ -33,7 +33,7 @@ module BYTE (
             sky130_fd_sc_hd__ebufn_2 OBUF ( .A(q_wire[i]), .Z(Do[i]), .TE_B(SEL_B) );
         end
     endgenerate 
-
+  
 endmodule
 
 module BYTE_LATCH (
