@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 if [ ! -d ./example_support ]; then
      echo "Untarring support files…"
      tar -xJf ./example_support.tar.xz
@@ -21,7 +21,21 @@ BUILD_FOLDER=./build/$DESIGN
 (( FULL_WIDTH=$DESIGN_WIDTH + $FULL_SAFE_AREA ))
 (( FULL_HEIGHT=$DESIGN_HEIGHT + $FULL_SAFE_AREA ))
 
-# --- 
+# ---
+DOCKER_INTERACTIVE="0"
+openlane() {
+     DOCKER_TI_FLAG=""
+     if [ "$DOCKER_INTERACTIVE" = "1" ]; then
+          DOCKER_TI_FLAG="-ti"
+     fi
+     set -x
+     docker run $DOCKER_TI_FLAG\
+          -v $PDK_ROOT:$PDK_ROOT\
+          -v $(realpath ..):/mnt/dffram\
+          -w /mnt/dffram/Compiler\
+          efabless/openlane\
+          $@
+}
 
 mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
@@ -64,12 +78,7 @@ report_checks -fields {input slew capacitance} -format full_clock
 write_def ./$DESIGN.def
 HEREDOC
 
-docker run\
-     -v $PDK_ROOT:$PDK_ROOT\
-     -v $(realpath ..):/mnt/dffram\
-     -w /mnt/dffram/Compiler\
-     efabless/openlane\
-     openroad $BUILD_FOLDER/fp_init.tcl
+openlane openroad $BUILD_FOLDER/fp_init.tcl
 
 # # Interactive 
 # docker run -ti\
@@ -103,12 +112,7 @@ if [check_placement -verbose] {
 puts "Placement successful."
 HEREDOC
 
-docker run\
-     -v $PDK_ROOT:$PDK_ROOT\
-     -v $(realpath ..):/mnt/dffram\
-     -w /mnt/dffram/Compiler\
-     efabless/openlane\
-     openroad $BUILD_FOLDER/verify.tcl
+openlane openroad $BUILD_FOLDER/verify.tcl
 
 # 5. Attempt Routing
 cat <<HEREDOC > $BUILD_FOLDER/route.tcl
@@ -141,37 +145,32 @@ threads:8
 verbose:1
 HEREDOC
 
-docker run\
-     -v $PDK_ROOT:$PDK_ROOT\
-     -v $(realpath ..):/mnt/dffram\
-     -w /mnt/dffram/Compiler\
-     efabless/openlane\
-     openroad $BUILD_FOLDER/route.tcl
+openlane openroad $BUILD_FOLDER/route.tcl
 
 # 6. LVS
-# cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
-# puts "Running magic script…"
-# load $DESIGN -dereference
-# lef read ./example_support/sky130_fd_sc_hd.tlef
-# def read ./example_support/$DESIGN.routed.def
-# extract do local
-# extract no capacitance
-# extract no coupling
-# extract no resistance
-# extract no adjust
-# extract unique
-# extract
+cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
+puts "Running magic script…"
+lef read ./example_support/sky130_fd_sc_hd.merged.lef
+def read ./$DESIGN.routed.def
+load $DESIGN -dereference
+extract do local
+extract no capacitance
+extract no coupling
+extract no resistance
+extract no adjust
+extract unique
+extract
 
-# ext2spice lvs
-# ext2spice
-# HEREDOC
+ext2spice lvs
+ext2spice
+HEREDOC
 
-# docker run\
-#      -v $PDK_ROOT:$PDK_ROOT\
-#      -v $(realpath ..):/mnt/dffram\
-#      -w /mnt/dffram/Compiler\
-#      efabless/openlane\
-#      bash -c "magic -dnull -norcfile -noconsole < $BUILD_FOLDER/lvs.tcl"
+# arguments with whitespace work horrendous when passing through a procedure
+cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
+     magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
+     netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+HEREDOC
+
+openlane bash $BUILD_FOLDER/lvs.sh 
      
-
-#      # def -> gdsII (magic) and def -> lef (magic)
+# Harden? # def -> gdsII (magic) and def -> lef (magic)

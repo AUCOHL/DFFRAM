@@ -8,3 +8,5 @@ example_support
 *.params
 __pycache__
 build/
+*.ext
+*.spice
