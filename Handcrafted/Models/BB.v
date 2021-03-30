@@ -50,8 +50,8 @@ module BYTE_LATCH (
     wire        GCLK;
     wire        CLK_B;
 
-    sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL_B), .A(SEL));
     sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
+    sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL_B), .A(SEL));
     sky130_fd_sc_hd__and2_1 CGAND( .A(SEL), .B(WE), .X(we_wire) );
     sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(we_wire) );
 
@@ -201,8 +201,12 @@ module RAM32x32 #(parameter USE_LATCH=0) (
     // Ensure that the Do_pre lines are not floating when EN = 0
     wire [3:0] lo;
     wire [3:0] float_buf_en;
-    sky130_fd_sc_hd__clkbuf_4 FBUFENBUF [3:0] ( .X(float_buf_en), .A(EN) );
+    sky130_fd_sc_hd__clkinv_4 FBUFENBUF [3:0] ( .X(float_buf_en), .A(EN) );
     sky130_fd_sc_hd__conb_1 TIE [3:0] (.LO(lo), .HI());
+
+    // Following split by group because each is done by one TIE CELL and ONE CLKBUF_4
+
+    // Provides default values for floating lines (lo)
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B0[7:0] ( .A( lo[0] ), .Z(Do_pre[7:0]), .TE_B(float_buf_en[0]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B1[15:8] ( .A( lo[1] ), .Z(Do_pre[15:8]), .TE_B(float_buf_en[1]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B2[23:16] ( .A( lo[2] ), .Z(Do_pre[23:16]), .TE_B(float_buf_en[2]) );

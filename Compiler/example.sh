@@ -6,7 +6,7 @@ fi
 
 set -e
 
-export DESIGN=SRAM8x32
+export DESIGN=RAM8x32
 
 export SAFE_ZONE=50
 
@@ -14,18 +14,20 @@ export DESIGN_WIDTH=600
 export DESIGN_HEIGHT=100
 
 # ---
+BUILD_FOLDER=./build/$DESIGN
+
 (( FULL_SAFE_AREA=$SAFE_ZONE * 2 ))
 
 (( FULL_WIDTH=$DESIGN_WIDTH + $FULL_SAFE_AREA ))
 (( FULL_HEIGHT=$DESIGN_HEIGHT + $FULL_SAFE_AREA ))
 
-mkdir -p ./build/
+# --- 
 
-BUILD_FOLDER=./build/$DESIGN
+mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
 
 # 1. Synthesis
-(cd ../Handcrafted/Models; DESIGN=SRAM8x32 yosys ../Synth/syn.tcl)
+(cd ../Handcrafted/Models; yosys ../Synth/syn.tcl)
 
 # 2. Floorplan Initialization
 cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
@@ -42,8 +44,6 @@ initialize_floorplan\
      -core_area "$SAFE_ZONE $SAFE_ZONE $DESIGN_WIDTH $DESIGN_HEIGHT"\
      -site unithd\
      -tracks ./example_support/sky130hd.tracks
-
-remove_buffers
 
 ppl::set_hor_length 4
 ppl::set_ver_length 4
@@ -148,5 +148,30 @@ docker run\
      efabless/openlane\
      openroad $BUILD_FOLDER/route.tcl
 
+# 6. LVS
+# cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
+# puts "Running magic script…"
+# load $DESIGN -dereference
+# lef read ./example_support/sky130_fd_sc_hd.tlef
+# def read ./example_support/$DESIGN.routed.def
+# extract do local
+# extract no capacitance
+# extract no coupling
+# extract no resistance
+# extract no adjust
+# extract unique
+# extract
 
-     # def -> gdsII (magic) and def -> lef (magic)
+# ext2spice lvs
+# ext2spice
+# HEREDOC
+
+# docker run\
+#      -v $PDK_ROOT:$PDK_ROOT\
+#      -v $(realpath ..):/mnt/dffram\
+#      -w /mnt/dffram/Compiler\
+#      efabless/openlane\
+#      bash -c "magic -dnull -norcfile -noconsole < $BUILD_FOLDER/lvs.tcl"
+     
+
+#      # def -> gdsII (magic) and def -> lef (magic)

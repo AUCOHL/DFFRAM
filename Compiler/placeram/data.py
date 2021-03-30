@@ -76,6 +76,7 @@ class Bit(Placeable):
         self.store = None
         self.obuf = None
 
+        latch = r"\bLATCH\b"
         ff = r"\bFF\b"
         obuf = r"\bOBUF\b"
 
@@ -86,8 +87,10 @@ class Bit(Placeable):
                 self.store = instance
             elif obuf_match := re.search(obuf, n):
                 self.obuf = instance
+            elif latch_match := res.search(latch, n):
+                self.store = instance
             else:
-                raise DataError("Unknown element in bit: %s" % n)
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
     
     def represent(self, tab_level=-1):
         tab_level += 1
@@ -107,13 +110,15 @@ class Byte(Placeable):
     def __init__(self, instances):
         self.clockgate = None
         self.cgand = None
-        self.inv = None
+        self.selinv = None
+        self.clkinv = None
         rbits = {}
 
         bit = r"\BIT\\\[(\d+)\\\]"
         cg = r"\bCG\b"
         cgand = r"\bCGAND\b"
-        inv = r"\bINV\b"
+        selinv = r"\bSELINV\b"
+        clkinv = r"\bCLKINV\b"
 
         for instance in instances:
             n = instance.getName()
@@ -126,8 +131,12 @@ class Byte(Placeable):
                 self.clockgate = instance
             elif cgand_match := re.search(cgand, n):
                 self.cgand = instance
-            elif inv_match := re.search(inv, n):
-                self.inv = instance
+            elif selinv_match := re.search(selinv, n):
+                self.selinv = instance
+            elif clkinv_match := re.search(clkinv, n):
+                self.clkinv = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.bits = {}
         for k, v in rbits.items():
@@ -138,7 +147,9 @@ class Byte(Placeable):
 
         eprint("%sClock Gate %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clockgate)))
         eprint("%sClock Gate AND%s" % ("".join(["  "] * tab_level), RepresentInstance(self.cgand)))
-        eprint("%sInverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.inv)))
+        eprint("%sSelect Line Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.selinv)))
+        if self.clkinv is not None:
+            eprint("%sClock Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkinv)))
         
         eprint("%sBits" % "".join(["  "] * tab_level))
         tab_level += 1
@@ -158,51 +169,45 @@ class Byte(Placeable):
 
         r.place(self.clockgate)
         r.place(self.cgand)
-        r.place(self.inv)
+        r.place(self.selinv)
+        if self.clkinv is not None:
+            r.place(self.clkinv)
 
         return start_row
 
 class Word(Placeable):
     def __init__(self, instances):
         self.clkbuf = None
-        self.webufs = []
+        self.selbuf = None
         rbytes = {}
+
+        clkbuf = r"\bCLKBUF\b"
+        selbuf = r"\bSELBUF\b"
+        byte = r"\bB(\d+)\b"
 
         for instance in instances:
             n = instance.getName()
 
-            clkbuf = r"\bCLKBUF\b"
-            webuf = r"\bWEBUF\b"
-            byte = r"\bB(\d+)\b"
-
             if cb_match := re.search(clkbuf, n):
                 self.clkbuf = instance
-            elif wb_match := re.search(webuf, n):
-                self.webufs.append(instance)
+            elif sb_match := re.search(selbuf, n):
+                self.selbuf = instance
             elif byte_match := re.search(byte, n):
                 i = int(byte_match[1])
                 rbytes[i] = rbytes.get(i) or []
                 rbytes[i].append(instance)
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.bytes = {}
         for k, v in rbytes.items():
             self.bytes[k] = Byte(v)
 
-        byte_count = len(self.bytes.items())
-        webuf_count = len(self.webufs)
-        if webuf_count != byte_count:
-            raise DataError("Write enable buffer count and byte buffer count mismatched: (%i/%i)" % (webuf_count, byte_count))
-
     def represent(self, tab_level=-1):
         tab_level += 1
 
         eprint("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)))
-
-        eprint("%sWrite Enable Buffers" % "".join(["  "] * tab_level))
-        tab_level += 1
-        for instance in self.webufs:
-            eprint("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)))
-        tab_level -= 1
+        eprint("%sSelect Line Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.selbuf)))
 
         eprint("%sBytes" % "".join(["  "] * tab_level))
         tab_level += 1
@@ -219,9 +224,9 @@ class Word(Placeable):
 
         for k, v in bytes_sorted:
             v.place(row_list, start_row)
-            r.place(self.webufs[k])
         
         r.place(self.clkbuf)
+        r.place(self.selbuf)
 
         return start_row
 
@@ -231,14 +236,18 @@ class Slice(Placeable): # A slice is defined as 8 words.
         self.decoder_and = []
         self.decoder_abuf = []
         self.decoder_enbuf = None
+        self.webufs = []
+        self.clkbuf = None
+
+        word = r"\bWORD\\\[(\d+)\\\]"
+        dand = r"\bAND(\d+)\b"
+        abuf = r"\bABUF\\\[(\d+)\\\]"
+        enbuf = r"\bENBUF\b"
+        webuf = r"\bWEBUF\b"
+        clkbuf = r"\bCLKBUF\b"
 
         for instance in instances:
             n = instance.getName()
-
-            word = r"\bWORD\\\[(\d+)\\\]"
-            dand = r"\bAND(\d+)\b"
-            abuf = r"\bABUF\\\[(\d+)\\\]"
-            enbuf = r"\bENBUF\b"
 
             if word_match := re.search(word, n):
                 i = int(word_match[1])
@@ -252,6 +261,12 @@ class Slice(Placeable): # A slice is defined as 8 words.
                 self.decoder_abuf.append((abuf_number, instance))
             elif enbuf_match := re.search(enbuf, n):
                 self.decoder_enbuf = instance
+            elif wb_match := re.search(webuf, n):
+                self.webufs.append(instance)
+            elif cb_match := re.search(clkbuf, n):
+                self.clkbuf = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.decoder_and.sort(key=lambda x: x[0])
         self.decoder_and = list(map(lambda x: x[1], self.decoder_and))
@@ -276,6 +291,12 @@ class Slice(Placeable): # A slice is defined as 8 words.
             eprint("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)))
         tab_level -= 1
 
+        eprint("%sWrite Enable Buffers" % "".join(["  "] * tab_level))
+        tab_level += 1
+        for instance in self.webufs:
+            eprint("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)))
+        tab_level -= 1
+
         eprint("%sWords" % "".join(["  "] * tab_level))
         tab_level += 1
         for (k, v) in self.words.items():
@@ -292,12 +313,16 @@ class Slice(Placeable): # A slice is defined as 8 words.
             word.place(row_list, current_row)
             current_row += 1
 
-        last_column = [self.decoder_abuf[0], None, self.decoder_abuf[1], None, self.decoder_abuf[2], None, self.decoder_enbuf]
+        second_to_last_column = [self.webufs[0], None, self.webufs[1], None, self.webufs[2], None, self.webufs[3], None]
+        last_column = [self.decoder_enbuf, self.clkbuf, None, None, self.decoder_abuf[0], self.decoder_abuf[1], self.decoder_abuf[2], None]
+
         for i in range(8):
             r = row_list[i]
             andi = self.decoder_and[i]
             r.place(andi)
-            if i % 2 == 0:
+            if second_to_last_column[i] is not None:
+                r.place(second_to_last_column[i])
+            if last_column[i] is not None:
                 r.place(last_column[i])        
 
         return current_row + 8
