@@ -90,7 +90,11 @@ openlane openroad $BUILD_FOLDER/fp_init.tcl
 # DOCKER_INTERACTIVE=1 openlane openroad
 
 # 3. PlaceRAM
-python3 -m placeram\
+docker run --rm\
+     -v $(realpath ..):/mnt/dffram\
+     -w /mnt/dffram/Compiler\
+     donnio/dffram-env\
+     python3 -m placeram\
      --output ./$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
