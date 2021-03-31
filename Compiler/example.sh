@@ -41,7 +41,13 @@ mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
 
 # 1. Synthesis
-(cd ../Handcrafted/Models; yosys ../Synth/syn.tcl)
+cat <<HEREDOC > $BUILD_FOLDER/synth.sh
+     export DESIGN=$DESIGN
+     export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib)
+     (cd ../Handcrafted/Models; yosys ../Synth/syn.tcl)
+HEREDOC
+
+openlane bash $BUILD_FOLDER/synth.sh
 
 # 2. Floorplan Initialization
 cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
@@ -81,12 +87,7 @@ HEREDOC
 openlane openroad $BUILD_FOLDER/fp_init.tcl
 
 # # Interactive 
-# docker run -ti\
-#      -v $PDK_ROOT:$PDK_ROOT\
-#      -v $(realpath ..):/mnt/dffram\
-#      -w /mnt/dffram/Compiler\
-#      efabless/openlane\
-#      openroad
+# DOCKER_INTERACTIVE=1 openlane openroad
 
 # 3. PlaceRAM
 python3 -m placeram\
@@ -125,11 +126,11 @@ read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 read_def ./$DESIGN.placed.def
 
 global_route \
-  -guide_file $BUILD_FOLDER/route.guide \
-  -layers \$global_routing_layers \
-  -clock_layers \$global_routing_clock_layers \
-  -unidirectional_routing \
-  -overflow_iterations 100
+     -guide_file $BUILD_FOLDER/route.guide \
+     -layers \$global_routing_layers \
+     -clock_layers \$global_routing_clock_layers \
+     -unidirectional_routing \
+     -overflow_iterations 100
 
 tr::detailed_route_cmd $BUILD_FOLDER/tr.param
 HEREDOC
@@ -167,8 +168,8 @@ HEREDOC
 
 # arguments with whitespace work horrendous when passing through a procedure
 cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
-     magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
-     netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
+netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
 HEREDOC
 
 openlane bash $BUILD_FOLDER/lvs.sh 
