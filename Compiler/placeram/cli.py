@@ -5,7 +5,9 @@ except ImportError:
     """
     You need to install opendb (Ahmed Ghazy's fork):
     https://github.com/ax3ghazy/opendb
-    Build normally then go to ./build/src/swig/python and run setup.py
+    Build normally then go to ./build/src/swig/python and run:
+    
+    python3 setup.py install
 
     (On macOS rename the .dylib to .so first)
     """)

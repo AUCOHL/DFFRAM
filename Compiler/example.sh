@@ -35,6 +35,7 @@ openlane() {
           -w /mnt/dffram/Compiler\
           efabless/openlane\
           $@
+     set +x
 }
 
 mkdir -p ./build/
@@ -93,13 +94,14 @@ openlane openroad $BUILD_FOLDER/fp_init.tcl
 docker run --rm\
      -v $(realpath ..):/mnt/dffram\
      -w /mnt/dffram/Compiler\
-     donnio/dffram-env\
+     dffram-env\
      python3 -m placeram\
      --output ./$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
      --size 8x32\
      ./$DESIGN.def
+sed -i .ref 's/+ PORT//g' ./$DESIGN.placed.def # I give up idk what the hell this is
 
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
