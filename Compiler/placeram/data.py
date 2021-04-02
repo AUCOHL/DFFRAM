@@ -91,9 +91,9 @@ class Row(object):
         -- After this function --
 
         [A][B][C][D]
-        [C][S][F][F]
+        [C][S][ F  ]
         [F][X][N][F]
-        [V][F][F][F]
+        [V][ F  ][F]
 
         Technology's amazing, innit?
 
