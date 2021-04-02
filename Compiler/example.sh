@@ -5,6 +5,7 @@ if [ ! -d ./example_support ]; then
 fi
 
 set -e
+set -x
 
 export DESIGN=RAM8x32
 
@@ -28,14 +29,12 @@ openlane() {
      if [ "$DOCKER_INTERACTIVE" = "1" ]; then
           DOCKER_TI_FLAG="-ti"
      fi
-     set -x
      docker run $DOCKER_TI_FLAG\
           -v $PDK_ROOT:$PDK_ROOT\
           -v $(realpath ..):/mnt/dffram\
           -w /mnt/dffram/Compiler\
           efabless/openlane\
           $@
-     set +x
 }
 
 mkdir -p ./build/

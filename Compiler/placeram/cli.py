@@ -35,6 +35,8 @@ class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
     TAP_DISTANCE_MICRONS = 15
 
+    FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
+
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width != 32:
             eprint("Only 32-bit words are supported for now.")
@@ -55,7 +57,15 @@ class Placer:
 
         ## Extract the tap cell for later use
         self.tap_cell = list(filter(lambda x: x.getName() == Placer.TAP_CELL_NAME, self.cells))[0]
-        self.tap_cell_counter = 0
+
+        ## Extract the fill cell for later use
+        raw_fill_cells = list(filter(lambda x: re.match(Placer.FILL_CELL_RX, x.getName()), self.cells))
+        self.fill_cells_by_sites = {}
+        for cell in raw_fill_cells:
+            match_info = re.match(Placer.FILL_CELL_RX, cell.getName())
+            site_count = int(match_info[1])
+            self.fill_cells_by_sites[site_count] = cell
+        fill_cell_sizes = list(self.fill_cells_by_sites.keys())
 
         # Process DEF data
         self.df = odb.read_def(self.db, df)
@@ -73,11 +83,19 @@ class Placer:
         def create_tap(name):
             return odb.dbInst_create(self.block, self.tap_cell, name)
 
+        def create_fill(name, sites=1):
+            fill_cell = self.fill_cells_by_sites[sites]
+            return odb.dbInst_create(self.block, fill_cell, name)
+
         tap_distance = self.block.getDefUnits() * Placer.TAP_DISTANCE_MICRONS
 
-        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance)
+        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
+        # TODO: E X P A N D
         self.hierarchy = Slice(self.instances)
+
+    def represent(self, file):
+        self.hierarchy.represent(file=file)
 
     def place(self):
         eprint("Starting placement…")
@@ -86,13 +104,19 @@ class Placer:
     def write_def(self, output):
         return odb.write_def(self.chip.getBlock(), output) == 1
 
+# "Ask forgiveness not permission" yeah go and argue that in front of a judge
+def check_readable(file):
+    with open(file, 'r') as f:
+        pass
+
 @click.command()
 @click.option('-o', '--output', required=True)
 @click.option('-l', '--lef', required=True)
 @click.option('-t', '--tech-lef', "tlef", required=True)
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
+@click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, def_file):
+def cli(output, lef, tlef, size, represent, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -106,7 +130,15 @@ def cli(output, lef, tlef, size, def_file):
         eprint("Word length must be a non-zero multiple of 8.")
         exit(64)
 
+    for input in [lef, tlef, def_file]:
+        check_readable(input)
+
     placer = Placer(lef, tlef, def_file, words, word_length)
+
+    if represent is not None:
+        with open(represent, 'w') as f:
+            placer.represent(f)
+
     placer.place()
     if not placer.write_def(output):
         eprint("Failed to write output DEF file.")
