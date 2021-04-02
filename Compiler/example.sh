@@ -93,7 +93,7 @@ openlane openroad $BUILD_FOLDER/fp_init.tcl
 docker run --rm\
      -v $(realpath ..):/mnt/dffram\
      -w /mnt/dffram/Compiler\
-     dffram-env\
+     donnio/dffram-env\
      python3 -m placeram\
      --output ./$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
