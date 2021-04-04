@@ -86,7 +86,7 @@ HEREDOC
 
 openlane openroad $BUILD_FOLDER/fp_init.tcl
 
-# # Interactive 
+# # Interactive
 # DOCKER_INTERACTIVE=1 openlane openroad
 
 # 3. PlaceRAM
@@ -100,7 +100,7 @@ docker run --rm\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
      --size 8x32\
      ./$DESIGN.def
-sed -i .ref 's/+ PORT//g' ./$DESIGN.placed.def # I give up idk what the hell this is
+sed -i 's/+ PORT//g' ./$DESIGN.placed.def # I give up idk what the hell this is
 
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
@@ -177,6 +177,6 @@ magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDE
 netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
 HEREDOC
 
-openlane bash $BUILD_FOLDER/lvs.sh 
-     
+openlane bash $BUILD_FOLDER/lvs.sh
+
 # Harden? # def -> gdsII (magic) and def -> lef (magic)
