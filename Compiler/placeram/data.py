@@ -301,7 +301,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             word.place(row_list, current_row)
             current_row += 1
 
-        Row.fill_rows(row_list, start_row, start_row + 7)
+        Row.fill_rows(row_list, start_row, current_row)
 
         last_column = [self.webufs[0], self.webufs[1], self.webufs[2], self.webufs[3], self.clkbuf, None, None, None]
 
@@ -310,11 +310,11 @@ class Slice(Placeable): # A slice is defined as 8 words.
             if last_column[i] is not None:
                 r.place(last_column[i]) 
 
-        Row.fill_rows(row_list, start_row, start_row + 7)
+        Row.fill_rows(row_list, start_row, current_row)
 
         self.decoder.place(row_list, start_row)       
 
-        Row.fill_rows(row_list, start_row, start_row + 7)
+        Row.fill_rows(row_list, start_row, current_row)
 
         return current_row
 
@@ -486,7 +486,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         r = row_list[current_row]
         for i, tie in enumerate(self.ties):
             r.place(tie)
-            for fbuf in self.floatbufs[i]:
+            for floatbuf in self.floatbufs[i]:
                 r.place(floatbuf)
 
         current_row += 1
@@ -495,6 +495,31 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         for dobuf in self.dobufs:
             r.place(dobuf)
 
-        # TODO: THE REST
+        current_row += 1
 
+        Row.fill_rows(row_list, start_row, current_row)
+
+        last_column = [
+            self.clkbuf,
+            self.enbuf,
+            *self.webufs,
+            *self.abufs,
+            *self.decoder_ands
+        ]
+
+        c2 = start_row
+        for el in last_column:
+            r = row_list[c2]
+            r.place(el)
+            c2 += 1
+
+        c3 = current_row - 1
+        for el in reversed(self.fbufenbufs):
+            r = row_list[c3]
+            r.place(el)
+            c3 -= 1
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+        
         return current_row

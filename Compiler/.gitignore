@@ -1,13 +1,3 @@
-openroad_script.tcl
-example_support
-*.def
-*.ref
-*.guide
-*.rpt
-*.drc
-*.params
-__pycache__
 build/
-*.ext
-*.spice
-*.txt
+example_support/
+__pycache__

@@ -61,14 +61,13 @@ class Row(object):
         Row.supported_fill_sizes = supported_fill_sizes
         Row.max_fill_size = max(supported_fill_sizes)
 
-        rows.reverse()
         returnable = []
         for i, row in enumerate(rows):
             returnable.append(Row(i, row))
         return returnable
 
     @staticmethod
-    def fill_rows(rows, from_index, to_index):
+    def fill_rows(rows, from_index, to_index): # [from_index,to_index)
         """
         -- Before this function --
 
@@ -104,13 +103,13 @@ class Row(object):
 
             return fills
         max_sw = -1
-        for i in range(from_index, to_index + 1):
+        for i in range(from_index, to_index):
             r = rows[i]
             width = r.x
             width_sites = int(width / Row.sw)
             max_sw = max(max_sw, width_sites)
             
-        for i in range(from_index, to_index + 1):
+        for i in range(from_index, to_index):
             r = rows[i]
             width = r.x
             width_sites = int(width / Row.sw)

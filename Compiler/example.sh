@@ -7,14 +7,14 @@ fi
 set -e
 set -x
 
-export SIZE=8x32
+export SIZE=32x32
 export DESIGN=RAM$SIZE
 
 
 export SAFE_ZONE=50
 
 export DESIGN_WIDTH=600
-export DESIGN_HEIGHT=100
+export DESIGN_HEIGHT=600
 
 # ---
 BUILD_FOLDER=./build/$DESIGN
@@ -83,7 +83,7 @@ place_pins\
 
 report_checks -fields {input slew capacitance} -format full_clock
 
-write_def ./$DESIGN.def
+write_def $BUILD_FOLDER/$DESIGN.def
 HEREDOC
 
 openlane openroad $BUILD_FOLDER/fp_init.tcl
@@ -97,17 +97,17 @@ docker run --rm\
      -w /mnt/dffram/Compiler\
      donnio/dffram-env\
      python3 -m placeram\
-     --output ./$DESIGN.placed.def\
+     --represent $BUILD_FOLDER/$DESIGN.txt\
+     --output $BUILD_FOLDER/$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
-     --represent ./$DESIGN.txt\
      --size $SIZE\
-     ./$DESIGN.def
+     $BUILD_FOLDER/$DESIGN.def
 
 # Remove ports
-rm -f ./$DESIGN.placed.def.ref
-mv ./$DESIGN.placed.def ./$DESIGN.placed.def.ref
-sed 's/+ PORT//g' ./$DESIGN.placed.def.ref > ./$DESIGN.placed.def 
+rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
+mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
+sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def 
 
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
@@ -115,7 +115,7 @@ read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
-read_def ./$DESIGN.placed.def
+read_def $BUILD_FOLDER/$DESIGN.placed.def
 
 if [check_placement -verbose] {
     puts "Placement failed: Check placement returned a nonzero value."
@@ -135,7 +135,7 @@ read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
-read_def ./$DESIGN.placed.def
+read_def $BUILD_FOLDER/$DESIGN.placed.def
 
 global_route \
      -guide_file $BUILD_FOLDER/route.guide \
@@ -149,9 +149,9 @@ HEREDOC
 
 cat <<HEREDOC > $BUILD_FOLDER/tr.param
 lef:./example_support/sky130_fd_sc_hd.merged.lef
-def:./$DESIGN.placed.def
+def:$BUILD_FOLDER/$DESIGN.placed.def
 guide:$BUILD_FOLDER/route.guide
-output:$DESIGN.routed.def
+output:$BUILD_FOLDER/$DESIGN.routed.def
 outputguide:$BUILD_FOLDER/$DESIGN.guide
 outputDRC:$BUILD_FOLDER/$DESIGN.drc
 threads:8
@@ -164,7 +164,7 @@ openlane openroad $BUILD_FOLDER/route.tcl
 cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
 puts "Running magic script…"
 lef read ./example_support/sky130_fd_sc_hd.merged.lef
-def read ./$DESIGN.routed.def
+def read $BUILD_FOLDER/$DESIGN.routed.def
 load $DESIGN -dereference
 extract do local
 extract no capacitance
@@ -181,7 +181,9 @@ HEREDOC
 # arguments with whitespace work horrendous when passing through a procedure
 cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
 magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
-netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+mv *.ext *.spice $BUILD_FOLDER
+netgen -batch lvs "$BUILD_FOLDER/$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+mv comp.out $BUILD_FOLDER/lvs.rpt
 HEREDOC
 
 openlane bash $BUILD_FOLDER/lvs.sh 

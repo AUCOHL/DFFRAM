@@ -110,6 +110,15 @@ class Placer:
         eprint("Starting placement…")
         self.hierarchy.place(self.rows)
 
+    def unplace_fills(self):
+        eprint("Unplacing fills…")
+        for instance in self.block.getInsts():
+            kind = instance.getMaster().getName()
+            match = re.match(Placer.FILL_CELL_RX, kind)
+            print(Placer.FILL_CELL_RX, kind, match)
+            if match is not None:
+                instance.setPlacementStatus("UNPLACED")
+
     def write_def(self, output):
         return odb.write_def(self.chip.getBlock(), output) == 1
 
@@ -124,8 +133,9 @@ def check_readable(file):
 @click.option('-t', '--tech-lef', "tlef", required=True)
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
+@click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, def_file):
+def cli(output, lef, tlef, size, represent, unplace_fills, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -149,6 +159,10 @@ def cli(output, lef, tlef, size, represent, def_file):
             placer.represent(f)
 
     placer.place()
+
+    if unplace_fills:
+        placer.unplace_fills()
+
     if not placer.write_def(output):
         eprint("Failed to write output DEF file.")
         exit(73)
