@@ -1,33 +1,18 @@
-/* 
-    A testbench to verify DFFRAM 
-*/
-
-/*
-    Author: Mohamed Shalan (mshalan@aucegypt.edu)
-*/
-
-`define     COLS    1
 `define     VERBOSE_1
 `define     VERBOSE_2
 
 `define UNIT_DELAY #1
 
-`define     USE_LATCH 1
+`define     USE_LATCH 0
 
-//`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+/* `include "hd_primitives.v" */
+/* `include "hd_functional.v" */
 
-`include "hd_primitives.v"
-`include "hd_functional.v"
+`include "BB.v"
 
-`include "DFFRAM.v"
-`include "DFFRAMBB.v"
-`include "DFFRAM_256x32.v"
-
-module tb_DFFRAM;
+module tb_RAM32x32;
     
-    localparam COLS_N = `COLS;
-    localparam A_WIDTH = 9+$clog2(COLS_N);
+    localparam A_WIDTH = 6;
     
     reg CLK;
     reg [3:0] WE;
@@ -40,7 +25,7 @@ module tb_DFFRAM;
 
     event   done;
     
-    DFFRAM #(.COLS(`COLS), .USE_LATCH(`USE_LATCH)) SRAM (
+    RAM32x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
@@ -50,8 +35,8 @@ module tb_DFFRAM;
     );
 
     initial begin
-        $dumpfile("tb_DFFRAM.vcd");
-        $dumpvars(0, tb_DFFRAM);
+        $dumpfile("tb_RAM32xRAM32.vcd");
+        $dumpvars(0, tb_RAM32xRAM32);
         @(done) $finish;
     end
 
@@ -60,7 +45,7 @@ module tb_DFFRAM;
     integer i;
     
      /* Memory golden Model */
-    reg [31:0] RAM[(256*COLS_N)-1 : 0];
+    reg [31:0] RAM[31:0];
     reg [31:0] RAM_DATA;
     
     always @(posedge CLK) 
@@ -79,7 +64,7 @@ module tb_DFFRAM;
             
         Phase = 0;
         // Fill the memory with a known pattern
-        for(i=0; i<`COLS*1024; i=i+4) begin
+        for(i=0; i< 32 * 32; i=i+4) begin
             HEX_DIG = (i/32)%16;
             mem_write_word({8{HEX_DIG}},i);
             mem_read_word(i);
@@ -90,7 +75,7 @@ module tb_DFFRAM;
 `ifdef  VERBOSE_1
         $display("Finished Phase 0, starting Phase 1");
 `endif
-        for(i=0; i<`COLS*1024; i=i+32) begin
+        for(i=0; i<32*32; i=i+32) begin
             ADDR = i + (($random%32)&5'b11100) ;
             mem_write_word( $random, ADDR);
             mem_read_word( ADDR );
@@ -101,7 +86,7 @@ module tb_DFFRAM;
 `ifdef  VERBOSE_1
         $display("Finished Phase 1, starting Phase 2");
 `endif
-        for(i=0; i<`COLS*1024; i=i+32) begin
+        for(i=0; i<32*32; i=i+32) begin
             ADDR = i+(($random%32)&5'b11110);
             mem_write_hword($random, ADDR );
             mem_read_word( ADDR );
@@ -112,7 +97,7 @@ module tb_DFFRAM;
 `ifdef  VERBOSE_1
         $display("Finished Phase 2, starting Phase 3");
 `endif
-        for(i=0; i<`COLS*1024; i=i+32) begin
+        for(i=0; i<32*32; i=i+32) begin
             mem_write_byte($random,i+($random%32));
             mem_read_word(i+($random%32));
         end
