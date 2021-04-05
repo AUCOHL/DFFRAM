@@ -105,6 +105,7 @@ docker run --rm\
      ./$DESIGN.def
 
 # Remove ports
+rm -f ./$DESIGN.placed.def.ref
 mv ./$DESIGN.placed.def ./$DESIGN.placed.def.ref
 sed 's/+ PORT//g' ./$DESIGN.placed.def.ref > ./$DESIGN.placed.def 
 
@@ -160,29 +161,29 @@ HEREDOC
 openlane openroad $BUILD_FOLDER/route.tcl
 
 # 6. LVS
-# cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
-# puts "Running magic script…"
-# lef read ./example_support/sky130_fd_sc_hd.merged.lef
-# def read ./$DESIGN.routed.def
-# load $DESIGN -dereference
-# extract do local
-# extract no capacitance
-# extract no coupling
-# extract no resistance
-# extract no adjust
-# extract unique
-# extract
+cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
+puts "Running magic script…"
+lef read ./example_support/sky130_fd_sc_hd.merged.lef
+def read ./$DESIGN.routed.def
+load $DESIGN -dereference
+extract do local
+extract no capacitance
+extract no coupling
+extract no resistance
+extract no adjust
+extract unique
+extract
 
-# ext2spice lvs
-# ext2spice
-# HEREDOC
+ext2spice lvs
+ext2spice
+HEREDOC
 
-# # arguments with whitespace work horrendous when passing through a procedure
-# cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
-# magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
-# netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
-# HEREDOC
+# arguments with whitespace work horrendous when passing through a procedure
+cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
+magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
+netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+HEREDOC
 
-# openlane bash $BUILD_FOLDER/lvs.sh 
+openlane bash $BUILD_FOLDER/lvs.sh 
      
-# # Harden? # def -> gdsII (magic) and def -> lef (magic)
+# Harden? # def -> gdsII (magic) and def -> lef (magic)

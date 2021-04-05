@@ -11,7 +11,7 @@ if [ ! -d $PDK_ROOT/sky130A ]; then
     exit 66
 fi
 
-cp -r $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/mag ./exmaple_support/magic_reference_cells
+cp -r $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/mag ./example_support/magic_reference_cells
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib 
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/techlef/sky130_fd_sc_hd.tlef 
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lef/sky130_fd_sc_hd.lef 
