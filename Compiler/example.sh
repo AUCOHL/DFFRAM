@@ -7,7 +7,9 @@ fi
 set -e
 set -x
 
-export DESIGN=RAM8x32
+export SIZE=8x32
+export DESIGN=RAM$SIZE
+
 
 export SAFE_ZONE=50
 
@@ -98,9 +100,13 @@ docker run --rm\
      --output ./$DESIGN.placed.def\
      --lef ./example_support/sky130_fd_sc_hd.lef\
      --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
-     --size 8x32\
+     --represent ./$DESIGN.txt\
+     --size $SIZE\
      ./$DESIGN.def
-sed -i .ref 's/+ PORT//g' ./$DESIGN.placed.def # I give up idk what the hell this is
+
+# Remove ports
+mv ./$DESIGN.placed.def ./$DESIGN.placed.def.ref
+sed 's/+ PORT//g' ./$DESIGN.placed.def.ref > ./$DESIGN.placed.def 
 
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
@@ -154,29 +160,29 @@ HEREDOC
 openlane openroad $BUILD_FOLDER/route.tcl
 
 # 6. LVS
-cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
-puts "Running magic script…"
-lef read ./example_support/sky130_fd_sc_hd.merged.lef
-def read ./$DESIGN.routed.def
-load $DESIGN -dereference
-extract do local
-extract no capacitance
-extract no coupling
-extract no resistance
-extract no adjust
-extract unique
-extract
+# cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
+# puts "Running magic script…"
+# lef read ./example_support/sky130_fd_sc_hd.merged.lef
+# def read ./$DESIGN.routed.def
+# load $DESIGN -dereference
+# extract do local
+# extract no capacitance
+# extract no coupling
+# extract no resistance
+# extract no adjust
+# extract unique
+# extract
 
-ext2spice lvs
-ext2spice
-HEREDOC
+# ext2spice lvs
+# ext2spice
+# HEREDOC
 
-# arguments with whitespace work horrendous when passing through a procedure
-cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
-magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
-netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
-HEREDOC
+# # arguments with whitespace work horrendous when passing through a procedure
+# cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
+# magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
+# netgen -batch lvs "./$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+# HEREDOC
 
-openlane bash $BUILD_FOLDER/lvs.sh 
+# openlane bash $BUILD_FOLDER/lvs.sh 
      
-# Harden? # def -> gdsII (magic) and def -> lef (magic)
+# # Harden? # def -> gdsII (magic) and def -> lef (magic)

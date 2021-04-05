@@ -20,7 +20,8 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Slice, Row
+from .data import Block, Slice
+from .row import Row
 
 import os
 import re
@@ -37,10 +38,15 @@ class Placer:
 
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
+    SUPPORTED_WORD_COUNTS = [8, 32]
+
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width != 32:
-            eprint("Only 32-bit words are supported for now.")
-            exit(69)
+            eprint("Only 32-bit words are supported so far.")
+            exit(64)
+        if word_count not in Placer.SUPPORTED_WORD_COUNTS:
+            eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
+            exit(64)
 
         # Initialize Database
         self.db = odb.dbDatabase.create()
@@ -92,7 +98,10 @@ class Placer:
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
         # TODO: E X P A N D
-        self.hierarchy = Slice(self.instances)
+        if word_count == 8:
+            self.hierarchy = Slice(self.instances)
+        elif word_count == 32:
+            self.hierarchy = Block(self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)

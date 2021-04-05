@@ -1,151 +1,24 @@
-from .util import eprint
+from .util import eprint, d2a
+from .row import Row
+
+from opendbpy import dbInst
+Instance = dbInst
 
 import re
 import sys
 import math
 
-class DataError(Exception):
-    pass
-
-class Row(object):
-    sw = None
-    sh = None
-    
-    create_tap = None
-    tap_distance = None
-
-    create_fill = None 
-
-    # Assumptions:
-    #   All fills are powers of 2.
-    #   If fill 2^n is available, then for 0 <= i < n: 2^i is available.
-    supported_fill_sizes = None
-
-    max_fill_size = None
-
-    def __init__(self, ordinal, row_obj):
-        self.ordinal = ordinal
-        self.obj = row_obj
-
-        self.origin = self.obj.getOrigin()
-        [self.x, self.y] = self.obj.getOrigin()
-        self.max = self.obj.getBBox().xMax()
-
-        self.orientation = self.obj.getOrient()
-
-        self.cell_counter = 0
-        self.tap_counter = 0
-        self.fill_counter = 0
-        self.since_last_tap = 0 if self.ordinal % 2 == 0 else Row.tap_distance / 2
-
-    def tap(self, width=0):
-        location = self.x
-
-        if self.since_last_tap + width > Row.tap_distance:
-            self.place(Row.create_tap("tap_%i_%i" % (self.ordinal, self.tap_counter)), ignore_tap=True)
-            self.tap_counter += 1
-            self.since_last_tap = 0
-        else:
-            self.since_last_tap += width
-
-    def place(self, instance, ignore_tap=False):
-        width = instance.getMaster().getWidth()
-        if not ignore_tap:
-            self.tap(width)
-
-        instance.setOrient(self.orientation)
-        instance.setLocation(self.x, self.y)
-        instance.setPlacementStatus("PLACED")
-
-        self.x += width
-        self.cell_counter += 1
-
-    @staticmethod
-    def from_odb(rows, regular_site, create_tap, max_tap_distance, create_fill, supported_fill_sizes):
-        eprint("Found %i rows…" % len(rows))
-
-        Row.create_tap = create_tap
-        Row.sw, Row.sh = (regular_site.getWidth(), regular_site.getHeight())
-        Row.tap_distance = max_tap_distance
-
-        Row.create_fill = create_fill
-        Row.supported_fill_sizes = supported_fill_sizes
-        Row.max_fill_size = max(supported_fill_sizes)
-
-        rows.reverse()
-        returnable = []
-        for i, row in enumerate(rows):
-            returnable.append(Row(i, row))
-        return returnable
-
-    @staticmethod
-    def fill_rows(rows, from_index, to_index):
-        """
-        -- Before this function --
-
-        [A][B][C][D]
-        [C][S]
-        [F][X][N]
-        [V]
-
-        -- After this function --
-
-        [A][B][C][D]
-        [C][S][ F  ]
-        [F][X][N][F]
-        [V][ F  ][F]
-
-        Technology's amazing, innit?
-
-        """
-        def bin_pack(remaining, max_fill_size):
-            fills = []
-            while remaining > max_fill_size:
-                fills.append(max_fill_size)
-                remaining -= max_fill_size
-
-            # I'm using nature's bin-packing algorithm for base-2.
-            # Binary representation.
-            current_size = 1
-            while remaining > 0:
-                if remaining & 1:
-                    fills.append(current_size)
-                remaining >>= 1
-                current_size <<= 1
-
-            return fills
-        max_sw = -1
-        for i in range(from_index, to_index + 1):
-            r = rows[i]
-            width = r.x
-            width_sites = int(width / Row.sw)
-            max_sw = max(max_sw, width_sites)
-
-        eprint("Padding to %i sites…" % max_sw)
-            
-        for i in range(from_index, to_index + 1):
-            r = rows[i]
-            width = r.x
-            width_sites = int(width / Row.sw)
-
-            empty = max_sw - width_sites
-
-            remaining = empty
-
-            fills = bin_pack(empty, Row.max_fill_size)
-            
-            for fill in fills:
-                fill_cell = Row.create_fill("fill_%i_%i" % (i, r.fill_counter), fill)
-                r.place(fill_cell, ignore_tap=True)
-                r.fill_counter += 1
-
-
+# -- 
 def RepresentInstance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
 
 class Placeable(object):
     def place(self, row_list, current_row=0):
         raise Exception("Method unimplemented.")
+
+class DataError(Exception):
+    pass
+# -- 
 
 class Bit(Placeable):
     def __init__(self, instances):
@@ -182,13 +55,13 @@ class Bit(Placeable):
 
         return start_row
 
-class Byte(Placeable): 
+class Byte(Placeable):
     def __init__(self, instances):
         self.clockgate = None
         self.cgand = None
         self.selinv = None
         self.clkinv = None
-        rbits = {}
+        raw_bits = {}
 
         bit = r"\BIT\\\[(\d+)\\\]"
         cg = r"\bCG\b"
@@ -201,8 +74,8 @@ class Byte(Placeable):
 
             if bit_match := re.search(bit, n):
                 i = int(bit_match[1])
-                rbits[i] = rbits.get(i) or []
-                rbits[i].append(instance)
+                raw_bits[i] = raw_bits.get(i) or []
+                raw_bits[i].append(instance)
             elif cg_match := re.search(cg, n):
                 self.clockgate = instance
             elif cgand_match := re.search(cgand, n):
@@ -214,9 +87,7 @@ class Byte(Placeable):
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.bits = {}
-        for k, v in rbits.items():
-            self.bits[k] = Bit(v)
+        self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -229,19 +100,16 @@ class Byte(Placeable):
         
         print("%sBits" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
-        for (k, v) in self.bits.items():
-            print("%sBit %i" % ("".join(["  "] * tab_level), k), file=file)
-            v.represent(tab_level=tab_level)
+        for i, bit in enumerate(self.bits):
+            print("%sBit %i" % ("".join(["  "] * tab_level), i), file=file)
+            bit.represent(tab_level=tab_level, file=file)
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
 
-        bits_sorted = list(self.bits.items())
-        bits_sorted.sort(reverse=True, key=lambda x: x[0])
-
-        for k, v in bits_sorted:
-            v.place(row_list, start_row)
+        for bit in self.bits:
+            bit.place(row_list, start_row)
 
         r.place(self.clockgate)
         r.place(self.cgand)
@@ -255,7 +123,7 @@ class Word(Placeable):
     def __init__(self, instances):
         self.clkbuf = None
         self.selbuf = None
-        rbytes = {}
+        raw_bytes = {}
 
         clkbuf = r"\bCLKBUF\b"
         selbuf = r"\bSELBUF\b"
@@ -264,20 +132,18 @@ class Word(Placeable):
         for instance in instances:
             n = instance.getName()
 
-            if cb_match := re.search(clkbuf, n):
-                self.clkbuf = instance
+            if byte_match := re.search(byte, n):
+                i = int(byte_match[1])
+                raw_bytes[i] = raw_bytes.get(i) or []
+                raw_bytes[i].append(instance)
             elif sb_match := re.search(selbuf, n):
                 self.selbuf = instance
-            elif byte_match := re.search(byte, n):
-                i = int(byte_match[1])
-                rbytes[i] = rbytes.get(i) or []
-                rbytes[i].append(instance)
+            elif cb_match := re.search(clkbuf, n):
+                self.clkbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.bytes = {}
-        for k, v in rbytes.items():
-            self.bytes[k] = Byte(v)
+        self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -287,19 +153,16 @@ class Word(Placeable):
 
         print("%sBytes" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
-        for (k, v) in self.bytes.items():
-            print("%sByte %i" % ("".join(["  "] * tab_level), k), file=file)
-            v.represent(tab_level=tab_level)
+        for i, byte in enumerate(self.bytes):
+            print("%sByte %i" % ("".join(["  "] * tab_level), i), file=file)
+            byte.represent(tab_level=tab_level, file=file)
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
 
-        bytes_sorted = list(self.bytes.items())
-        bytes_sorted.sort(reverse=True, key=lambda x: x[0])
-
-        for k, v in bytes_sorted:
-            v.place(row_list, start_row)
+        for byte in self.bytes:
+            byte.place(row_list, start_row)
         
         r.place(self.clkbuf)
         r.place(self.selbuf)
@@ -308,9 +171,13 @@ class Word(Placeable):
 
 class Decoder3x8(Placeable):
     def __init__(self, instances):
-        self.and_gates = []
-        self.abufs = []
         self.enbuf = None
+
+        raw_abufs = {}
+        raw_and_gates = {}
+
+        self.abufs = []
+        self.and_gates = []
 
         dand = r"\bAND(\d+)\b"
         abuf = r"\bABUF\\\[(\d+)\\\]"
@@ -320,21 +187,18 @@ class Decoder3x8(Placeable):
             n = instance.getName()
 
             if and_match := re.search(dand, n):
-                and_number = int(and_match[1])
-                self.and_gates.append((and_number, instance))
+                i = int(and_match[1])
+                raw_and_gates[i] = instance
             elif abuf_match := re.search(abuf, n):
-                abuf_number = int(abuf_match[1])
-                self.abufs.append((abuf_number, instance))
+                i = int(abuf_match[1])
+                raw_abufs[i] = instance
             elif enbuf_match := re.search(enbuf, n):
                 self.enbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.and_gates.sort(key=lambda x: x[0])
-        self.and_gates = list(map(lambda x: x[1], self.and_gates))
-
-        self.abufs.sort(key=lambda x: x[0])
-        self.abufs = list(map(lambda x: x[1], self.abufs))
+        self.and_gates = d2a(raw_and_gates)
+        self.abufs = d2a(raw_abufs)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -364,15 +228,14 @@ class Decoder3x8(Placeable):
         ands_placeable = self.and_gates
         buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
 
-        for i in range(start_row + 8):
-            r = row_list[i]
+        for i in range(8):
+            r = row_list[start_row + i]
             
             r.place(ands_placeable[i])
             if buf := buffers_placeable[i]:
                 r.place(buf)
 
         return start_row + 8
-
 
 class Slice(Placeable): # A slice is defined as 8 words.
     def __init__(self, instances):
@@ -395,22 +258,20 @@ class Slice(Placeable): # A slice is defined as 8 words.
                 i = int(word_match[1])
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
+            elif d_match := re.search(decoder, n):
+                decoder_instances.append(instance)
             elif wb_match := re.search(webuf, n):
                 self.webufs.append(instance)
             elif cb_match := re.search(clkbuf, n):
                 self.clkbuf = instance
-            elif d_match := re.search(decoder, n):
-                decoder_instances.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.decoder = Decoder3x8(decoder_instances)
 
-        self.words = {}
-        for (k, v) in raw_words.items():
-            self.words[k] = Word(v)
+        self.words = d2a({k: Word(v) for k, v in raw_words.items()})
 
-        word_count = len(self.words.keys())
+        word_count = len(self.words)
         if word_count != 8:
             raise DataError("Slice has (%i/8) words." % word_count) 
 
@@ -418,7 +279,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         tab_level += 1
 
         print("%sDecoder" % "".join(["  "] * tab_level), file=file)
-        self.decoder.represent(tab_level=tab_level)
+        self.decoder.represent(tab_level=tab_level, file=file)
 
         print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
@@ -428,17 +289,15 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         print("%sWords" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
-        for (k, v) in self.words.items():
-            print("%sWord %i" % ("".join(["  "] * tab_level), k), file=file)
-            v.represent(tab_level=tab_level)
+        for i, word in enumerate(self.words):
+            print("%sWord %i" % ("".join(["  "] * tab_level), i), file=file)
+            word.represent(tab_level=tab_level, file=file)
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
         current_row = start_row
-        words_sorted = list(self.words.items())
-        words_sorted.sort(reverse=True, key=lambda x: x[0])
 
-        for _, word in words_sorted:
+        for word in self.words:
             word.place(row_list, current_row)
             current_row += 1
 
@@ -446,8 +305,8 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         last_column = [self.webufs[0], self.webufs[1], self.webufs[2], self.webufs[3], self.clkbuf, None, None, None]
 
-        for i in range(start_row + 8):
-            r = row_list[i]
+        for i in range(8):
+            r = row_list[start_row + i]
             if last_column[i] is not None:
                 r.place(last_column[i]) 
 
@@ -456,5 +315,186 @@ class Slice(Placeable): # A slice is defined as 8 words.
         self.decoder.place(row_list, start_row)       
 
         Row.fill_rows(row_list, start_row, start_row + 7)
+
+        return current_row
+
+class Block(Placeable): # A block is defined as 4 slices (32 words).
+    def __init__(self, instances):
+        self.clkbuf = None
+        self.enbuf = None
+
+        raw_slices = {}
+        raw_decoder_ands = {}
+
+        raw_dibufs = {}
+        raw_dobufs = {}
+
+        raw_webufs = {}
+
+        raw_abufs = {}
+
+        raw_ties = {}
+        raw_fbufenbufs = {}
+        raw_floatbufs = {}
+
+        slice = r"\SLICE\\\[(\d+)\\\]"
+        decoder_and = r"\bDEC\.AND(\d+)\b"
+        
+        dibuf = r"\bDIBUF\\\[(\d+)\\\]"
+        dobuf = r"\bOUT\\\[(\d+)\\\]"
+
+        webuf = r"\bWEBUF\\\[(\d+)\\\]"
+        clkbuf = r"\bCLKBUF\b"
+
+        abuf = r"\bABUF\\\[(\d+)\\\]"
+        enbuf = r"\bENBUF\b"
+
+        tie = r"\bTIE\\\[(\d+)\\\]"
+        fbufenbuf = r"\bFBUFENBUF\\\[(\d+)\\\]"
+        floatbuf = r"\bFLOATBUF_B(\d+)\\\[(\d+)\\\]"
+
+        for instance in instances:
+            n = instance.getName()
+
+            if slice_match := re.search(slice, n):
+                i = int(slice_match[1])
+                raw_slices[i] = raw_slices.get(i) or []
+                raw_slices[i].append(instance)
+            elif decoder_and_match := re.search(decoder_and, n):
+                i = int(decoder_and_match[1])
+                raw_decoder_ands[i] = instance
+            elif dibuf_match := re.search(dibuf, n):
+                i = int(dibuf_match[1])
+                raw_dibufs[i] = instance
+            elif webuf_match := re.search(webuf, n):
+                i = int(webuf_match[1])
+                raw_webufs[i] = instance
+            elif clkbuf_match := re.search(clkbuf, n):
+                self.clkbuf = instance
+            elif abuf_match := re.search(abuf, n):
+                i = int(abuf_match[1])
+                raw_abufs[i] = instance
+            elif enbuf_match := re.search(enbuf, n):
+                self.enbuf = instance
+            elif tie_match := re.search(tie, n):
+                i = int(tie_match[1])
+                raw_ties[i] = instance
+            elif fbufenbuf_match := re.search(fbufenbuf, n):
+                i = int(fbufenbuf_match[1])
+                raw_fbufenbufs[i] = instance
+            elif floatbuf_match := re.search(floatbuf, n):
+                byte, bit = (floatbuf_match[1], floatbuf_match[2])
+                raw_floatbufs[byte] = raw_floatbufs.get(byte) or {}
+                raw_floatbufs[byte][bit] = instance
+            elif dobuf_match := re.search(dobuf, n):
+                i = int(dobuf_match[1])
+                raw_dobufs[i] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
+        self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
+        
+        self.decoder_ands = d2a(raw_decoder_ands)
+
+        self.dibufs = d2a(raw_dibufs)
+        self.dobufs = d2a(raw_dobufs)
+
+        self.webufs = d2a(raw_webufs)
+        self.abufs = d2a(raw_abufs)
+        self.ties = d2a(raw_ties)
+        self.fbufenbufs = d2a(raw_fbufenbufs)
+        self.floatbufs = d2a({k: d2a(v) for k, v in raw_floatbufs.items()})
+
+    def represent(self, tab_level=-1, file=sys.stderr):
+        tab_level += 1
+
+        print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
+
+        print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
+
+        print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.decoder_ands:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.webufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.abufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sTies" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.ties:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sFloatbuf Enable Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.fbufenbufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.dibufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sOutput Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.dobufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sFloat Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for i, group in enumerate(self.floatbufs):
+            print("%sGroup %i" % ("".join(["  "] * tab_level), i), file=file)
+            tab_level += 1
+            for instance in group:
+                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+            tab_level -= 1
+        tab_level -= 1
+
+        print("%sSlices" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for i, slice in enumerate(self.slices):
+            print("%sSlice %i" % ("".join(["  "] * tab_level), i), file=file)
+            slice.represent(tab_level=tab_level, file=file)
+        tab_level -= 1
+
+    def place(self, row_list, start_row=0):
+        current_row = start_row
+        r = row_list[current_row]
+
+        for dibuf in self.dibufs:
+            r.place(dibuf)
+        
+        current_row += 1
+
+        for slice in self.slices:
+            current_row = slice.place(row_list, current_row)
+        
+        r = row_list[current_row]
+        for i, tie in enumerate(self.ties):
+            r.place(tie)
+            for fbuf in self.floatbufs[i]:
+                r.place(floatbuf)
+
+        current_row += 1
+        
+        r = row_list[current_row]
+        for dobuf in self.dobufs:
+            r.place(dobuf)
+
+        # TODO: THE REST
 
         return current_row
