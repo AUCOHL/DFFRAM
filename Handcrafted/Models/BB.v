@@ -195,7 +195,7 @@ module RAM32x32 #(parameter USE_LATCH=0) (
 
     generate
         genvar i;
-        for (i=0; i< 8; i=i+1) begin : SLICE
+        for (i=0; i< 4; i=i+1) begin : SLICE
             RAM8x32 #(.USE_LATCH(USE_LATCH)) RAM8x32 (.CLK(CLK_buf), .WE(WE_buf),.EN(SEL[i]), .Di(Di_buf), .Do(Do_pre), .A(A_buf[2:0]) ); 
         end
     endgenerate

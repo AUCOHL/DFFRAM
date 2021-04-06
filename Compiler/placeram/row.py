@@ -27,7 +27,7 @@ class Row(object):
         self.cell_counter = 0
         self.tap_counter = 0
         self.fill_counter = 0
-        self.since_last_tap = 0 if self.ordinal % 2 == 0 else Row.tap_distance / 2
+        self.since_last_tap = 0 if self.ordinal % 2 == 0 else Row.tap_distance
 
     def tap(self, width=0):
         location = self.x
