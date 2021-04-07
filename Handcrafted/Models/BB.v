@@ -6,8 +6,8 @@
     DEC2x4      :   2x4 Binary Decoder
     DEC3x8      :   3x8 Binary decoder
     MUX4x1_32   :   32-bit 4x1 MUX
-    RAM8x32     :   8x32 RAM with tri-state output 
-    RAM16x32    :   32x32 RAM with registered output
+    RAM8x32     :   8x32 (8 32-bit words) RAM with tri-state output 
+    RAM16x32    :   32 words RAM with registered output
     RAM128x32   :   512 bytes (128x32) RAM
     RAM512x32   :   2 kbytes (512x32) RAM
 */
