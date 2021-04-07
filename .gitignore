@@ -8,3 +8,6 @@ Work
 log.txt
 *.gl.v
 .vscode/
+.lib
+.gl.v
+.rpt

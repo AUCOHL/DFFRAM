@@ -1,13 +1,15 @@
 /*
     Building blocks for DFF based RAM compiler for SKY130A 
-    BYTE       :   8 memory cells used as a building block for WORD module (FF based)
-    BYTE_LATCH :   8 memory cells used as a building block for WORD module (Latch based)  
-    WORD       :   32-bit memory word with select and byte-level WE
-    DEC2x4     :   2x4 Binary Decoder
-    DEC3x8     :   3x8 Binary decoder
-    MUX4x1_32  :   32-bit 4x1 MUX
-    SRAM8x32   :   8x32 RAM with tri-state output 
-    SRAM16x32  :   32x32 RAM with non-tri-state output
+    BYTE        :   8 memory cells used as a building block for WORD module (FF based)
+    BYTE_LATCH  :   8 memory cells used as a building block for WORD module (Latch based)  
+    WORD        :   32-bit memory word with select and byte-level WE
+    DEC2x4      :   2x4 Binary Decoder
+    DEC3x8      :   3x8 Binary decoder
+    MUX4x1_32   :   32-bit 4x1 MUX
+    RAM8x32     :   8x32 RAM with tri-state output 
+    RAM16x32    :   32x32 RAM with registered output
+    RAM128x32   :   512 bytes (128x32) RAM
+    RAM512x32   :   2 kbytes (512x32) RAM
 */
 
 module BYTE (
