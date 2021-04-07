@@ -52,8 +52,8 @@ module BYTE_LATCH (
     wire        GCLK;
     wire        CLK_B;
 
-    sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL_B), .A(SEL));
     sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
+    sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL_B), .A(SEL));
     sky130_fd_sc_hd__and2_1 CGAND( .A(SEL), .B(WE), .X(we_wire) );
     sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(we_wire) );
 
@@ -188,6 +188,8 @@ module RAM32x32 #(parameter USE_LATCH=0) (
     sky130_fd_sc_hd__clkbuf_16 DIBUF[31:0] (.X(Di_buf), .A(Di));
     sky130_fd_sc_hd__clkbuf_2 CLKBUF (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2 WEBUF[3:0] (.X(WE_buf), .A(WE));
+
+    // Should be in decoder?
     sky130_fd_sc_hd__clkbuf_2 ABUF[4:0] (.X(A_buf), .A(A[4:0]));
     sky130_fd_sc_hd__clkbuf_1 ENBUF (.X(EN_buf), .A(EN));
 
@@ -195,7 +197,7 @@ module RAM32x32 #(parameter USE_LATCH=0) (
 
     generate
         genvar i;
-        for (i=0; i< 8; i=i+1) begin : SLICE
+        for (i=0; i< 4; i=i+1) begin : SLICE
             RAM8x32 #(.USE_LATCH(USE_LATCH)) RAM8x32 (.CLK(CLK_buf), .WE(WE_buf),.EN(SEL[i]), .Di(Di_buf), .Do(Do_pre), .A(A_buf[2:0]) ); 
         end
     endgenerate
@@ -203,8 +205,12 @@ module RAM32x32 #(parameter USE_LATCH=0) (
     // Ensure that the Do_pre lines are not floating when EN = 0
     wire [3:0] lo;
     wire [3:0] float_buf_en;
-    sky130_fd_sc_hd__clkbuf_4 FBUFENBUF [3:0] ( .X(float_buf_en), .A(EN) );
+    sky130_fd_sc_hd__clkinv_4 FBUFENBUF [3:0] ( .Y(float_buf_en), .A(EN) );
     sky130_fd_sc_hd__conb_1 TIE [3:0] (.LO(lo), .HI());
+
+    // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
+
+    // Provides default values for floating lines (lo)
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B0[7:0] ( .A( lo[0] ), .Z(Do_pre[7:0]), .TE_B(float_buf_en[0]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B1[15:8] ( .A( lo[1] ), .Z(Do_pre[15:8]), .TE_B(float_buf_en[1]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B2[23:16] ( .A( lo[2] ), .Z(Do_pre[23:16]), .TE_B(float_buf_en[2]) );
