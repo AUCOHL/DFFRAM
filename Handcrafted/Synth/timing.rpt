@@ -56,25 +56,25 @@ Path Type: max
                                     
                             0.00       1.25 v B0.B0.SLICE[2].RAM8x32.WORD[3].W.B0.BIT[0].OBUF/TE_B (sky130_fd_sc_hd__ebufn_2)
                                     
-                            1.62       2.87 ^ B0.B0.SLICE[2].RAM8x32.WORD[3].W.B0.BIT[0].OBUF/Z (sky130_fd_sc_hd__ebufn_2)
+                            0.87       2.12 ^ B0.B0.SLICE[2].RAM8x32.WORD[3].W.B0.BIT[0].OBUF/Z (sky130_fd_sc_hd__ebufn_2)
                                     
-         1       0.18                         B0.B0.Do_pre[0] (net)               
-                            0.00       2.87 ^ B0.B0.OUT[0].FF/D (sky130_fd_sc_hd__dfxtp_1)
+         1       0.09                         B0.B0.Do_pre[0] (net)               
+                            0.00       2.12 ^ B0.B0.OUT[0].FF/D (sky130_fd_sc_hd__dfxtp_1)
                                     
-                                       2.87   data arrival time                   
+                                       2.12   data arrival time                   
 
                             0.00       0.00   clock clk (rise edge)               
                             0.00       0.00   clock network delay (ideal)         
                             0.00       0.00   clock reconvergence pessimism       
                                        0.00 ^ B0.B0.OUT[0].FF/CLK (sky130_fd_sc_hd__dfxtp_1)
                                     
-                           -0.29      -0.29   library setup time                  
-                                      -0.29   data required time                  
+                           -0.21      -0.21   library setup time                  
+                                      -0.21   data required time                  
 -----------------------------------------------------------------------------------
-                                      -0.29   data required time                  
-                                      -2.87   data arrival time                   
+                                      -0.21   data required time                  
+                                      -2.12   data arrival time                   
 -----------------------------------------------------------------------------------
-                                      -3.16   slack (VIOLATED)                    
+                                      -2.34   slack (VIOLATED)                    
 
 
 Startpoint: A[3] (input port clocked by clk)
@@ -135,24 +135,24 @@ Path Type: max
                                     
                             0.00       1.25 v B0.B0.SLICE[2].RAM8x32.WORD[3].W.B1.BIT[2].OBUF/TE_B (sky130_fd_sc_hd__ebufn_2)
                                     
-                            1.62       2.87 ^ B0.B0.SLICE[2].RAM8x32.WORD[3].W.B1.BIT[2].OBUF/Z (sky130_fd_sc_hd__ebufn_2)
+                            0.87       2.12 ^ B0.B0.SLICE[2].RAM8x32.WORD[3].W.B1.BIT[2].OBUF/Z (sky130_fd_sc_hd__ebufn_2)
                                     
-         1       0.18                         B0.B0.Do_pre[10] (net)              
-                            0.00       2.87 ^ B0.B0.OUT[10].FF/D (sky130_fd_sc_hd__dfxtp_1)
+         1       0.09                         B0.B0.Do_pre[10] (net)              
+                            0.00       2.12 ^ B0.B0.OUT[10].FF/D (sky130_fd_sc_hd__dfxtp_1)
                                     
-                                       2.87   data arrival time                   
+                                       2.12   data arrival time                   
 
                             0.00       0.00   clock clk (rise edge)               
                             0.00       0.00   clock network delay (ideal)         
                             0.00       0.00   clock reconvergence pessimism       
                                        0.00 ^ B0.B0.OUT[10].FF/CLK (sky130_fd_sc_hd__dfxtp_1)
                                     
-                           -0.29      -0.29   library setup time                  
-                                      -0.29   data required time                  
+                           -0.21      -0.21   library setup time                  
+                                      -0.21   data required time                  
 -----------------------------------------------------------------------------------
-                                      -0.29   data required time                  
-                                      -2.87   data arrival time                   
+                                      -0.21   data required time                  
+                                      -2.12   data arrival time                   
 -----------------------------------------------------------------------------------
-                                      -3.16   slack (VIOLATED)                    
+                                      -2.34   slack (VIOLATED)                    
 
 
