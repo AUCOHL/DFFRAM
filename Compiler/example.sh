@@ -7,9 +7,8 @@ fi
 set -e
 set -x
 
-export SIZE=32x32
+export SIZE=8x32
 export DESIGN=RAM$SIZE
-
 
 export SAFE_ZONE=50
 
