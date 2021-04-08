@@ -1,4 +1,19 @@
 #!/bin/bash
+<<HEREDOC > /dev/null
+example.sh
+--
+This is an example flow for use with placeRAM.
+
+There is a support tarball included for this file that is checked into the
+repository.
+
+It goes all the way from elaborating the custom Verilog netlists to LVS.
+
+This script requires docker and will pull openlane and other dependencies.
+If you would not like to use either, feel free to substitute any of the
+invocations with local ones.
+HEREDOC
+
 if [ ! -d ./example_support ]; then
      echo "Untarring support files…"
      tar -xJf ./example_support.tar.xz
@@ -42,10 +57,35 @@ mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
 
 # 1. Synthesis
+cat <<HEREDOC > $BUILD_FOLDER/synth.tcl
+# Not true synthesis, just elaboration.
+
+yosys -import
+
+set SCL \$env(LIBERTY)
+set DESIGN \$env(DESIGN)
+
+read_liberty -lib -ignore_miss_dir -setattr blackbox \$SCL
+read_verilog  BB.v 
+
+hierarchy -check -top \$DESIGN
+
+synth -top \$DESIGN -flatten
+
+splitnets
+opt_clean -purge
+
+write_verilog -noattr -noexpr -nodec \$DESIGN.gl.v
+stat -top \$DESIGN -liberty \$SCL 
+
+exit
+HEREDOC
+
 cat <<HEREDOC > $BUILD_FOLDER/synth.sh
-     export DESIGN=$DESIGN
-     export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib)
-     (cd ../Handcrafted/Models; yosys ../Synth/syn.tcl)
+export DESIGN=$DESIGN
+export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib) 
+BF=\$(realpath $BUILD_FOLDER)
+(cd ../Handcrafted/Models; yosys \$BF/synth.tcl)
 HEREDOC
 
 openlane bash $BUILD_FOLDER/synth.sh
