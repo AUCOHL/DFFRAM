@@ -55,10 +55,7 @@ class Placer:
         self.tlef = odb.read_lef(self.db, tech_lef)
         self.lef = odb.read_lef(self.db, lef)
 
-        self.tech = self.db.getTech()
-
         self.sites = self.tlef.getSites()
-
         self.cells = self.lef.getMasters()
 
         ## Extract the tap cell for later use
@@ -76,12 +73,7 @@ class Placer:
         # Process DEF data
         self.df = odb.read_def(self.db, df)
 
-        self.chip = self.db.getChip()
-        self.block = self.chip.getBlock()
-
-        self.outputs = []
-
-        self.miscellaneous = []
+        self.block = self.db.getChip().getBlock()
 
         self.instances = self.block.getInsts()
         eprint("Found %i instances…" % len(self.instances)) 
@@ -120,7 +112,7 @@ class Placer:
                 instance.setPlacementStatus("UNPLACED")
 
     def write_def(self, output):
-        return odb.write_def(self.chip.getBlock(), output) == 1
+        return odb.write_def(self.block, output) == 1
 
 # "Ask forgiveness not permission" yeah go and argue that in front of a judge
 def check_readable(file):
