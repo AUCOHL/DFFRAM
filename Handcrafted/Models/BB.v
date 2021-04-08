@@ -191,7 +191,7 @@ module RAM32x32 #(parameter USE_LATCH=0) (
 
     // Should be in decoder?
     sky130_fd_sc_hd__clkbuf_2 ABUF[4:0] (.X(A_buf), .A(A[4:0]));
-    sky130_fd_sc_hd__clkbuf_1 ENBUF (.X(EN_buf), .A(EN));
+    sky130_fd_sc_hd__clkbuf_2 ENBUF (.X(EN_buf), .A(EN));
 
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[4:3]), .SEL(SEL));
 
@@ -247,7 +247,7 @@ module RAM128x32 #(parameter USE_LATCH=0) (
     sky130_fd_sc_hd__clkbuf_16  DIBUF[31:0] (.X(Di_buf),  .A(Di));
     sky130_fd_sc_hd__clkbuf_2   CLKBUF      (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[3:0]  (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_1   ENBUF       (.X(EN_buf),  .A(EN));
+    sky130_fd_sc_hd__clkbuf_2   ENBUF       (.X(EN_buf),  .A(EN));
     sky130_fd_sc_hd__clkbuf_2   ABUF[4:0]   (.X(A_buf),   .A(A[4:0]));
 
     // 32x32 RAM Banks
