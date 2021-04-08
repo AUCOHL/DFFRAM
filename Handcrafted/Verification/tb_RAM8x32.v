@@ -10,9 +10,9 @@
 
 `include "BB.v"
 
-module tb_RAM32x32;
+module tb_RAM8x32;
     
-    localparam A_WIDTH = 7;
+    localparam A_WIDTH = 5;
     
     reg CLK;
     reg [3:0] WE;
@@ -25,7 +25,7 @@ module tb_RAM32x32;
 
     event   done;
     
-    RAM32x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
+    RAM8x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
@@ -35,8 +35,8 @@ module tb_RAM32x32;
     );
 
     initial begin
-        $dumpfile("tb_RAM32x32.vcd");
-        $dumpvars(0, tb_RAM32x32);
+        $dumpfile("tb_RAM8x32.vcd");
+        $dumpvars(0, tb_RAM8x32);
         @(done) $finish;
     end
 
@@ -75,7 +75,7 @@ module tb_RAM32x32;
 `ifdef  VERBOSE_1
         $display("Finished Phase 0, starting Phase 1");
 `endif
-        for(i=0; i<32*4; i=i+32) begin
+        for(i=0; i<8*4; i=i+32) begin
             ADDR = i + (($random%32)&5'b11100) ;
             mem_write_word( $random, ADDR);
             mem_read_word( ADDR );
@@ -86,7 +86,7 @@ module tb_RAM32x32;
 `ifdef  VERBOSE_1
         $display("Finished Phase 1, starting Phase 2");
 `endif
-        for(i=0; i<32*4; i=i+32) begin
+        for(i=0; i<8*4; i=i+32) begin
             ADDR = i+(($random%32)&5'b11110);
             mem_write_hword($random, ADDR );
             mem_read_word( ADDR );
@@ -97,9 +97,10 @@ module tb_RAM32x32;
 `ifdef  VERBOSE_1
         $display("Finished Phase 2, starting Phase 3");
 `endif
-        for(i=0; i<32*4; i=i+32) begin
-            mem_write_byte($random,i+($random%32));
-            mem_read_word(i+($random%32));
+        for(i=0; i<8*4; i=i+32) begin
+            ADDR = i+($random%32);
+            mem_write_byte($random,ADDR);
+            mem_read_word(ADDR);
         end
         $display ("Test Passed!");
         -> done;

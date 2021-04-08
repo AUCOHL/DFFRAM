@@ -1,0 +1,5 @@
+VCD info: dumpfile tb_RAM32x32.vcd opened for output.
+WRITE WORD: 0x00000000 to 0 (0x00000000, 1111)
+READ WORD: 0xxxxxxxxx from 0
+Test Failed! (Phase: 0, Iteration: 0
+Address: 0x00, READ: 0xxxxxxxxx - Should be: 0x00000000, RAM_DATA is 0x00000000
