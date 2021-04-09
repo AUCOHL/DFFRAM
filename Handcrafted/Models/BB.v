@@ -140,7 +140,7 @@ endmodule
 
 
 // A slice of 8 words
-module RAM8x32 #(parameter USE_LATCH=0) (
+module RAM8x32 #(parameter USE_LATCH=1) (
     input   wire        CLK,    // FO: 1
     input   wire [3:0]  WE,     // FO: 1
     input               EN,     // EN: 1
@@ -167,7 +167,7 @@ module RAM8x32 #(parameter USE_LATCH=0) (
 endmodule
 
 // 8 Slices block (128 bytes) with registered outout 
-module RAM32x32 #(parameter USE_LATCH=0) (
+module RAM32x32 #(parameter USE_LATCH=1) (
     input   wire        CLK,    // FO: 1
     input   wire [3:0]  WE,     // FO: 1
     input               EN,     // FO: 1
@@ -226,7 +226,7 @@ module RAM32x32 #(parameter USE_LATCH=0) (
 endmodule
 
 // 512 bytes RAM made out of blocks and muxes
-module RAM128x32 #(parameter USE_LATCH=0) (
+module RAM128x32 #(parameter USE_LATCH=1) (
     input   wire        CLK,    // FO: 1
     input   wire [3:0]  WE,     // FO: 1
     input               EN,     // FO: 1
@@ -262,7 +262,7 @@ module RAM128x32 #(parameter USE_LATCH=0) (
 endmodule
 
 // 2kbytes RAM made out of 16 blocks (4x4)
-module RAM512x32 #(parameter USE_LATCH=0) (
+module RAM512x32 #(parameter USE_LATCH=1) (
     input   wire        CLK,    // FO: 1
     input   wire [3:0]  WE,     // FO: 1
     input               EN,     // FO: 1

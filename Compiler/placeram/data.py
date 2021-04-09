@@ -36,7 +36,7 @@ class Bit(Placeable):
                 self.store = instance
             elif obuf_match := re.search(obuf, n):
                 self.obuf = instance
-            elif latch_match := res.search(latch, n):
+            elif latch_match := re.search(latch, n):
                 self.store = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))

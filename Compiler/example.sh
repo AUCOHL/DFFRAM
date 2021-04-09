@@ -22,10 +22,10 @@ fi
 set -e
 set -x
 
-export SIZE=8x32
+export SIZE=32x32
 export DESIGN=RAM$SIZE
 
-export SAFE_ZONE=50
+export MARGIN=5
 
 export DESIGN_WIDTH=600
 export DESIGN_HEIGHT=600
@@ -33,7 +33,7 @@ export DESIGN_HEIGHT=600
 # ---
 BUILD_FOLDER=./build/$DESIGN
 
-(( FULL_SAFE_AREA=$SAFE_ZONE * 2 ))
+(( FULL_SAFE_AREA=$MARGIN * 2 ))
 
 (( FULL_WIDTH=$DESIGN_WIDTH + $FULL_SAFE_AREA ))
 (( FULL_HEIGHT=$DESIGN_HEIGHT + $FULL_SAFE_AREA ))
@@ -102,7 +102,7 @@ link_design $DESIGN
 
 initialize_floorplan\
      -die_area "0 0 $FULL_WIDTH $FULL_HEIGHT"\
-     -core_area "$SAFE_ZONE $SAFE_ZONE $DESIGN_WIDTH $DESIGN_HEIGHT"\
+     -core_area "$MARGIN $MARGIN $DESIGN_WIDTH $DESIGN_HEIGHT"\
      -site unithd\
      -tracks ./example_support/sky130hd.tracks
 
