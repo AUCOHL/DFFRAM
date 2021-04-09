@@ -25,7 +25,7 @@ if [info exists env(DESIGN)] {
 
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-read_verilog  BB.v 
+read_verilog  ../Models/BB.v 
 
 
 hierarchy -check -top $DESIGN

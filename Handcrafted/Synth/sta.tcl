@@ -12,7 +12,7 @@ set_units -time ns -capacitance pF -current mA -voltage V -resistance kOhm
 
 
 #set PDK_PATH /ef/tech/SW/sky130A
-set DESIGN  RAM512x32
+set DESIGN  RAM32x32
 set SCL		/data/sc_hd_tt.lib
 set VLG     /data/$DESIGN.gl.v
 read_liberty -min $SCL
