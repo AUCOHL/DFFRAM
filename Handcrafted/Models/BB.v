@@ -309,11 +309,6 @@ module RAM1024x32 #(parameter USE_LATCH=1) (
     input   wire [9:0]  A       // FO: 2
 );
 
-    wire        CLK_buf;
-    wire [3:0]  WE_buf;
-    wire        EN_buf;
-    wire [31:0] Di_buf;
-
     wire [31:0] Do_0, Do_1; 
 
     // 32x32 RAM Banks
@@ -334,11 +329,6 @@ module RAM2048x32 #(parameter USE_LATCH=1) (
     output  wire [31:0] Do,
     input   wire [10:0]  A       // FO: 4
 );
-
-    wire        CLK_buf;
-    wire [3:0]  WE_buf;
-    wire        EN_buf;
-    wire [31:0] Di_buf;
 
     wire [31:0] Do_0, Do_1, Do_2, Do_3;
 
