@@ -205,7 +205,7 @@ module RAM32x32 #(parameter USE_LATCH=1) (
     // Ensure that the Do_pre lines are not floating when EN = 0
     wire [3:0] lo;
     wire [3:0] float_buf_en;
-    sky130_fd_sc_hd__clkinv_4 FBUFENBUF [3:0] ( .Y(float_buf_en), .A(EN) );
+    sky130_fd_sc_hd__clkbuf_2 FBUFENBUF [3:0] ( .X(float_buf_en), .A(EN) );
     sky130_fd_sc_hd__conb_1 TIE [3:0] (.LO(lo), .HI());
 
     // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
