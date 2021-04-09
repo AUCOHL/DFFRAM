@@ -79,7 +79,7 @@ module tb_RAM8x32;
         
         // Fill the memory with a known pattern
         for(i=0; i<M_SZ; i=i+4) begin
-            HEX_DIG = $urandom%255;
+            HEX_DIG = $urandom%16;
             mem_write_word({8{HEX_DIG}},i);
             mem_read_word(i);
         end
@@ -90,7 +90,7 @@ module tb_RAM8x32;
         $display("\nFinished Phase 0, starting Phase 1");
 `endif
         for(i=0; i<M_SZ; i=i+4) begin
-            ADDR = (($urandom%M_SZ)) ;
+            ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
             mem_write_word( $urandom, ADDR);
             mem_read_word( ADDR );
         end
@@ -101,9 +101,9 @@ module tb_RAM8x32;
         $display("\nFinished Phase 1, starting Phase 2");
 `endif
         for(i=0; i<M_SZ; i=i+2) begin
-            ADDR = (($urandom%32));
+            ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
             mem_write_hword($urandom&'hFFFF, ADDR );
-            mem_read_word( ADDR );
+            mem_read_word( ADDR & 'hFFFF_FFFC );
         end
         
         // Byte Write then Read
@@ -112,9 +112,9 @@ module tb_RAM8x32;
         $display("\nFinished Phase 2, starting Phase 3");
 `endif
         for(i=0; i<M_SZ; i=i+1) begin
-            ADDR = (($urandom%32));
+            ADDR = (($urandom%M_SZ));
             mem_write_byte($urandom%255, ADDR);
-            mem_read_word(ADDR);
+            mem_read_word(ADDR & 'hFFFF_FFFC );
         end
         $display ("\n>> Test Passed! <<\n");
         -> done;
@@ -128,7 +128,7 @@ module tb_RAM8x32;
         Di = (byte << (addr[1:0] * 8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE BYTE: 0x%X to %0D (0x%X, %B)", byte, addr, Di, WE);
+        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", byte, addr, addr, Di, WE);
 `endif
         WE = 4'b0;
     end
@@ -142,7 +142,7 @@ module tb_RAM8x32;
         Di = (hword << (addr[1] * 16));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE HWORD: 0x%X to %0D (0x%X, %B)", hword, addr, Di, WE);
+        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
 `endif
         WE = 4'b0;
     end
@@ -156,7 +156,7 @@ module tb_RAM8x32;
         Di = word; 
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE WORD: 0x%X to %0D (0x%X, %B)", word, addr, Di, WE);
+        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di, WE);
 `endif
         WE = 4'b0;
     end

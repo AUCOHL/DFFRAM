@@ -18,9 +18,9 @@
 
 `include "BB.v"
 
-module tb_RAM32x32;
+module tb_RAM128x32;
     
-    localparam A_W = 7;
+    localparam A_W = 9;
     localparam M_SZ = 2**A_W;
     
     reg             CLK;
@@ -34,7 +34,7 @@ module tb_RAM32x32;
 
     event           done;
     
-    RAM32x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
+    RAM128x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
@@ -44,8 +44,8 @@ module tb_RAM32x32;
     );
 
     initial begin
-        $dumpfile("tb_RAM32x32.vcd");
-        $dumpvars(0, tb_RAM32x32);
+        $dumpfile("tb_RAM128x32.vcd");
+        $dumpvars(0, tb_RAM128x32);
         @(done) $finish;
     end
 
@@ -75,7 +75,10 @@ module tb_RAM32x32;
         // Perform a single word write then read
         mem_write_word(32'hA5337090, 4);
         mem_read_word(4);
+        mem_write_hword(32'hABCD, 6);
+        mem_read_word(4);
         
+        //$finish;
         // Fill the memory with a known pattern
         for(i=0; i<M_SZ; i=i+4) begin
             HEX_DIG = $urandom%16;
@@ -177,8 +180,8 @@ module tb_RAM32x32;
     
     task check; begin
         if(RAM_DATA !== Do) begin
-            $display("Test Failed! (Pahse: %0d, Iteration: %0d", Phase, i);
-            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/4]);
+            $display("\n>> Test Failed! <<\t(Pahse: %0d, Iteration: %0d)", Phase, i);
+            $display("Address: 0x%X (%0d), READ: 0x%X - Should be: 0x%X\n\n", A, A, Do, RAM[A/4]);
             -> done;
         end
     end
