@@ -177,7 +177,7 @@ module tb_DFFRAM;
     endtask
     
     task check; begin
-        if(RAM_DATA != Do) begin
+        if(RAM_DATA !== Do) begin
             $display("Test Failed! (Pahse: %0d, Iteration: %0d", Phase, i);
             $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/4]);
             -> done;
