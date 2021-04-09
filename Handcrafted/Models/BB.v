@@ -138,6 +138,13 @@ module MUX4x1_32(
     sky130_fd_sc_hd__mux4_1 MUX[31:0] (.A0(A0), .A1(A1), .A2(A2), .A3(A3), .S0(S[0]), .S1(S[1]), .X(X) );
 endmodule
 
+module MUX2x1_32(
+    input   wire [31:0]      A0, A1, A2, A3,
+    input   wire [0:0]       S,
+    output  wire [31:0]      X
+);
+    sky130_fd_sc_hd__mux2_1 MUX[31:0] (.A0(A0), .A1(A1), .S(S), .X(X) );
+endmodule
 
 // A slice of 8 words
 module RAM8x32 #(parameter USE_LATCH=1) (
@@ -209,19 +216,13 @@ module RAM32x32 #(parameter USE_LATCH=1) (
     sky130_fd_sc_hd__conb_1 TIE [3:0] (.LO(lo), .HI());
 
     // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
-
     // Provides default values for floating lines (lo)
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B0[7:0] ( .A( lo[0] ), .Z(Do_pre[7:0]), .TE_B(float_buf_en[0]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B1[15:8] ( .A( lo[1] ), .Z(Do_pre[15:8]), .TE_B(float_buf_en[1]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B2[23:16] ( .A( lo[2] ), .Z(Do_pre[23:16]), .TE_B(float_buf_en[2]) );
     sky130_fd_sc_hd__ebufn_2 FLOATBUF_B3[31:24] ( .A( lo[3] ), .Z(Do_pre[31:24]), .TE_B(float_buf_en[3]) );
 
-    generate 
-        //genvar i;
-        for(i=0; i<32; i=i+1) begin : OUT
-            sky130_fd_sc_hd__dfxtp_1 FF ( .D(Do_pre[i]), .Q(Do[i]), .CLK(CLK) );
-        end
-    endgenerate 
+    sky130_fd_sc_hd__dfxtp_1 Do_FF[31:0] ( .D(Do_pre), .Q(Do), .CLK(CLK) );
 
 endmodule
 
@@ -294,5 +295,60 @@ module RAM512x32 #(parameter USE_LATCH=1) (
 
     // Output MUX
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A_buf[8:7]), .X(Do) );
+
+endmodule
+
+
+// 4Kbytes
+module RAM1024x32 #(parameter USE_LATCH=1) (
+    input   wire        CLK,    // FO: 2
+    input   wire [3:0]  WE,     // FO: 2
+    input               EN,     // FO: 2
+    input   wire [31:0] Di,     // FO: 2
+    output  wire [31:0] Do,
+    input   wire [9:0]  A       // FO: 2
+);
+
+    wire        CLK_buf;
+    wire [3:0]  WE_buf;
+    wire        EN_buf;
+    wire [31:0] Di_buf;
+
+    wire [31:0] Do_0, Do_1; 
+
+    // 32x32 RAM Banks
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_1), .A(A[8:0]) );    
+  
+    // Output MUX
+    MUX2x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .S(A[9]), .X(Do) );
+
+endmodule
+
+// 8 Kbytes
+module RAM2048x32 #(parameter USE_LATCH=1) (
+    input   wire        CLK,    // FO: 4
+    input   wire [3:0]  WE,     // FO: 4
+    input               EN,     // FO: 4
+    input   wire [31:0] Di,     // FO: 4
+    output  wire [31:0] Do,
+    input   wire [10:0]  A       // FO: 4
+);
+
+    wire        CLK_buf;
+    wire [3:0]  WE_buf;
+    wire        EN_buf;
+    wire [31:0] Di_buf;
+
+    wire [31:0] Do_0, Do_1, Do_2, Do_3;
+
+    // 32x32 RAM Banks
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_1), .A(A[8:0]) );    
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B2 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_2), .A(A[8:0]) );    
+    RAM512x32 #(.USE_LATCH(USE_LATCH)) B3 (.CLK(CLK), .EN(EN), .Di(Di), .Do(Do_3), .A(A[8:0]) );   
+  
+    // Output MUX
+    MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A[10:9]), .X(Do) );
 
 endmodule
