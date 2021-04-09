@@ -4,7 +4,7 @@ RTL_PATH=../Models
 
 .SUFFIXES:
 
-PATTERN = tb_DFFRAM
+PATTERN = tb_RAM32x32
 
 all:  ${PATTERN:=.vcd}
 
