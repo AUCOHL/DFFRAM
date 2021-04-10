@@ -336,7 +336,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         raw_ties = {}
         raw_fbufenbufs = {}
         raw_floatbufs = {}
-        raw_do_ff = {}
+        raw_doffs = {}
 
         slice = r"\SLICE\\\[(\d+)\\\]"
         decoder_and = r"\bDEC\.AND(\d+)\b"
@@ -353,7 +353,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         tie = r"\bTIE\\\[(\d+)\\\]"
         fbufenbuf = r"\bFBUFENBUF\\\[(\d+)\\\]"
         floatbuf = r"\bFLOATBUF_B(\d+)\\\[(\d+)\\\]"
-        do_ff = r"\bDo_FF\\\[(\d+)\\\]"
+        doff = r"\bDo_FF\\\[(\d+)\\\]"
 
         for instance in instances:
             n = instance.getName()
@@ -391,12 +391,11 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
             elif dobuf_match := re.search(dobuf, n):
                 i = int(dobuf_match[1])
                 raw_dobufs[i] = instance
-            elif do_ff_match := re.search(do_ff, n):
-                i = int(dobuf_match[1])
-                raw_do_ff[i] = instance
+            elif doff_match := re.search(doff, n):
+                i = int(doff_match[1])
+                raw_doffs[i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-                        theslice is " % (type(self).__name__, n))
 
         self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
 
@@ -410,7 +409,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         self.ties = d2a(raw_ties)
         self.fbufenbufs = d2a(raw_fbufenbufs)
         self.floatbufs = d2a({k: d2a(v) for k, v in raw_floatbufs.items()})
-        self.do_ffs = d2a(raw_do_ff)
+        self.doffs = d2a(raw_doffs)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -497,6 +496,10 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 r.place(floatbuf)
 
         current_row += 1
+
+        r = row_list[current_row]
+        for doff in self.doffs:
+            r.place(doff)
 
         r = row_list[current_row]
         for dobuf in self.dobufs:
