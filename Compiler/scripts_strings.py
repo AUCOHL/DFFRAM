@@ -55,10 +55,10 @@ read_verilog ../Handcrafted/Models/{}.gl.v
 
 link_design {}
 
-initialize_floorplan
-     -die_area "0 0 {} {}"
-     -core_area "{} {} {} {}"
-     -site unithd
+initialize_floorplan\
+     -die_area "0 0 {} {}"\
+     -core_area "{} {} {} {}"\
+     -site unithd\
      -tracks ./example_support/sky130hd.tracks
 
 ppl::set_hor_length 4
@@ -68,12 +68,12 @@ ppl::set_ver_length_extend 2
 ppl::set_ver_thick_multiplier 4
 ppl::set_hor_thick_multiplier 4
 
-place_pins
-    -random
-    -random_seed 42
-    -min_distance 5
-    -hor_layers 4
-    -ver_layers 3
+place_pins\
+    -random\
+    -random_seed 42\
+    -min_distance 5\
+    -hor_layers 4\
+    -ver_layers 3\
 
 report_checks -fields {{input slew capacitance}} -format full_clock
 

@@ -21,9 +21,12 @@ def write_script_to_file(theScript, fileName):
         f.write(theScript)
 
 def run_bash_string_cmd(cmdString):
-    print(cmdString.split())
-    returnCode = subprocess.run(cmdString.split(), check=True)
+    returnCode = subprocess.run(cmdString.split(),
+            check=True).returncode
     if returnCode != 0:
+        print("failure in cmd")
+        print(cmdString.split())
+        print(returnCode)
         exit(0)
 
 
@@ -44,9 +47,10 @@ def flow():
     # 1. Synthesis
     # Not true synthesis, just elaboration.
     write_script_to_file(synthTclScript, "synth.tcl")
-    write_script_to_file(synthTclScript, "synth.sh")
+    write_script_to_file(synthShellScript, "synth.sh")
     openlane("bash {}/synth.sh".format(BUILD_FOLDER))
     # 2. Floorplan Initialization
+    write_script_to_file(floorplanTclScript, "fp_init.tcl")
     openlane("openroad {}/fp_init.tcl".format(BUILD_FOLDER))
     # 3. PlaceRAM
     run_bash_string_cmd(placeDockerCmd)

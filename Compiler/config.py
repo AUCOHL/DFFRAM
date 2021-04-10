@@ -1,4 +1,5 @@
 from pathlib import Path
+
 SIZE="32x32"
 DESIGN="RAM{}".format(SIZE)
 
