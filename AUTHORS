@@ -1,11 +1,15 @@
-Principal Investigator, Netlist Design: Mohamed Shalan <mshalan@aucegypt.edu>
+Name <email> (website)
+--
+DFFRAM Team
 
-Synthesis and Simulation: Manar Abdelatty <manarabdelatty@aucegypt.edu>
+Mohamed Shalan <mshalan@aucegypt.edu>
 
-Compiler Lead: Mohamed Gaber <mohamed.gaber@aucegypt.edu>
-Further Compiler Development: Ahmed Nofal <ahmednofal@aucegypt.edu>
+Mohamed Gaber <mohamed.gaber@aucegypt.edu>
+Ahmed Nofal <ahmednofal@aucegypt.edu>
 
-Compiler (Initial Research):
-    - Hany Moussa <https://github.com/HanyMoussa>
-    - Ramez Moussa <https://github.com/ramezmoussa>
+--
+Other Contributors
 
+Manar Abdelatty <manarabdelatty@aucegypt.edu>
+Hany Moussa (https://github.com/HanyMoussa)
+Ramez Moussa (https://github.com/ramezmoussa)
