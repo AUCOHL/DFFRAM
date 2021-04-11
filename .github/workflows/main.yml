@@ -19,5 +19,5 @@ jobs:
         run: |
           export SIZE=${{ matrix.size }}
           cd Compiler/
-          sh ${{ matrix.script }}
+          bash ${{ matrix.script }}
           
