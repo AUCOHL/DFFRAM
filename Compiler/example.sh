@@ -46,7 +46,6 @@ openlane() {
           DOCKER_TI_FLAG="-ti"
      fi
      docker run $DOCKER_TI_FLAG\
-          -v $PDK_ROOT:$PDK_ROOT\
           -v $(realpath ..):/mnt/dffram\
           -w /mnt/dffram/Compiler\
           efabless/openlane\
@@ -66,7 +65,7 @@ set SCL \$env(LIBERTY)
 set DESIGN \$env(DESIGN)
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox \$SCL
-read_verilog  BB.v 
+read_verilog  BB.v
 
 hierarchy -check -top \$DESIGN
 
@@ -76,14 +75,14 @@ splitnets
 opt_clean -purge
 
 write_verilog -noattr -noexpr -nodec \$DESIGN.gl.v
-stat -top \$DESIGN -liberty \$SCL 
+stat -top \$DESIGN -liberty \$SCL
 
 exit
 HEREDOC
 
 cat <<HEREDOC > $BUILD_FOLDER/synth.sh
 export DESIGN=$DESIGN
-export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib) 
+export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib)
 BF=\$(realpath $BUILD_FOLDER)
 (cd ../Handcrafted/Models; yosys \$BF/synth.tcl)
 HEREDOC
@@ -127,7 +126,7 @@ HEREDOC
 
 openlane openroad $BUILD_FOLDER/fp_init.tcl
 
-# # Interactive 
+# # Interactive
 # DOCKER_INTERACTIVE=1 openlane openroad
 
 # 3. PlaceRAM
@@ -146,7 +145,7 @@ docker run --rm\
 # Remove ports
 rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
 mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
-sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def 
+sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
 
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
@@ -225,6 +224,6 @@ netgen -batch lvs "$BUILD_FOLDER/$DESIGN.spice $DESIGN" "../Handcrafted/Models/$
 mv comp.out $BUILD_FOLDER/lvs.rpt
 HEREDOC
 
-openlane bash $BUILD_FOLDER/lvs.sh 
-     
+openlane bash $BUILD_FOLDER/lvs.sh
+
 # Harden? # def -> gdsII (magic) and def -> lef (magic)

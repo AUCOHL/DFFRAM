@@ -8,7 +8,7 @@ import re
 import sys
 import math
 
-# -- 
+# --
 def RepresentInstance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
 
@@ -18,7 +18,7 @@ class Placeable(object):
 
 class DataError(Exception):
     pass
-# -- 
+# --
 
 class Bit(Placeable):
     def __init__(self, instances):
@@ -40,7 +40,7 @@ class Bit(Placeable):
                 self.store = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-    
+
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
@@ -97,7 +97,7 @@ class Byte(Placeable):
         print("%sSelect Line Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.selinv)), file=file)
         if self.clkinv is not None:
             print("%sClock Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkinv)), file=file)
-        
+
         print("%sBits" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
         for i, bit in enumerate(self.bits):
@@ -163,7 +163,7 @@ class Word(Placeable):
 
         for byte in self.bytes:
             byte.place(row_list, start_row)
-        
+
         r.place(self.clkbuf)
         r.place(self.selbuf)
 
@@ -224,13 +224,13 @@ class Decoder3x8(Placeable):
         By placing this decoder, you agree that rows[start_row:start_row+7]
         are at the sole mercy of this function.
         """
-        
+
         ands_placeable = self.and_gates
         buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
 
         for i in range(8):
             r = row_list[start_row + i]
-            
+
             r.place(ands_placeable[i])
             if buf := buffers_placeable[i]:
                 r.place(buf)
@@ -273,7 +273,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         word_count = len(self.words)
         if word_count != 8:
-            raise DataError("Slice has (%i/8) words." % word_count) 
+            raise DataError("Slice has (%i/8) words." % word_count)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -308,11 +308,11 @@ class Slice(Placeable): # A slice is defined as 8 words.
         for i in range(8):
             r = row_list[start_row + i]
             if last_column[i] is not None:
-                r.place(last_column[i]) 
+                r.place(last_column[i])
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        self.decoder.place(row_list, start_row)       
+        self.decoder.place(row_list, start_row)
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -339,9 +339,9 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         slice = r"\SLICE\\\[(\d+)\\\]"
         decoder_and = r"\bDEC\.AND(\d+)\b"
-        
+
         dibuf = r"\bDIBUF\\\[(\d+)\\\]"
-        dobuf = r"\bOUT\\\[(\d+)\\\]"
+        dobuf = r"\bDo_FF\\\[(\d+)\\\]"
 
         webuf = r"\bWEBUF\\\[(\d+)\\\]"
         clkbuf = r"\bCLKBUF\b"
@@ -393,7 +393,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
-        
+
         self.decoder_ands = d2a(raw_decoder_ands)
 
         self.dibufs = d2a(raw_dibufs)
@@ -477,12 +477,12 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         for dibuf in self.dibufs:
             r.place(dibuf)
-        
+
         current_row += 1
 
         for slice in self.slices:
             current_row = slice.place(row_list, current_row)
-        
+
         r = row_list[current_row]
         for i, tie in enumerate(self.ties):
             r.place(tie)
@@ -490,7 +490,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 r.place(floatbuf)
 
         current_row += 1
-        
+
         r = row_list[current_row]
         for dobuf in self.dobufs:
             r.place(dobuf)
@@ -521,5 +521,5 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        
+
         return current_row
