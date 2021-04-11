@@ -24,5 +24,5 @@ Until the compiler is fully ready, you may harden pre-existing handcrafted desig
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
 # ⚖️ License
-Copyright ©2021-present The American University in Cairo and the Cloud V Project. You may use and redistribute this code under the Apache 2.0 license. See 'LICENSE'.
+Copyright ©2021-present The American University in Cairo and the Cloud V Project. You may use and redistribute this code under the Apache 2.0 license. See 'License'.
 
