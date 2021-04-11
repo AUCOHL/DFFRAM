@@ -1,17 +1,17 @@
 #!/bin/python3
+from .scripts import *
+
 import os
 import shlex
 import subprocess
 import pathlib
 import re
-from subprocess import Popen
-from pathlib import Path
-from scripts_strings import *
 
-designBuildFolderPath = pathlib.Path(BUILD_FOLDER)
-designBuildFolderPath.mkdir(parents=True, exist_ok=True)
+build_folder = pathlib.Path(BUILD_FOLDER)
+build_folder.mkdir(parents=True, exist_ok=True)
+
 if not os.path.exists('./example_support'):
-     print( "Untarring support files…")
+     print("Untarring support files…")
      extractionCmd = "tar -xJf ./example_support.tar.xz"
      subprocess.run(extractionCmd.split())
 p = pathlib.Path("./build/")
@@ -24,62 +24,63 @@ def remove_all_ports_from_placed(fileName, newFileName):
         fout.write(data)
 
 def write_script_to_file(theScript, fileName):
-    filePath = designBuildFolderPath / fileName
+    filePath = build_folder / fileName
     with filePath.open("w", encoding="utf-8") as f:
         f.write(theScript)
 
 def run_bash_string_cmd(cmdString, shell=False):
-    returnCode = subprocess.run(shlex.split(cmdString),
-            check=True, shell=shell).returncode
-    if returnCode != 0:
-        print("failure in cmd")
-        print(shlex.split(cmdString))
-        print(returnCode)
-        exit(0)
-
+    result = subprocess.run(
+        shlex.split(cmdString),
+        shell=shell
+    )
+    if result.returncode != 0:
+        print("Command '{}' failed with exit code {}.".format(cmdString, result.returncode))
+        exit(-1)
 
 def openlane(cmdString):
     DOCKER_TI_FLAG=""
     if DOCKER_INTERACTIVE == "1":
         DOCKER_TI_FLAG="-ti"
-    dockerCmd = """docker run {}\
-        -v {}:/mnt/dffram\
-        -w /mnt/dffram/Compiler\
-        efabless/openlane\
-        {}""".format(DOCKER_TI_FLAG,
-                    PROJECT_ROOT,
-                    cmdString)
+    dockerCmd = "docker run {} -v {}:/mnt/dffram -w /mnt/dffram/Compiler efabless/openlane {}".format(
+        DOCKER_TI_FLAG,
+        PROJECT_ROOT,
+        cmdString
+    )
     run_bash_string_cmd(dockerCmd)
 
-def flow():
+def main():
     # 1. Synthesis
     # Not true synthesis, just elaboration.
     write_script_to_file(synthTclScript, "synth.tcl")
     write_script_to_file(synthShellScript, "synth.sh")
     openlane("bash {}/synth.sh".format(BUILD_FOLDER))
+
     # 2. Floorplan Initialization
     write_script_to_file(floorplanTclScript, "fp_init.tcl")
     openlane("openroad {}/fp_init.tcl".format(BUILD_FOLDER))
+
     # 3. PlaceRAM
     run_bash_string_cmd(placeDockerCmd)
-    # Remove ports
+    ## Remove ports
     run_bash_string_cmd(removePortsCmd)
     run_bash_string_cmd(backupPlacedDesignCmd)
     remove_all_ports_from_placed(
             "{}/{}.placed.def.ref".format(BUILD_FOLDER, DESIGN),
             "{}/{}.placed.def".format(BUILD_FOLDER, DESIGN))
-    # run_bash_string_cmd(removeUnnecessaryPortsCmd)
+
     # 4. Verify Placement
     write_script_to_file(verifyTclScript, "verify.tcl")
     openlane("openroad {}/verify.tcl".format(BUILD_FOLDER))
+
     # 5. Attempt Routing
     write_script_to_file(routeTclScript, "route.tcl")
     write_script_to_file(trParams, "tr.param")
     openlane("openroad {}/route.tcl".format(BUILD_FOLDER))
+
     # 6. LVS
     write_script_to_file(lvsTclScript, "lvs.tcl")
     write_script_to_file(lvsShellScript, "lvs.sh")
     openlane("bash {}/lvs.sh".format(BUILD_FOLDER))
-    # Harden? # def -> gdsII (magic) and def -> lef (magic)
-if __name__=="__main__":
-    flow()
+
+    # TODO: Harden?
+    ## def -> gdsII (magic) and def -> lef (magic)

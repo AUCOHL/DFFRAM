@@ -1,7 +1,6 @@
-import shlex
-from pathlib import Path
-from config import *
+from .config import *
 
+from pathlib import Path
 
 helpString = \
 """
