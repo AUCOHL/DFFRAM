@@ -12,6 +12,10 @@
 
 module DFFRAM #( parameter COLS=4, USE_LATCH=0)
 (
+`ifdef USE_POWER_PINS
+    VPWR,
+    VGND,
+`endif
     CLK,
     WE,
     EN,
@@ -19,7 +23,10 @@ module DFFRAM #( parameter COLS=4, USE_LATCH=0)
     Do,
     A
 );
-
+`ifdef USE_POWER_PINS
+    input VPWR;
+    input VGND;
+`endif
     input           CLK;
     input   [3:0]   WE;
     input           EN;
@@ -36,34 +43,119 @@ module DFFRAM #( parameter COLS=4, USE_LATCH=0)
     generate
         genvar i;
         for (i=0; i<COLS; i=i+1) begin : COLUMN
-            DFFRAM_COL4 #(.USE_LATCH(USE_LATCH)) 
-                        RAMCOLS (   .CLK(CLK), 
-                                    .WE(WE), 
-                                    .EN(EN_lines[i]), 
-                                    .Di(Di), 
-                                    .Do(DOUT[i]), 
-                                    .A(A[7:0]) 
-                                );    
+            DFFRAM_COL4 #(.USE_LATCH(USE_LATCH)) RAMCOLS (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+            `endif
+                .CLK(CLK),
+                .WE(WE),
+                .EN(EN_lines[i]),
+                .Di(Di),
+                .Do(DOUT[i]),
+                .A(A[7:0])
+            );
         end
         if(COLS==4) begin
-            sky130_fd_sc_hd__clkbuf_8 ABUF[1:0] (.X(A_buf[9:8]), .A(A[9:8]) );
-            MUX4x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .A2(DOUT[2]), .A3(DOUT[3]), .S(A_buf[9:8]), .X(Do_pre) );
-            DEC2x4 DEC ( .EN(EN), .A(A[9:8]), .SEL(EN_lines) );
+            sky130_fd_sc_hd__clkbuf_8 ABUF[1:0] (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+                .VPB(VPWR),
+                .VNB(VGND),
+            `endif
+                .X(A_buf[9:8]),
+                .A(A[9:8])
+            );
+
+            MUX4x1_32 MUX (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+            `endif
+                .A0(DOUT[0]),
+                .A1(DOUT[1]),
+                .A2(DOUT[2]),
+                .A3(DOUT[3]),
+                .S(A_buf[9:8]),
+                .X(Do_pre)
+            );
+
+            DEC2x4 DEC (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+            `endif
+                .EN(EN),
+                .A(A[9:8]),
+                .SEL(EN_lines)
+            );
+
         end
         else if(COLS==2) begin
-            sky130_fd_sc_hd__clkbuf_8 ABUF[8:8] (.X(A_buf[8]), .A(A[8]) );
-            MUX2x1_32 MUX ( .A0(DOUT[0]), .A1(DOUT[1]), .S(A_buf[8]), .X(Do_pre) );
+            sky130_fd_sc_hd__clkbuf_8 ABUF[8:8] (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+                .VPB(VPWR),
+                .VNB(VGND),
+            `endif
+                .X(A_buf[8]),
+                .A(A[8])
+            );
+
+            MUX2x1_32 MUX (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+            `endif
+                .A0(DOUT[0]),
+                .A1(DOUT[1]),
+                .S(A_buf[8]),
+                .X(Do_pre)
+            );
+
             //sky130_fd_sc_hd__inv_4 DEC0 ( .Y(EN_lines[0]), .A(A[8]) );
             //sky130_fd_sc_hd__clkbuf_4 DEC1 (.X(EN_lines[1]), .A(A[8]) );
-            DEC1x2 DEC ( .EN(EN), .A(A[8]), .SEL(EN_lines[1:0]) );
-            
+            DEC1x2 DEC (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+            `endif
+                .EN(EN),
+                .A(A[8]),
+                .SEL(EN_lines[1:0])
+            );
+
         end
         else begin
-            PASS MUX ( .A(DOUT[0]), .X(Do_pre) );
-            sky130_fd_sc_hd__clkbuf_4 ENBUF (.X(EN_lines[0]), .A(EN) );
+            PASS MUX (
+                .A(DOUT[0]),
+                .X(Do_pre)
+            );
+
+            sky130_fd_sc_hd__clkbuf_4 ENBUF (
+            `ifdef USE_POWER_PINS
+                .VPWR(VPWR),
+                .VGND(VGND),
+                .VPB(VPWR),
+                .VNB(VGND),
+            `endif
+                .X(EN_lines[0]),
+                .A(EN)
+            );
         end
     endgenerate
-    
-    sky130_fd_sc_hd__clkbuf_4 DOBUF[31:0] (.X(Do), .A(Do_pre));
+
+    sky130_fd_sc_hd__clkbuf_4 DOBUF[31:0] (
+    `ifdef USE_POWER_PINS
+        .VPWR(VPWR),
+        .VGND(VGND),
+        .VPB(VPWR),
+        .VNB(VGND),
+    `endif
+        .X(Do),
+        .A(Do_pre)
+    );
 
 endmodule

@@ -11,18 +11,18 @@
 `define     VERBOSE_2
 
 `define UNIT_DELAY #1
+`define USE_POWER_PINS
 
 `define     USE_LATCH 1
 
-//`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
+`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
 
-`include "hd_primitives.v"
-`include "hd_functional.v"
+//`include "hd_primitives.v"
+//`include "hd_functional.v"
 
 `include "DFFRAM.v"
 `include "DFFRAMBB.v"
-`include "DFFRAM_256x32.v"
 
 module tb_DFFRAM;
     
@@ -37,10 +37,14 @@ module tb_DFFRAM;
     reg [A_WIDTH:0] A, ADDR;
     reg [3:0] HEX_DIG;
     reg [7:0] Phase;
+    reg VPWR;
+    reg VGND;
 
     event   done;
     
     DFFRAM #(.COLS(`COLS), .USE_LATCH(`USE_LATCH)) SRAM (
+        .VPWR(VPWR),
+        .VGND(VGND),
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
@@ -76,7 +80,11 @@ module tb_DFFRAM;
         CLK = 0;
         WE = 0;
         EN = 1;
-            
+        VPWR = 0;
+        VGND = 0;
+        #50
+        VPWR = 1;
+
         Phase = 0;
         // Fill the memory with a known pattern
         for(i=0; i<`COLS*1024; i=i+4) begin
