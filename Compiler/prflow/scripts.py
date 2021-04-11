@@ -2,8 +2,7 @@ from .config import *
 
 from pathlib import Path
 
-helpString = \
-"""
+helpString = """
 This is an example flow for use with placeRAM.
 
 There is a support tarball included for this file that is checked into the
@@ -23,26 +22,25 @@ set SCL $env(LIBERTY)
 set DESIGN $env(DESIGN)
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-read_verilog  BB.v
+read_verilog example/BB.v
 
 hierarchy -check -top $DESIGN
 
 synth -top $DESIGN -flatten
-
+ 
 splitnets
 opt_clean -purge
 
-write_verilog -noattr -noexpr -nodec $DESIGN.gl.v
+write_verilog -noattr -noexpr -nodec {}/$DESIGN.gl.v
 stat -top $DESIGN -liberty $SCL
 
 exit
-"""
+""".format(BUILD_FOLDER)
 
 synthShellScript = """
 export DESIGN={}
-export LIBERTY=$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib)
-BF=$(realpath {})
-(cd ../Handcrafted/Models; yosys $BF/synth.tcl)
+export LIBERTY=./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+yosys {}/synth.tcl
 """.format(DESIGN, BUILD_FOLDER)
 
 
@@ -51,7 +49,7 @@ read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
-read_verilog ../Handcrafted/Models/{}.gl.v
+read_verilog {}/{}.gl.v
 
 link_design {}
 
@@ -78,7 +76,9 @@ place_pins\
 report_checks -fields {{input slew capacitance}} -format full_clock
 
 write_def {}/{}.def
-""".format(DESIGN,
+""".format(
+        BUILD_FOLDER,
+        DESIGN,
         DESIGN,
         FULL_WIDTH, FULL_HEIGHT,
         MARGIN, MARGIN, DESIGN_WIDTH, DESIGN_HEIGHT,
@@ -88,7 +88,7 @@ placeDockerCmd = """
 docker run --rm\
      -v {}:/mnt/dffram\
      -w /mnt/dffram/Compiler\
-     donnio/dffram-env\
+     cloudv/dffram-env\
      python3 -m placeram\
      --represent {}/{}.txt\
      --output {}/{}.placed.def\
@@ -184,11 +184,12 @@ ext2spice
 lvsShellScript = """
 magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < {}/lvs.tcl
 mv *.ext *.spice {}
-netgen -batch lvs "{}/{}.spice {}" "../Handcrafted/Models/{}.gl.v {}" -full
+netgen -batch lvs "{}/{}.spice {}" "{}/{}.gl.v {}" -full
 mv comp.out {}/lvs.rpt
 """.format(BUILD_FOLDER,
         BUILD_FOLDER,
         BUILD_FOLDER, DESIGN, DESIGN,
+        BUILD_FOLDER,
         DESIGN,DESIGN,
         BUILD_FOLDER)
 

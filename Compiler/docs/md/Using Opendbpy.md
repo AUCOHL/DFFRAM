@@ -1,4 +1,4 @@
-# Using Opendbpy
+# 0. Using Opendbpy
 opendbpy is a frequently-rebasing fork of the OpenDB component of the OpenROAD app that supports two things the OpenROAD team soured on:
 - Python bindings
 - Standalone Operation

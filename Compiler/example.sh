@@ -16,13 +16,13 @@ HEREDOC
 
 if [ ! -d ./example_support ]; then
      echo "Untarring support files…"
-     tar -xJf ./example_support.tar.xz
+     tar -xJf ./example/example_support.tar.xz
 fi
 
 set -e
 set -x
 
-export SIZE=32x32
+export SIZE="${SIZE:-8x32}"
 export DESIGN=RAM$SIZE
 
 export MARGIN=5
@@ -65,7 +65,7 @@ set SCL \$env(LIBERTY)
 set DESIGN \$env(DESIGN)
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox \$SCL
-read_verilog  BB.v
+read_verilog example/BB.v
 
 hierarchy -check -top \$DESIGN
 
@@ -74,7 +74,7 @@ synth -top \$DESIGN -flatten
 splitnets
 opt_clean -purge
 
-write_verilog -noattr -noexpr -nodec \$DESIGN.gl.v
+write_verilog -noattr -noexpr -nodec $BUILD_FOLDER/\$DESIGN.gl.v
 stat -top \$DESIGN -liberty \$SCL
 
 exit
@@ -82,9 +82,8 @@ HEREDOC
 
 cat <<HEREDOC > $BUILD_FOLDER/synth.sh
 export DESIGN=$DESIGN
-export LIBERTY=\$(realpath ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib)
-BF=\$(realpath $BUILD_FOLDER)
-(cd ../Handcrafted/Models; yosys \$BF/synth.tcl)
+export LIBERTY=./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+yosys $BUILD_FOLDER/synth.tcl
 HEREDOC
 
 openlane bash $BUILD_FOLDER/synth.sh
@@ -95,7 +94,7 @@ read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
 read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
-read_verilog ../Handcrafted/Models/$DESIGN.gl.v
+read_verilog $BUILD_FOLDER/$DESIGN.gl.v
 
 link_design $DESIGN
 
@@ -133,7 +132,7 @@ openlane openroad $BUILD_FOLDER/fp_init.tcl
 docker run --rm\
      -v $(realpath ..):/mnt/dffram\
      -w /mnt/dffram/Compiler\
-     donnio/dffram-env\
+     cloudv/dffram-env\
      python3 -m placeram\
      --represent $BUILD_FOLDER/$DESIGN.txt\
      --output $BUILD_FOLDER/$DESIGN.placed.def\
@@ -220,7 +219,7 @@ HEREDOC
 cat <<HEREDOC > $BUILD_FOLDER/lvs.sh
 magic -rcfile ./example_support/sky130A.magicrc -noconsole -dnull < $BUILD_FOLDER/lvs.tcl
 mv *.ext *.spice $BUILD_FOLDER
-netgen -batch lvs "$BUILD_FOLDER/$DESIGN.spice $DESIGN" "../Handcrafted/Models/$DESIGN.gl.v $DESIGN" -full
+netgen -batch lvs "$BUILD_FOLDER/$DESIGN.spice $DESIGN" "$BUILD_FOLDER/$DESIGN.gl.v $DESIGN" -full
 mv comp.out $BUILD_FOLDER/lvs.rpt
 HEREDOC
 
