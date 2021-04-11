@@ -1,5 +1,5 @@
 # DFFRAM Compiler
-![example workflow](https://github.com/Cloud-V/DFFRAM/workflows/main.yml/badge.svg)
+![CI Badge](https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main)
 
 Standard Cell Library based Memory Compiler using DFF cells.
 
