@@ -6,7 +6,7 @@ except ImportError:
     You need to install opendb (Ahmed Ghazy's fork):
     https://github.com/ax3ghazy/opendb
     Build normally then go to ./build/src/swig/python and run:
-    
+
     python3 setup.py install
 
     (On macOS rename the .dylib to .so first)
@@ -20,7 +20,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice
+from .data import Block, Slice, Block4x32x32Banks
 from .row import Row
 
 import os
@@ -38,7 +38,7 @@ class Placer:
 
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
-    SUPPORTED_WORD_COUNTS = [8, 32]
+    SUPPORTED_WORD_COUNTS = [8, 32, 128]
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width != 32:
@@ -76,7 +76,7 @@ class Placer:
         self.block = self.db.getChip().getBlock()
 
         self.instances = self.block.getInsts()
-        eprint("Found %i instances…" % len(self.instances)) 
+        eprint("Found %i instances…" % len(self.instances))
 
         def create_tap(name):
             return odb.dbInst_create(self.block, self.tap_cell, name)
@@ -94,6 +94,8 @@ class Placer:
             self.hierarchy = Slice(self.instances)
         elif word_count == 32:
             self.hierarchy = Block(self.instances)
+        elif word_count == 128:
+            self.hierarchy = Block4x32x32Banks(self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)

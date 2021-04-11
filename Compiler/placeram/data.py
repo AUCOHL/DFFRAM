@@ -523,3 +523,156 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
 
         return current_row
+# This is a block of 4 RAM32x32 placing the 128x32RAM
+# verilog module
+class Block4x32x32Banks(Placeable):
+    def __init__(self, instances):
+        # CLKBUF
+        # ENBUF
+        # B0
+        # B1
+        # B2
+        # B3
+        # DIBUF[31:0]
+        # WEBUF[3:0]
+        # ABUF[6:0]
+        # DEC
+        # DoMUX
+        self.clkbuf = None
+        self.enbuf = None
+        raw_blocks = {}
+        raw_decoder_ands = {}
+
+        raw_dibufs = {}
+        raw_webufs = {}
+        raw_abufs = {}
+        raw_domuxs = {}
+
+        clkbuf = r"\bCLKBUF\b"
+        enbuf = r"\bENBUF\b"
+
+        block = r"\bB(\d+)\b"
+        decoder_and = r"\bDEC\.AND(\d+)\b"
+        dibuf = r"\bDIBUF\\\[(\d+)\\\]"
+        domux = r"\bDoMUX\.MUX\\\[(\d+)\\\]"
+        webuf = r"\bWEBUF\\\[(\d+)\\\]"
+        abuf = r"\bABUF\\\[(\d+)\\\]"
+        decoder2x4 = r"\bDEC\\\[(\d+)\\\]"
+
+        for instance in instances:
+            n = instance.getName()
+            if block_match := re.search(block, n):
+                i = int(block_match[1])
+                raw_blocks[i] = raw_blocks.get(i) or []
+                raw_blocks[i].append(instance)
+            elif decoder_and_match := re.search(decoder_and, n):
+                i = int(decoder_and_match[1])
+                raw_decoder_ands[i] = instance
+            elif dibuf_match := re.search(dibuf, n):
+                i = int(dibuf_match[1])
+                raw_dibufs[i] = instance
+            elif webuf_match := re.search(webuf, n):
+                i = int(webuf_match[1])
+                raw_webufs[i] = instance
+            elif clkbuf_match := re.search(clkbuf, n):
+                self.clkbuf = instance
+            elif abuf_match := re.search(abuf, n):
+                i = int(abuf_match[1])
+                raw_abufs[i] = instance
+            elif enbuf_match := re.search(enbuf, n):
+                self.enbuf = instance
+
+            elif domux_match := re.search(domux, n):
+                i = int(domux_match[1])
+                raw_domuxs[i] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+        self.blocks = d2a({k: Block(v) for k, v in
+            raw_blocks.items()})
+        self.decoder_ands = d2a(raw_decoder_ands)
+        self.dibufs = d2a(raw_dibufs)
+
+        self.webufs = d2a(raw_webufs)
+        self.abufs = d2a(raw_abufs)
+        self.domuxs = d2a(raw_domuxs)
+
+    def represent(self, tab_level=-1, file=sys.stderr):
+        tab_level += 1
+
+        print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
+
+        print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
+
+        print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.decoder_ands:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.webufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.abufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for instance in self.dibufs:
+            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+        tab_level -= 1
+
+        print("%sBlocks" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for i, ablock in enumerate(self.blocks):
+            print("%sBlock %i" % ("".join(["  "] * tab_level), i), file=file)
+            ablock.represent(tab_level=tab_level, file=file)
+        tab_level -= 1
+        print("%sMuxes" % "".join(["  "] * tab_level), file=file)
+        tab_level += 1
+        for i, amux in enumerate(self.domuxs):
+            print("%sMux %i" % ("".join(["  "] * tab_level), i), file=file)
+            # amux.represent(tab_level=tab_level, file=file)
+        tab_level -= 1
+
+    def place(self, row_list, start_row=0):
+        current_row = start_row
+        r = row_list[current_row]
+
+        for dibuf in self.dibufs:
+            r.place(dibuf)
+
+        current_row += 1
+
+        for ablock in self.blocks:
+            print("placing the blocks")
+            current_row = ablock.place(row_list, current_row)
+
+        current_row += 1
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+        last_column = [
+            self.clkbuf,
+            self.enbuf,
+            *self.webufs,
+            *self.abufs
+            *self.decoder_ands,
+            *self.domuxs
+        ]
+
+        c2 = start_row
+        for el in last_column:
+            r = row_list[c2]
+            r.place(el)
+            c2 += 1
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+
+        return current_row
