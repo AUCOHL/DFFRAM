@@ -1,3 +1,4 @@
+import shlex
 from pathlib import Path
 from config import *
 
@@ -110,7 +111,7 @@ backupPlacedDesignCmd = "mv {}/{}.placed.def {}/{}.placed.def.ref".format(BUILD_
         DESIGN)
 
 removeUnnecessaryPortsCmd = """
-sed 's/+ PORT//g' {}/{}.placed.def.ref > {}/{}.placed.def
+sed "'s/+ PORT//g'" {}/{}.placed.def.ref > {}/{}.placed.def
 """.format(BUILD_FOLDER, DESIGN, BUILD_FOLDER, DESIGN)
 
 verifyTclScript = """
@@ -138,11 +139,11 @@ read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 read_def {}/{}.placed.def
 
 global_route \
-     -guide_file {}/route.guide
-     -layers $global_routing_layers
-     -clock_layers $global_routing_clock_layers
-     -unidirectional_routing
-     -overflow_iterations 100
+     -guide_file {}/route.guide\
+     -layers $global_routing_layers\
+     -clock_layers $global_routing_clock_layers\
+     -unidirectional_routing\
+     -overflow_iterations 100\
 
 tr::detailed_route_cmd {}/tr.param
 """.format(BUILD_FOLDER, DESIGN, BUILD_FOLDER, BUILD_FOLDER)
@@ -156,8 +157,7 @@ outputguide:{}/{}.guide
 outputDRC:{}/{}.drc
 threads:8
 verbose:1
-""".format(BUILD_FOLDER,
-        BUILD_FOLDER, DESIGN,
+""".format(BUILD_FOLDER, DESIGN,
         BUILD_FOLDER,
         BUILD_FOLDER, DESIGN,
         BUILD_FOLDER, DESIGN,
@@ -168,7 +168,7 @@ lvsTclScript = """
 puts "Running magic script…"
 lef read ./example_support/sky130_fd_sc_hd.merged.lef
 def read {}/{}.routed.def
-load $DESIGN -dereference
+load {} -dereference
 extract do local
 extract no capacitance
 extract no coupling
@@ -179,7 +179,7 @@ extract
 
 ext2spice lvs
 ext2spice
-""".format(BUILD_FOLDER, DESIGN)
+""".format(BUILD_FOLDER, DESIGN, DESIGN)
 
 
 lvsShellScript = """

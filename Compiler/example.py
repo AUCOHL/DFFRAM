@@ -1,7 +1,9 @@
 #!/bin/python3
 import os
+import shlex
 import subprocess
 import pathlib
+import re
 from subprocess import Popen
 from pathlib import Path
 from scripts_strings import *
@@ -15,17 +17,23 @@ if not os.path.exists('./example_support'):
 p = pathlib.Path("./build/")
 p.mkdir(parents=True, exist_ok=True)
 
+def remove_all_ports_from_placed(fileName, newFileName):
+    with open(fileName, 'r') as f, open(newFileName, "w+") as fout:
+        data = f.read()
+        data = data.replace('+ PORT', '')
+        fout.write(data)
+
 def write_script_to_file(theScript, fileName):
     filePath = designBuildFolderPath / fileName
     with filePath.open("w", encoding="utf-8") as f:
         f.write(theScript)
 
-def run_bash_string_cmd(cmdString):
-    returnCode = subprocess.run(cmdString.split(),
-            check=True).returncode
+def run_bash_string_cmd(cmdString, shell=False):
+    returnCode = subprocess.run(shlex.split(cmdString),
+            check=True, shell=shell).returncode
     if returnCode != 0:
         print("failure in cmd")
-        print(cmdString.split())
+        print(shlex.split(cmdString))
         print(returnCode)
         exit(0)
 
@@ -57,15 +65,19 @@ def flow():
     # Remove ports
     run_bash_string_cmd(removePortsCmd)
     run_bash_string_cmd(backupPlacedDesignCmd)
-    run_bash_string_cmd(removeUnnecessaryPortsCmd)
+    remove_all_ports_from_placed(
+            "{}/{}.placed.def.ref".format(BUILD_FOLDER, DESIGN),
+            "{}/{}.placed.def".format(BUILD_FOLDER, DESIGN))
+    # run_bash_string_cmd(removeUnnecessaryPortsCmd)
     # 4. Verify Placement
     write_script_to_file(verifyTclScript, "verify.tcl")
     openlane("openroad {}/verify.tcl".format(BUILD_FOLDER))
     # 5. Attempt Routing
     write_script_to_file(routeTclScript, "route.tcl")
-    write_script_to_file(trParams, "tr.params")
+    write_script_to_file(trParams, "tr.param")
     openlane("openroad {}/route.tcl".format(BUILD_FOLDER))
     # 6. LVS
+    write_script_to_file(lvsTclScript, "lvs.tcl")
     write_script_to_file(lvsShellScript, "lvs.sh")
     openlane("bash {}/lvs.sh".format(BUILD_FOLDER))
     # Harden? # def -> gdsII (magic) and def -> lef (magic)
