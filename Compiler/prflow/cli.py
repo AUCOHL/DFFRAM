@@ -12,7 +12,7 @@ build_folder.mkdir(parents=True, exist_ok=True)
 
 if not os.path.exists('./example_support'):
      print("Untarring support files…")
-     extractionCmd = "tar -xJf ./example_support.tar.xz"
+     extractionCmd = "tar -xJf ./example/example_support.tar.xz"
      subprocess.run(extractionCmd.split())
 p = pathlib.Path("./build/")
 p.mkdir(parents=True, exist_ok=True)

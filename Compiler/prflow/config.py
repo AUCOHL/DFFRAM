@@ -1,6 +1,6 @@
 from pathlib import Path
 
-SIZE="32x32"
+SIZE="8x32"
 DESIGN="RAM{}".format(SIZE)
 
 MARGIN=5
