@@ -20,7 +20,7 @@
 
 module tb_RAM512x32;
     
-    localparam A_W = 9;
+    localparam A_W = 11;
     localparam M_SZ = 2**A_W;
     
     reg             CLK;
@@ -34,7 +34,7 @@ module tb_RAM512x32;
 
     event           done;
     
-    RAM128x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
+    RAM512x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
