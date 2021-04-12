@@ -551,7 +551,7 @@ class Block4x32x32Banks(Placeable):
         clkbuf = r"\bCLKBUF\b"
         enbuf = r"\bENBUF\b"
 
-        block = r"\bBLOCK_B(\d+)\b"
+        block = r"\bBANK_B(\d+)\b"
         decoder_and = r"\bDEC\.AND(\d+)\b"
         dibuf = r"\bDIBUF\\\[(\d+)\\\]"
         domux = r"\bDoMUX\.MUX\\\[(\d+)\\\]"
