@@ -10,5 +10,5 @@ if __name__ == "__main__":
     tb = tb_template.changeable_sub.format(word_num,
             address_lines_num)
     tb += tb_template.constant_sub
-    with open('tb_RAM{}x32_gen.v'.format(word_num), 'w+') as f:
+    with open('tb_RAM{}x32.v'.format(word_num), 'w+') as f:
         f.write(tb)
