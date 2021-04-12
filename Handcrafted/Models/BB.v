@@ -255,10 +255,10 @@ module RAM128x32 #(parameter USE_LATCH=1) (
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[6:5]), .SEL(SEL));
 
     // 32x32 RAM Banks
-    RAM32x32 #(.USE_LATCH(USE_LATCH)) PREFIX_B0 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[4:0]) );    
-    RAM32x32 #(.USE_LATCH(USE_LATCH)) PREFIX_B1 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[4:0]) );    
-    RAM32x32 #(.USE_LATCH(USE_LATCH)) PREFIX_B2 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[4:0]) );    
-    RAM32x32 #(.USE_LATCH(USE_LATCH)) PREFIX_B3 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[4:0]) );    
+    RAM32x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[4:0]) );    
+    RAM32x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[4:0]) );    
+    RAM32x32 #(.USE_LATCH(USE_LATCH)) B2 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[4:0]) );    
+    RAM32x32 #(.USE_LATCH(USE_LATCH)) B3 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[4:0]) );    
 
     // Output MUX
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A_buf[6:5]), .X(Do) );
