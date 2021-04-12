@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          size: ["8x32", "32x32"]
+          size: ["8x32", "32x32", "128x32"]
           script: ["example.sh", "example_py.sh"]
     steps:
       - name: Checkout code

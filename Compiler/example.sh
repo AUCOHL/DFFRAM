@@ -27,11 +27,10 @@ export DESIGN=RAM$SIZE
 
 export MARGIN=5
 
-export DESIGN_WIDTH=600
-export DESIGN_HEIGHT=600
-
 # ---
 BUILD_FOLDER=./build/$DESIGN
+export DESIGN_WIDTH=1000
+export DESIGN_HEIGHT=1000
 
 (( FULL_SAFE_AREA=$MARGIN * 2 ))
 
@@ -65,7 +64,7 @@ set SCL \$env(LIBERTY)
 set DESIGN \$env(DESIGN)
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox \$SCL
-read_verilog example/BB.v
+read_verilog BB.v
 
 hierarchy -check -top \$DESIGN
 

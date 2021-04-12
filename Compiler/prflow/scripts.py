@@ -22,7 +22,7 @@ set SCL $env(LIBERTY)
 set DESIGN $env(DESIGN)
 
 read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-read_verilog example/BB.v
+read_verilog BB.v
 
 hierarchy -check -top $DESIGN
 

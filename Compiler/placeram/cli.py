@@ -20,7 +20,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, Block4x32x32Banks
+from .data import Block, Slice, HigherLevelPlaceable
 from .row import Row
 
 import os
@@ -47,7 +47,6 @@ class Placer:
         if word_count not in Placer.SUPPORTED_WORD_COUNTS:
             eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
             exit(64)
-
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -85,7 +84,8 @@ class Placer:
             fill_cell = self.fill_cells_by_sites[sites]
             return odb.dbInst_create(self.block, fill_cell, name)
 
-        tap_distance = self.block.getDefUnits() * Placer.TAP_DISTANCE_MICRONS
+        self.micron_in_units = self.block.getDefUnits()
+        tap_distance = self.micron_in_units * Placer.TAP_DISTANCE_MICRONS
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
@@ -94,15 +94,31 @@ class Placer:
             self.hierarchy = Slice(self.instances)
         elif word_count == 32:
             self.hierarchy = Block(self.instances)
-        elif word_count == 128:
-            self.hierarchy = Block4x32x32Banks(self.instances)
+        elif word_count >= 128:
+            self.hierarchy = HigherLevelPlaceable(self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)
 
     def place(self):
         eprint("Starting placement…")
-        self.hierarchy.place(self.rows)
+        last_row = self.hierarchy.place(self.rows)
+        
+        # We can't rely on the fact that a placeable will probably fill
+        # before returning and pick the width of the nth row or whatever.
+        width_units = 0
+        for row in self.rows: 
+            width_units = max(row.x, width_units)
+
+        width = width_units / self.micron_in_units
+
+        height_units = self.rows[last_row].y - self.rows[0].y
+
+        height = height_units / self.micron_in_units
+        
+        eprint("Placement concluded with core size of %fµm x %fµm." % (width, height))
+
+        eprint("Done.")
 
     def unplace_fills(self):
         eprint("Unplacing fills…")

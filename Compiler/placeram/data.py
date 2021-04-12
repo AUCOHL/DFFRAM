@@ -16,6 +16,9 @@ class Placeable(object):
     def place(self, row_list, current_row=0):
         raise Exception("Method unimplemented.")
 
+    def represent(self, tab_level=-1, file=sys.stderr):
+        raise Exception("Method unimplemented.")
+
 class DataError(Exception):
     pass
 # --
@@ -521,23 +524,51 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         Row.fill_rows(row_list, start_row, current_row)
 
-
         return current_row
-# This is a block of 4 RAM32x32 placing the 128x32RAM
-# verilog module
-class Block4x32x32Banks(Placeable):
+
+class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs must be == the number of bytes
     def __init__(self, instances):
-        # CLKBUF
-        # ENBUF
-        # B0
-        # B1
-        # B2
-        # B3
-        # DIBUF[31:0]
-        # WEBUF[3:0]
-        # ABUF[6:0]
-        # DEC
-        # DoMUX
+        raw_selbufs = {}
+        raw_muxes = {}
+
+        selbuf = r"\bSEL(\d*)?BUF\\\[(\d+)\\\]"
+        mux = r"\bMUX(\d+)\\\[(\d+)\\\]" 
+
+        for instance in instances:
+            n = instance.getName()
+            if selbuf_match := re.search(selbuf, n):
+                line, byte = (int(selbuf_match[1] or "0"), int(selbuf_match[2]))
+                raw_selbufs[byte] = raw_selbufs.get(byte) or {}
+                raw_selbufs[byte][line] = instance
+            elif mux_match := re.search(mux, n):
+                byte, bit = (int(mux_match[1]), int(mux_match[2]))
+                raw_muxes[byte] = raw_muxes.get(byte) or {}
+                raw_muxes[byte][bit] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
+        self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
+        self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
+    
+    def represent(self, tab_level=-1, file=sys.stderr):
+        tab_level += 1
+
+        # TODO
+
+    def place(self, row_list, start_row=0):
+        r = row_list[start_row]
+        
+        for selbuf_lines, mux_bits in zip(self.selbufs, self.muxes):
+            for line in selbuf_lines:
+                r.place(line)
+            for bit in mux_bits:
+                r.place(bit)
+
+        return start_row + 1
+
+class HigherLevelPlaceable(Placeable):
+    def __init__(self, instances):
+        # TODO: Generalize beyond Block
         self.clkbuf = None
         self.enbuf = None
         raw_blocks = {}
@@ -546,7 +577,8 @@ class Block4x32x32Banks(Placeable):
         raw_dibufs = {}
         raw_webufs = {}
         raw_abufs = {}
-        raw_domuxs = {}
+
+        raw_domux = []
 
         clkbuf = r"\bCLKBUF\b"
         enbuf = r"\bENBUF\b"
@@ -554,10 +586,9 @@ class Block4x32x32Banks(Placeable):
         block = r"\bBANK_B(\d+)\b"
         decoder_and = r"\bDEC\.AND(\d+)\b"
         dibuf = r"\bDIBUF\\\[(\d+)\\\]"
-        domux = r"\bDoMUX\.MUX\\\[(\d+)\\\]"
+        domux = r"\bDoMUX\b"
         webuf = r"\bWEBUF\\\[(\d+)\\\]"
         abuf = r"\bABUF\\\[(\d+)\\\]"
-        decoder2x4 = r"\bDEC\\\[(\d+)\\\]"
 
         for instance in instances:
             n = instance.getName()
@@ -581,10 +612,8 @@ class Block4x32x32Banks(Placeable):
                 raw_abufs[i] = instance
             elif enbuf_match := re.search(enbuf, n):
                 self.enbuf = instance
-
             elif domux_match := re.search(domux, n):
-                i = int(domux_match[1])
-                raw_domuxs[i] = instance
+                raw_domux.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
         self.blocks = d2a({k: Block(v) for k, v in
@@ -594,7 +623,7 @@ class Block4x32x32Banks(Placeable):
 
         self.webufs = d2a(raw_webufs)
         self.abufs = d2a(raw_abufs)
-        self.domuxs = d2a(raw_domuxs)
+        self.domux = Mux(raw_domux)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
@@ -633,11 +662,8 @@ class Block4x32x32Banks(Placeable):
             print("%sBlock %i" % ("".join(["  "] * tab_level), i), file=file)
             ablock.represent(tab_level=tab_level, file=file)
         tab_level -= 1
-        print("%sMuxes" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, amux in enumerate(self.domuxs):
-            print("%sMux %i" % ("".join(["  "] * tab_level), i), file=file)
-            # amux.represent(tab_level=tab_level, file=file)
+
+        # TODO: Mux
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
@@ -650,10 +676,11 @@ class Block4x32x32Banks(Placeable):
         current_row += 1
 
         for ablock in self.blocks:
-            print("placing the blocks")
             current_row = ablock.place(row_list, current_row)
 
         current_row += 1
+
+        current_row = self.domux.place(row_list, current_row)
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -662,8 +689,7 @@ class Block4x32x32Banks(Placeable):
             self.enbuf,
             *self.webufs,
             *self.abufs,
-            *self.decoder_ands,
-            *self.domuxs
+            *self.decoder_ands
         ]
 
         c2 = start_row
