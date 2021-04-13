@@ -35,4 +35,4 @@ jobs:
           sudo apt-get install iverilog
           export PATTERN=tb_RAM${{ matrix.size }}
           cd Compiler/verification/
-          make | grep -c fatal
+          make
