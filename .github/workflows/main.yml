@@ -22,7 +22,7 @@ jobs:
           bash ${{ matrix.script }}
           
   verify_BB:
-    name: Build/Linux
+    name: Verify_BB/Linux
     runs-on: ubuntu-latest
     strategy:
         matrix:
