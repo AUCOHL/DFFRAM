@@ -181,7 +181,7 @@ constant_sub="""
         if(RAM_DATA !== Do) begin
             $display("\\n>>Test Failed! <<\\t(Pahse: %0d, Iteration: %0d", Phase, i);
             $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/4]);
-            -> done;
+            $fatal;
         end
     end
     endtask
