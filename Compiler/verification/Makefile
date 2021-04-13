@@ -8,7 +8,6 @@ PATTERN = tb_RAM32x32
 
 all:  ${PATTERN:=.vcd}
 
-<<<<<<< HEAD
 help:
 	@echo  ' you can call this make file like : make PATTERN=tb_RAM<WORDNUM>x32 '
 	@echo  ' where WORDNUM is 8, 32, 128, 512, default is 32, running it without'
@@ -19,26 +18,13 @@ help:
 
 %.vcd: %.vvp
 	vvp $<
-=======
-%.vcd: %.vvp
-	vvp $<
-	echo "Done with VCD\n"
->>>>>>> resetting the Handcrafter/Verification folder to the original state
 
 %.vvp: %.v
 	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
 	$<
-<<<<<<< HEAD
 
 %.v:
 	python3 gen_tb.py ${PATTERN}
-=======
-	echo "Done with VVP\n"
-
-%.v:
-	python3 gen_tb.py ${PATTERN}
-	echo "Done with V\n"
->>>>>>> resetting the Handcrafter/Verification folder to the original state
 
 clean:
 	rm -f *.vvp *.vcd *.out
