@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Verify
         run: |
+          sudo apt-get install iverilog
           export PATTERN=tb_RAM${{ matrix.size }}
           cd Compiler/verification/
           make 
