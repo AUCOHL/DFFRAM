@@ -21,3 +21,17 @@ jobs:
           cd Compiler/
           bash ${{ matrix.script }}
           
+  verify_BB:
+    name: Build/Linux
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          size: ["8x32", "32x32", "128x32", "512x32"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Verify
+        run: |
+          export PATTERN=tb_RAM${{ matrix.size }}
+          cd Compiler/verification/
+          make 
