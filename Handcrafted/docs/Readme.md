@@ -33,15 +33,11 @@ Untill the compiler is ready, you may use [OpenLANE](https://github.com/efabless
 
 The following table compares the hardened handcrafted memories to the equivalent hardened RTL synthesized memories. Both hardened using OpenLANE.
 
-|  Memory Type | No. of Instances  |  Placement Density | Dimensions X (um) x Y (um)
-| ------------ | ------------ | ------------ |------------ |
-| HC 1 kbyte  |  19,897 | 87.2%  | 425	x 820|
-| HC 2 kbytes  |  40,554 | 84.8%  |1,210 x 610|
-| HC 4 kbytes  | 81,044  | 84.8%  | 1,628 x 911|
-| RTL 1 kbyte  |  51,972 | 61%  | 1,050 x 1,060|
-| RTL 2 kbytes*  |  103,933 | 61%  |1,470 x 1,481|
-| RTL 4 kbytes  | 207,822 | 61%  | 2,074 x 2,085|
-
+| Size  | No of Instances (*Handcrafted*/RTL) | Placement Density (*Handcrafted*/RTL) | Dimensions X (µm) x Y (µm) (*Handcrafted*/RTL) |
+| -     | -                                   | -                                     | -                                              |
+| 1KiB  | *19,897* vs 51,972                  | *87.2%* vs 61%                        | *425	x 820* vs 1,050 x 1,060                  |
+| 2KiB* | *40,554* vs 103,933                 | *84.8%* vs 61%                        | *1,210 x 610* vs 1,470 x 1,481                 |
+| 4KiB  | *81,044* vs 207,822                 | *84.8%* vs 61%                        | *1,628 x 911* vs 2,074 x 2,085                 |
 `*` OpenLANE did not produce a clean GDSII
 
 We target above 95% placement density using the DDFRAM compiler custom placer. 
