@@ -321,54 +321,54 @@ endmodule
 
 
 // 4Kbytes
-module RAM1024x32 #(parameter USE_LATCH=1) (
-    input   wire        CLK,    // FO: 2
-    input   wire [3:0]  WE,     // FO: 2
-    input               EN,     // FO: 2
-    input   wire [31:0] Di,     // FO: 2
-    output  wire [31:0] Do,
-    input   wire [9:0]  A       // FO: 2
-);
+/* module RAM1024x32 #(parameter USE_LATCH=1) ( */
+/*     input   wire        CLK,    // FO: 2 */
+/*     input   wire [3:0]  WE,     // FO: 2 */
+/*     input               EN,     // FO: 2 */
+/*     input   wire [31:0] Di,     // FO: 2 */
+/*     output  wire [31:0] Do, */
+/*     input   wire [9:0]  A       // FO: 2 */
+/* ); */
 
-    wire [31:0] Do_0, Do_1; 
-    wire        SEL, 
-                SEL_B;
+/*     wire [31:0] Do_0, Do_1; */ 
+/*     wire        SEL, */ 
+/*                 SEL_B; */
 
-    sky130_fd_sc_hd__clkbuf_2 SELBUF (.X(SEL), .A(A[9]));
-    sky130_fd_sc_hd__inv_2 SELINV(.Y(SEL_B), .A(A[9]));
+/*     sky130_fd_sc_hd__clkbuf_2 SELBUF (.X(SEL), .A(A[9])); */
+/*     sky130_fd_sc_hd__inv_2 SELINV(.Y(SEL_B), .A(A[9])); */
     
-    // 32x32 RAM Banks
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(SEL_B), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(SEL), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) );     
+/*     // 32x32 RAM Banks */
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(SEL_B), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) ); */    
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(SEL), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) ); */     
   
-    // Output MUX
-    MUX2x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .S(SEL), .X(Do) );
+/*     // Output MUX */
+/*     MUX2x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .S(SEL), .X(Do) ); */
 
-endmodule
+/* endmodule */
 
-// 8 Kbytes
-module RAM2048x32 #(parameter USE_LATCH=1) (
-    input   wire        CLK,    // FO: 4
-    input   wire [3:0]  WE,     // FO: 4
-    input               EN,     // FO: 4
-    input   wire [31:0] Di,     // FO: 4
-    output  wire [31:0] Do,
-    input   wire [10:0]  A      // FO: 8
-);
+/* // 8 Kbytes */
+/* module RAM2048x32 #(parameter USE_LATCH=1) ( */
+/*     input   wire        CLK,    // FO: 4 */
+/*     input   wire [3:0]  WE,     // FO: 4 */
+/*     input               EN,     // FO: 4 */
+/*     input   wire [31:0] Di,     // FO: 4 */
+/*     output  wire [31:0] Do, */
+/*     input   wire [10:0]  A      // FO: 8 */
+/* ); */
 
-    wire [31:0] Do_0, Do_1, Do_2, Do_3;
+/*     wire [31:0] Do_0, Do_1, Do_2, Do_3; */
 
-    wire [3:0] SEL;
+/*     wire [3:0] SEL; */
 
-    DEC2x4 DEC (.EN(EN), .A(A[10:9]), .SEL(SEL));
+/*     DEC2x4 DEC (.EN(EN), .A(A[10:9]), .SEL(SEL)); */
 
-    // 32x32 RAM Banks
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(SEL[0]), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(SEL[1]), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) );    
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B2 (.CLK(CLK), .EN(SEL[2]), .WE(WE), .Di(Di), .Do(Do_2), .A(A[8:0]) );    
-    RAM512x32 #(.USE_LATCH(USE_LATCH)) B3 (.CLK(CLK), .EN(SEL[3]), .WE(WE), .Di(Di), .Do(Do_3), .A(A[8:0]) );   
+/*     // 32x32 RAM Banks */
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B0 (.CLK(CLK), .EN(SEL[0]), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) ); */    
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B1 (.CLK(CLK), .EN(SEL[1]), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) ); */    
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B2 (.CLK(CLK), .EN(SEL[2]), .WE(WE), .Di(Di), .Do(Do_2), .A(A[8:0]) ); */    
+/*     RAM512x32 #(.USE_LATCH(USE_LATCH)) B3 (.CLK(CLK), .EN(SEL[3]), .WE(WE), .Di(Di), .Do(Do_3), .A(A[8:0]) ); */   
   
-    // Output MUX
-    MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A[10:9]), .X(Do) );
+/*     // Output MUX */
+/*     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A[10:9]), .X(Do) ); */
 
-endmodule
+/* endmodule */
