@@ -22,4 +22,6 @@ You can use Docker to substitute all of these dependencies, but:
 * `example.sh` is a flow going from building blocks to LVS.
   * `prflow/` contains a Python replacement (runnable via `example_py.sh`), albeit a work in progress. The idea is to make prflow more… configurable than the shell script.
 
-# [Documentation](./docs/Readme.md)
+# Documentation
+1. [Using Opendbpy](./md/Using%20Opendbpy.md)
+2. [How PlaceRAM Works](./md/How%20PlaceRAM%20Works.md)
