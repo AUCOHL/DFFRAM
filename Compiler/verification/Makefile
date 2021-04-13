@@ -1,6 +1,6 @@
 
 PDK_PATH?=../../pdk
-RTL_PATH=../models
+RTL_PATH=..
 
 .SUFFIXES:
 
