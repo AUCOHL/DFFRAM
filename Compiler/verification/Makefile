@@ -17,7 +17,7 @@ help:
 	@echo  ''
 
 %.vcd: %.vvp
-	vvp $< 
+	vvp $<
 
 %.vvp: %.v
 	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
