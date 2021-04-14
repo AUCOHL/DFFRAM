@@ -8,6 +8,7 @@ jobs:
   build_linux:
     name: Build/Linux
     runs-on: ubuntu-latest
+    needs: verify_BB
     strategy:
         matrix:
           size: ["8x32", "32x32", "128x32"]
@@ -21,3 +22,18 @@ jobs:
           cd Compiler/
           bash ${{ matrix.script }}
           
+  verify_BB:
+    name: Verify_BB/Linux
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          size: ["8x32", "32x32", "128x32", "512x32"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Verify
+        run: |
+          sudo apt-get install iverilog
+          export PATTERN=tb_RAM${{ matrix.size }}
+          cd Compiler/verification/
+          /bin/bash -c "! make | grep -c FATAL"

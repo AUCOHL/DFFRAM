@@ -1,6 +1,6 @@
 
 PDK_PATH?=../../pdk
-RTL_PATH=../../Compiler
+RTL_PATH=..
 
 .SUFFIXES:
 
@@ -16,12 +16,15 @@ help:
 	@echo  '  clean           - Remove generated files'
 	@echo  ''
 
-%.vvp: %.v
-	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
-	$< 
-
 %.vcd: %.vvp
 	vvp $<
+
+%.vvp: %.v
+	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
+	$<
+
+%.v:
+	python3 gen_tb.py ${PATTERN}
 
 clean:
 	rm -f *.vvp *.vcd *.out

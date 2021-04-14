@@ -5,7 +5,7 @@ import math
 
 if __name__ == "__main__":
     PATTERN = sys.argv[1]
-    word_num = int(re.search('tb_RAM(.*)x32', PATTERN).group(1))
+    word_num = int(re.search('RAM(.*)x32', PATTERN).group(1))
     address_lines_num = int(math.log2(word_num))
     tb = tb_template.changeable_sub.format(word_num,
             address_lines_num)
