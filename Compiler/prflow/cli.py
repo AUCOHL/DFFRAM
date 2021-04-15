@@ -23,8 +23,11 @@ def remove_all_ports_from_placed(fileName, newFileName):
         data = data.replace('+ PORT', '')
         fout.write(data)
 
-def write_script_to_file(theScript, fileName):
+def write_script_to_file(theScript,
+        fileName,
+        build_folder=build_folder):
     filePath = build_folder / fileName
+    print("writing file : ", filePath)
     with filePath.open("w", encoding="utf-8") as f:
         f.write(theScript)
 
@@ -56,7 +59,7 @@ def main():
     openlane("bash {}/synth.sh".format(BUILD_FOLDER))
 
     # 2. Floorplan Initialization
-    write_script_to_file(floorplanTclScript, "fp_init.tcl")
+    write_script_to_file(floorplanTclScriptFilled, "fp_init.tcl")
     openlane("openroad {}/fp_init.tcl".format(BUILD_FOLDER))
 
     # 3. PlaceRAM

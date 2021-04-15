@@ -1,11 +1,11 @@
 class Row(object):
     sw = None
     sh = None
-    
+
     create_tap = None
     tap_distance = None
 
-    create_fill = None 
+    create_fill = None
 
     # Assumptions:
     #   All fills are powers of 2.
@@ -20,8 +20,9 @@ class Row(object):
 
         self.origin = self.obj.getOrigin()
         [self.x, self.y] = self.obj.getOrigin()
-        self.max = self.obj.getBBox().xMax()
+        self.xmax = self.obj.getBBox().xMax()
 
+        self.ymax = self.obj.getBBox().yMax()
         self.orientation = self.obj.getOrient()
 
         self.cell_counter = 0
@@ -108,7 +109,7 @@ class Row(object):
             width = r.x
             width_sites = int(width / Row.sw)
             max_sw = max(max_sw, width_sites)
-            
+
         for i in range(from_index, to_index):
             r = rows[i]
             width = r.x
@@ -119,7 +120,7 @@ class Row(object):
             remaining = empty
 
             fills = bin_pack(empty, Row.max_fill_size)
-            
+
             for fill in fills:
                 fill_cell = Row.create_fill("fill_%i_%i" % (i, r.fill_counter), fill)
                 r.place(fill_cell, ignore_tap=True)

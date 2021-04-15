@@ -27,7 +27,7 @@ read_verilog BB.v
 hierarchy -check -top $DESIGN
 
 synth -top $DESIGN -flatten
- 
+
 splitnets
 opt_clean -purge
 
@@ -76,7 +76,8 @@ place_pins\
 report_checks -fields {{input slew capacitance}} -format full_clock
 
 write_def {}/{}.def
-""".format(
+"""
+floorplanTclScriptFilled = floorplanTclScript.format(
         BUILD_FOLDER,
         DESIGN,
         DESIGN,

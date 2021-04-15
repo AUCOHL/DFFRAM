@@ -162,6 +162,8 @@ class Word(Placeable):
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
+        print("length of the row list", len(row_list))
+        print("start_row is ", start_row)
         r = row_list[start_row]
 
         for byte in self.bytes:
@@ -532,7 +534,7 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
         raw_muxes = {}
 
         selbuf = r"\bSEL(\d*)?BUF\\\[(\d+)\\\]"
-        mux = r"\bMUX(\d+)\\\[(\d+)\\\]" 
+        mux = r"\bMUX(\d+)\\\[(\d+)\\\]"
 
         for instance in instances:
             n = instance.getName()
@@ -549,7 +551,7 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
 
         self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
         self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
-    
+
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
@@ -557,7 +559,7 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
-        
+
         for selbuf_lines, mux_bits in zip(self.selbufs, self.muxes):
             for line in selbuf_lines:
                 r.place(line)
