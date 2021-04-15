@@ -27,7 +27,6 @@ def write_script_to_file(theScript,
         fileName,
         build_folder=build_folder):
     filePath = build_folder / fileName
-    print("writing file : ", filePath)
     with filePath.open("w", encoding="utf-8") as f:
         f.write(theScript)
 

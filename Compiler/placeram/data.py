@@ -162,8 +162,6 @@ class Word(Placeable):
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
-        print("length of the row list", len(row_list))
-        print("start_row is ", start_row)
         r = row_list[start_row]
 
         for byte in self.bytes:

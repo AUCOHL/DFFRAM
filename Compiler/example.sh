@@ -32,10 +32,8 @@ BUILD_FOLDER=./build/$DESIGN
 export DESIGN_WIDTH=1000
 export DESIGN_HEIGHT=1000
 
-(( FULL_SAFE_AREA=$MARGIN * 2 ))
-
-(( FULL_WIDTH=$DESIGN_WIDTH + $FULL_SAFE_AREA ))
-(( FULL_HEIGHT=$DESIGN_HEIGHT + $FULL_SAFE_AREA ))
+(( FULL_WIDTH=$DESIGN_WIDTH + $MARGIN ))
+(( FULL_HEIGHT=$DESIGN_HEIGHT + $MARGIN ))
 
 # ---
 DOCKER_INTERACTIVE="0"
@@ -50,6 +48,89 @@ openlane() {
           efabless/openlane\
           $@
 }
+
+placeram() {
+    docker run --rm\
+         -v $(realpath ..):/mnt/dffram\
+         -w /mnt/dffram/Compiler\
+         cloudv/dffram-env\
+         python3 -m placeram\
+         --represent $BUILD_FOLDER/$DESIGN.txt\
+         --output $BUILD_FOLDER/$DESIGN.placed.def\
+         --lef ./example_support/sky130_fd_sc_hd.lef\
+         --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
+         --size $SIZE\
+         $BUILD_FOLDER/$DESIGN.def
+
+    # Remove ports
+    rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
+    mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
+    sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
+
+}
+
+update_width_height(){
+    FULL_WIDTH=$(echo "$CORE_WIDTH_POSTPLACEMENT + $MARGIN" | bc)
+    FULL_HEIGHT=$(echo "$CORE_HEIGHT_POSTPLACEMENT + $MARGIN" | bc)
+}
+write_fp_tcl() {
+    CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE=$BUILD_FOLDER/core_width_height_postplacement
+
+    if [[ -f $CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE ]]
+    then
+        OLDIFS=$IFS
+        IFS=","
+        read CORE_WIDTH_POSTPLACEMENT CORE_HEIGHT_POSTPLACEMENT < "$CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE"
+        cat $CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE
+        IFS=$OLDIFS
+    fi
+
+
+    CORE_WIDTH_POSTPLACEMENT="${CORE_WIDTH_POSTPLACEMENT:-$DESIGN_WIDTH}"
+    CORE_HEIGHT_POSTPLACEMENT="${CORE_HEIGHT_POSTPLACEMENT:-$DESIGN_HEIGHT}"
+    update_width_height
+
+    cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
+    read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+    read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+
+    read_verilog $BUILD_FOLDER/$DESIGN.gl.v
+
+    link_design $DESIGN
+
+    initialize_floorplan\
+         -die_area "0 0 $FULL_WIDTH $FULL_HEIGHT"\
+         -core_area "$MARGIN $MARGIN $CORE_WIDTH_POSTPLACEMENT $CORE_HEIGHT_POSTPLACEMENT"\
+         -site unithd\
+         -tracks ./example_support/sky130hd.tracks
+
+    ppl::set_hor_length 4
+    ppl::set_ver_length 4
+    ppl::set_hor_length_extend 2
+    ppl::set_ver_length_extend 2
+    ppl::set_ver_thick_multiplier 4
+    ppl::set_hor_thick_multiplier 4
+
+    place_pins\
+         -random \
+        -random_seed 42 \
+        -min_distance 5 \
+        -hor_layers 4\
+        -ver_layers 3
+
+    report_checks -fields {input slew capacitance} -format full_clock
+
+    write_def $BUILD_FOLDER/$DESIGN.def
+HEREDOC
+
+}
+
+floorplan() {
+    write_fp_tcl
+    openlane openroad $BUILD_FOLDER/fp_init.tcl
+}
+
 
 mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
@@ -87,85 +168,18 @@ HEREDOC
 
 openlane bash $BUILD_FOLDER/synth.sh
 
-# 2. Floorplan Initialization
-cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
-read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+# 2. Floorplan and Place, 2nd time for shrinking
+for i in {1..2}
+do
+    floorplan
+    # # Interactive
+    # DOCKER_INTERACTIVE=1 openlane openroad
 
-read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+    # PlaceRAM
+    placeram
 
-read_verilog $BUILD_FOLDER/$DESIGN.gl.v
-
-link_design $DESIGN
-
-initialize_floorplan\
-     -die_area "0 0 $FULL_WIDTH $FULL_HEIGHT"\
-     -core_area "$MARGIN $MARGIN $DESIGN_WIDTH $DESIGN_HEIGHT"\
-     -site unithd\
-     -tracks ./example_support/sky130hd.tracks
-
-ppl::set_hor_length 4
-ppl::set_ver_length 4
-ppl::set_hor_length_extend 2
-ppl::set_ver_length_extend 2
-ppl::set_ver_thick_multiplier 4
-ppl::set_hor_thick_multiplier 4
-
-place_pins\
-     -random \
- 	-random_seed 42 \
- 	-min_distance 5 \
- 	-hor_layers 4\
- 	-ver_layers 3
-
-report_checks -fields {input slew capacitance} -format full_clock
-
-write_def $BUILD_FOLDER/$DESIGN.def
-HEREDOC
-
-openlane openroad $BUILD_FOLDER/fp_init.tcl
-
-# # Interactive
-# DOCKER_INTERACTIVE=1 openlane openroad
-
-# 3. PlaceRAM
-docker run --rm\
-     -v $(realpath ..):/mnt/dffram\
-     -w /mnt/dffram/Compiler\
-     cloudv/dffram-env\
-     python3 -m placeram\
-     --represent $BUILD_FOLDER/$DESIGN.txt\
-     --output $BUILD_FOLDER/$DESIGN.placed.def\
-     --lef ./example_support/sky130_fd_sc_hd.lef\
-     --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
-     --size $SIZE\
-     $BUILD_FOLDER/$DESIGN.def
-
-# Remove ports
-rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
-mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
-sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
-
-echo 'redoing floorplan'
-# re floorplan
-openlane openroad $BUILD_FOLDER/fp_init.tcl
-docker run --rm\
-     -v $(realpath ..):/mnt/dffram\
-     -w /mnt/dffram/Compiler\
-     cloudv/dffram-env\
-     python3 -m placeram\
-     --represent $BUILD_FOLDER/$DESIGN.txt\
-     --output $BUILD_FOLDER/$DESIGN.placed.def\
-     --lef ./example_support/sky130_fd_sc_hd.lef\
-     --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
-     --size $SIZE\
-     $BUILD_FOLDER/$DESIGN.def
-
-# Remove ports
-rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
-mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
-sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
-
-# 4. Verify Placement
+done
+# 3. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
 read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
@@ -183,7 +197,7 @@ HEREDOC
 
 openlane openroad $BUILD_FOLDER/verify.tcl
 
-# 5. Attempt Routing
+# 4. Attempt Routing
 cat <<HEREDOC > $BUILD_FOLDER/route.tcl
 source ./example_support/sky130hd.vars
 
@@ -216,7 +230,7 @@ HEREDOC
 
 openlane openroad $BUILD_FOLDER/route.tcl
 
-# 6. LVS
+# 5. LVS
 cat <<HEREDOC > $BUILD_FOLDER/lvs.tcl
 puts "Running magic script…"
 lef read ./example_support/sky130_fd_sc_hd.merged.lef
