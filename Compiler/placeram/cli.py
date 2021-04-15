@@ -1,3 +1,8 @@
+from prflow.cli import write_script_to_file
+from prflow.scripts import floorplanTclScript
+from prflow.config import *
+from pathlib import Path
+import pathlib
 try:
     import opendbpy as odb
 except ImportError:
@@ -103,21 +108,43 @@ class Placer:
     def place(self):
         eprint("Starting placement…")
         last_row = self.hierarchy.place(self.rows)
-        
+
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
         width_units = 0
-        for row in self.rows: 
+        for row in self.rows:
             width_units = max(row.x, width_units)
 
-        width = width_units / self.micron_in_units
+        self.core_width = width_units / self.micron_in_units
 
-        height_units = self.rows[last_row].y - self.rows[0].y
+        height_units = self.rows[last_row-1].ymax - self.rows[0].y
 
-        height = height_units / self.micron_in_units
-        
-        eprint("Placement concluded with core size of %fµm x %fµm." % (width, height))
+        self.core_height = height_units / self.micron_in_units
 
+
+        eprint("Placement concluded with core size of %fµm x
+                %fµm." % (self.core_width, self.core_height))
+
+        self.core_height += 3
+        single_row_height = 3
+        global SIZE
+        print("the size read is ", SIZE)
+        DESIGN = DESIGN_of(SIZE)
+        BUILD_FOLDER = BUILD_FOLDER_of(DESIGN)
+
+        floorplanTclScriptFilled = floorplanTclScript.format(
+                BUILD_FOLDER,
+                DESIGN,
+                DESIGN,
+                width+MARGIN,
+                (single_row_height+self.core_height)+MARGIN,
+                MARGIN, MARGIN, width,
+                single_row_height+self.core_height,
+                BUILD_FOLDER, DESIGN)
+
+        build_folder = pathlib.Path(BUILD_FOLDER)
+        write_script_to_file(floorplanTclScriptFilled,
+                "fp_init.tcl", build_folder)
         eprint("Done.")
 
     def unplace_fills(self):
@@ -131,6 +158,20 @@ class Placer:
 
     def write_def(self, output):
         return odb.write_def(self.block, output) == 1
+
+    def write_width(self):
+
+
+        with open(CORE_WIDTH_POSTPLACEMENT_FILE,
+                "w+") as core_width_file:
+            written_bytes = core_width_file.write(self.core_width)
+        return written_bytes
+
+    def write_height(self):
+        with open(CORE_HEIGHT_POSTPLACEMENT_FILE,
+                "w+") as core_height_file:
+            written_bytes = core_height_file.write(self.core_width)
+        return written_bytes
 
 # "Ask forgiveness not permission" yeah go and argue that in front of a judge
 def check_readable(file):
@@ -146,6 +187,8 @@ def check_readable(file):
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
 @click.argument('def_file', required=True, nargs=1)
 def cli(output, lef, tlef, size, represent, unplace_fills, def_file):
+    global SIZE
+    SIZE = size
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -178,6 +221,19 @@ def cli(output, lef, tlef, size, represent, unplace_fills, def_file):
         exit(73)
     else:
         eprint("Wrote to %s." % output)
+        eprint("Done.")
+    if not placer.write_width():
+        eprint("Failed to write core width file.")
+        exit(73)
+    else:
+        eprint("Wrote width")
+        eprint("Done.")
+
+    if not placer.write_height():
+        eprint("Failed to write core height file.")
+        exit(73)
+    else:
+        eprint("Wrote height)
         eprint("Done.")
 
 def main():

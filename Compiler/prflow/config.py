@@ -1,6 +1,7 @@
 from pathlib import Path
+import os
 
-SIZE="8x32"
+SIZE=os.getenv("SIZE") or "8x32"
 DESIGN="RAM{}".format(SIZE)
 
 MARGIN=5
@@ -17,3 +18,6 @@ FULL_HEIGHT=DESIGN_HEIGHT + FULL_SAFE_AREA
 
 DOCKER_INTERACTIVE="0"
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+CORE_WIDTH_POSTPLACEMENT_FILE = 'core_width_postplacement'
+CORE_HEIGHT_POSTPLACEMENT_FILE = 'core_height_postplacement'

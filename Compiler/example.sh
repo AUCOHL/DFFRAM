@@ -145,6 +145,26 @@ rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
 mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
 sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
 
+echo 'redoing floorplan'
+# re floorplan
+openlane openroad $BUILD_FOLDER/fp_init.tcl
+docker run --rm\
+     -v $(realpath ..):/mnt/dffram\
+     -w /mnt/dffram/Compiler\
+     cloudv/dffram-env\
+     python3 -m placeram\
+     --represent $BUILD_FOLDER/$DESIGN.txt\
+     --output $BUILD_FOLDER/$DESIGN.placed.def\
+     --lef ./example_support/sky130_fd_sc_hd.lef\
+     --tech-lef ./example_support/sky130_fd_sc_hd.tlef\
+     --size $SIZE\
+     $BUILD_FOLDER/$DESIGN.def
+
+# Remove ports
+rm -f $BUILD_FOLDER/$DESIGN.placed.def.ref
+mv $BUILD_FOLDER/$DESIGN.placed.def $BUILD_FOLDER/$DESIGN.placed.def.ref
+sed 's/+ PORT//g' $BUILD_FOLDER/$DESIGN.placed.def.ref > $BUILD_FOLDER/$DESIGN.placed.def
+
 # 4. Verify Placement
 cat <<HEREDOC > $BUILD_FOLDER/verify.tcl
 read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
