@@ -73,6 +73,7 @@ update_width_height(){
     FULL_WIDTH=$(echo "$CORE_WIDTH_POSTPLACEMENT + $MARGIN" | bc)
     FULL_HEIGHT=$(echo "$CORE_HEIGHT_POSTPLACEMENT + $MARGIN" | bc)
 }
+
 write_fp_tcl() {
     CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE=$BUILD_FOLDER/core_width_height_postplacement
 
@@ -91,6 +92,7 @@ write_fp_tcl() {
     update_width_height
 
     cat <<HEREDOC > $BUILD_FOLDER/fp_init.tcl
+
     read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
 
     read_lef ./example_support/sky130_fd_sc_hd.merged.lef
@@ -112,13 +114,6 @@ write_fp_tcl() {
     ppl::set_ver_thick_multiplier 4
     ppl::set_hor_thick_multiplier 4
 
-    place_pins\
-         -random \
-        -random_seed 42 \
-        -min_distance 5 \
-        -hor_layers 4\
-        -ver_layers 3
-
     report_checks -fields {input slew capacitance} -format full_clock
 
     write_def $BUILD_FOLDER/$DESIGN.def
@@ -131,6 +126,25 @@ floorplan() {
     openlane openroad $BUILD_FOLDER/fp_init.tcl
 }
 
+place_pins_manually(){
+    MOUNT_PNT=/mnt/dffram/Compiler
+    docker run $DOCKER_TI_FLAG\
+        -v $(realpath .):$MOUNT_PNT\
+        -w /openLANE_flow\
+        efabless/openlane\
+        python3 ./scripts/io_place.py \
+				--input-lef $MOUNT_PNT/example_support/sky130_fd_sc_hd.merged.lef \
+				--input-def $MOUNT_PNT/build/$DESIGN/$DESIGN.def \
+				--config $MOUNT_PNT/pin_order.cfg \
+				--hor-layer 4 \
+				--ver-layer 3 \
+				--ver-width-mult 2 \
+				--hor-width-mult 2 \
+				--hor-extension -1 \
+				--ver-extension -1 \
+				--length 4 \
+				-o $MOUNT_PNT/build/$DESIGN/$DESIGN.def
+}
 
 mkdir -p ./build/
 mkdir -p $BUILD_FOLDER
@@ -176,6 +190,7 @@ do
     # DOCKER_INTERACTIVE=1 openlane openroad
 
     # PlaceRAM
+    place_pins_manually
     placeram
 
 done
