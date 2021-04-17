@@ -2,7 +2,7 @@
 This is the custom placer for the SKY130A DFFRAM compiler. At the moment it is capable pf placing the cells of DFFRAM 32x32 block. A sample output is given below:
 ![Klayout showing the 32x32 module placed](./docs/img/32x32_placed.png)
 
-Below is the routed [RAM128x32 module](./BB.v)
+Below is the Compiler-placed and openroad routed [RAM128x32 module](./BB.v)
 
 ![Klayout showing the 128x32 routed with custom pin placement](./docs/img/128x32_routed_manual_pin_placement.png) 
 

@@ -10,7 +10,7 @@ The layout generated from the compiler will be highly compacted (we target over 
 ## Compiler
 A beta version of the compiler is under the `Compiler/` directory. Check [its Readme](./Compiler/Readme.md) for more info.
 
-Below is the routed [RAM128x32 module](./Compiler/BB.v)
+Below is the Compiler-placed and openroad routed [RAM128x32 module](./Compiler/BB.v)
 
 ![Klayout showing the 128x32 routed with custom pin placement](./Compiler/docs/img/128x32_routed_manual_pin_placement.png) 
 
