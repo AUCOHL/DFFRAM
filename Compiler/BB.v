@@ -303,7 +303,7 @@ module RAM512x32 #(parameter USE_LATCH=1) (
     sky130_fd_sc_hd__clkbuf_16  DIBUF[31:0] (.X(Di_buf),  .A(Di));
     sky130_fd_sc_hd__clkbuf_2   CLKBUF      (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[3:0]  (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_1   ENBUF       (.X(EN_buf),  .A(EN));
+    sky130_fd_sc_hd__clkbuf_2   ENBUF       (.X(EN_buf),  .A(EN));
     sky130_fd_sc_hd__clkbuf_2   ABUF[8:0]   (.X(A_buf),   .A(A));
 
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[8:7]), .SEL(SEL));
