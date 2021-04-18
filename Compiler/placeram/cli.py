@@ -31,7 +31,6 @@ import pprint
 import argparse
 import traceback
 from pathlib import Path
-from config import *
 from functools import reduce
 
 class Placer:
@@ -120,8 +119,6 @@ class Placer:
 
 
         eprint("Placement concluded with core size of %fµm x %fµm." % (self.core_width, self.core_height))
-
-        self.core_height += 3
         eprint("Done.")
 
     def unplace_fills(self):
@@ -136,12 +133,13 @@ class Placer:
     def write_def(self, output):
         return odb.write_def(self.block, output) == 1
 
-    def write_width_height(self, def_output):
-        build_directory = Path(def_output).parent
-        width_height_file_path = build_directory / CORE_WIDTH_HEIGHT_POSTPLACEMENT_FILE
-        with open(width_height_file_path, "w+") as core_width_height_file:
-            written_bytes = core_width_height_file.write(
-                    str(self.core_width)+','+str(self.core_height)+'\n')
+    def write_width_height(self, dimensions_file):
+        try:
+            with open(dimensions_file, "w") as f:
+                f.write(str(self.core_width)+'x'+str(self.core_height))
+            return True
+        except Exception:
+            return False
         return written_bytes
 
 def check_readable(file):
@@ -154,9 +152,10 @@ def check_readable(file):
 @click.option('-t', '--tech-lef', "tlef", required=True)
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
+@click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, unplace_fills, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -187,20 +186,21 @@ def cli(output, lef, tlef, size, represent, unplace_fills, def_file):
     if not placer.write_def(output):
         eprint("Failed to write output DEF file.")
         exit(73)
-    else:
-        eprint("Wrote to %s." % output)
-        eprint("Done.")
 
-    if not placer.write_width_height(output):
-        eprint("Failed to write core width and height file.")
-        exit(73)
-    else:
-        eprint("Wrote new core width and height")
-        eprint("Done.")
+    eprint("Wrote to %s." % output)
+
+    if write_dimensions is not None:
+        if not placer.write_width_height(write_dimensions):
+            eprint("Failed to write dimensions file.")
+            exit(73)
+
+    eprint("Wrote width and height to %s." % write_dimensions)
+    
+    eprint("Done.")
 
 def main():
     try:
         cli()
     except Exception:
-        print("An unexpected exception has occurred.", traceback.format_exc())
+        print("An unhandled exception has occurred.", traceback.format_exc())
         exit(69)

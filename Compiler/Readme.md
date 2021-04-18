@@ -23,8 +23,7 @@ You can use Docker to substitute all of these dependencies, but:
 * `BB.v` contains the building blocks used by the compiler
 * `example/` contains support files.
 * `placeram/` contains the core Python script.
-* `example.sh` is a flow going from building blocks to LVS.
-  * `prflow/` contains a Python replacement (runnable via `example_py.sh`), albeit a work in progress. The idea is to make prflow more… configurable than the shell script.
+* `./prflow.py` is a flow going from building blocks to LVS.
 
 # Documentation
 1. [Using Opendbpy](./md/Using%20Opendbpy.md)

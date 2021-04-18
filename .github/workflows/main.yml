@@ -1,29 +1,13 @@
 on:
+  workflow_dispatch:
   push:
   pull_request:
 
 name: CI
 
-jobs:
-  build_linux:
-    name: Build/Linux
-    runs-on: ubuntu-latest
-    needs: verify_BB
-    strategy:
-        matrix:
-          size: ["8x32", "32x32", "128x32"]
-          script: ["example.sh", "example_py.sh"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run
-        run: |
-          export SIZE=${{ matrix.size }}
-          cd Compiler/
-          bash ${{ matrix.script }}
-          
-  verify_BB:
-    name: Verify_BB/Linux
+jobs:          
+  verify_linux:
+    name: Verify Models/Linux
     runs-on: ubuntu-latest
     strategy:
         matrix:
@@ -37,3 +21,17 @@ jobs:
           export PATTERN=tb_RAM${{ matrix.size }}
           cd Compiler/verification/
           /bin/bash -c "! make | grep -c FATAL"
+  build_linux:
+    name: Build/Linux
+    runs-on: ubuntu-latest
+    needs: verify_linux
+    strategy:
+        matrix:
+          size: ["8x32", "32x32", "128x32"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run
+        run: |
+          cd Compiler/
+          ./prflow.py -s ${{ matrix.size }}
