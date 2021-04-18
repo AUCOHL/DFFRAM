@@ -10,4 +10,4 @@ log.txt
 .lib
 .gl.v
 .rpt
-__pychache__/*
+__pycache__
