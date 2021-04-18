@@ -102,7 +102,7 @@ def floorplan(build_folder, design, margin, width, height, in_file, out_file):
 def placeram(in_file, out_file, size, dimensions=os.devnull, represent=os.devnull):
     print("--- placeRAM Script ---")
     unaltered = out_file + ".ref"
-    
+
     run_docker("cloudv/dffram-env", [
         "python3", "-m", "placeram",
         "--output", unaltered,
@@ -159,7 +159,7 @@ def verify_placement(build_folder, in_file):
         """.format(in_file=in_file))
 
     openlane("openroad", "%s/verify.tcl" % build_folder)
- 
+
 def route(build_folder, in_file, out_file):
     print("--- Route ---")
     global_route_guide = "%s/gr.guide" % build_folder
@@ -230,7 +230,8 @@ def lvs(build_folder, design, in_1, in_2, report):
 
 @click.command()
 @click.option("-s", "--size", required=True, help="Size")
-def flow(size):
+@click.option("-d", "--disable_routing", is_flag=True, default=False, help="disable routing")
+def flow(size, disable_routing=False):
     design = "RAM%s" % size
     build_folder = "./build/%s" % design
 
@@ -244,7 +245,7 @@ def flow(size):
     if not os.path.isdir("./example_support"):
         print("Untarring support files…")
         subprocess.run(["tar", "-xJf", "./example/example_support.tar.xz"])
- 
+
     netlist = i(".nl.v")
     synthesis(build_folder, design, netlist)
 
@@ -270,15 +271,16 @@ def flow(size):
 
     verify_placement(build_folder, final_placement)
 
-    routed = i(".routed.def")
-    route(build_folder, final_placement, routed)
+    if not disable_routing:
+        routed = i(".routed.def")
+        route(build_folder, final_placement, routed)
 
-    report = i(".rpt")
-    lvs(build_folder, design, routed, netlist, report)
+        report = i(".rpt")
+        lvs(build_folder, design, routed, netlist, report)
 
-    elapsed = time.time() - start
+        elapsed = time.time() - start
 
-    print("Done in %.2fs." % elapsed)
+        print("Done in %.2fs." % elapsed)
 
 def main():
     try:

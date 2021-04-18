@@ -7,7 +7,7 @@ Instance = dbInst
 import re
 import sys
 import math
-
+from functools import partial
 # --
 def RepresentInstance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
@@ -17,6 +17,9 @@ class Placeable(object):
         raise Exception("Method unimplemented.")
 
     def represent(self, tab_level=-1, file=sys.stderr):
+        raise Exception("Method unimplemented.")
+
+    def word_count(self):
         raise Exception("Method unimplemented.")
 
 class DataError(Exception):
@@ -172,6 +175,9 @@ class Word(Placeable):
 
         return start_row
 
+    def word_count(self):
+        return 1
+
 class Decoder3x8(Placeable):
     def __init__(self, instances):
         self.enbuf = None
@@ -320,6 +326,9 @@ class Slice(Placeable): # A slice is defined as 8 words.
         Row.fill_rows(row_list, start_row, current_row)
 
         return current_row
+
+    def word_count(self):
+        return 8
 
 class Block(Placeable): # A block is defined as 4 slices (32 words).
     def __init__(self, instances):
@@ -526,6 +535,9 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         return current_row
 
+    def word_count(self):
+        return 32
+
 class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs must be == the number of bytes
     def __init__(self, instances):
         raw_selbufs = {}
@@ -566,8 +578,9 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
 
         return start_row + 1
 
+
 class HigherLevelPlaceable(Placeable):
-    def __init__(self, instances):
+    def __init__(self, inner_re, instances):
         # TODO: Generalize beyond Block
         self.clkbuf = None
         self.enbuf = None
@@ -583,7 +596,7 @@ class HigherLevelPlaceable(Placeable):
         clkbuf = r"\bCLKBUF\b"
         enbuf = r"\bENBUF\b"
 
-        block = r"\bBANK_B(\d+)\b"
+        block = inner_re
         decoder_and = r"\bDEC\.AND(\d+)\b"
         dibuf = r"\bDIBUF\\\[(\d+)\\\]"
         domux = r"\bDoMUX\b"
@@ -616,7 +629,7 @@ class HigherLevelPlaceable(Placeable):
                 raw_domux.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-        self.blocks = d2a({k: Block(v) for k, v in
+        self.blocks = d2a({k: constructor[inner_re](v) for k, v in
             raw_blocks.items()})
         self.decoder_ands = d2a(raw_decoder_ands)
         self.dibufs = d2a(raw_dibufs)
@@ -667,6 +680,11 @@ class HigherLevelPlaceable(Placeable):
         tab_level -= 1
 
     def place(self, row_list, start_row=0):
+
+        def symmetrically_placeable(obj):
+            symm_placement_wc = 128
+            return obj.word_count() > symm_placement_wc
+
         current_row = start_row
         r = row_list[current_row]
 
@@ -675,8 +693,20 @@ class HigherLevelPlaceable(Placeable):
 
         current_row += 1
 
-        for ablock in self.blocks:
-            current_row = ablock.place(row_list, current_row)
+        # all of the big designs include 4 instances
+        # of the smaller block they are constituted of
+        # so they can all be 1:1 if they are 4x4
+        # the smallest 1:1 is the 128 word block
+        # it is placed all on top of each other
+        partition_cap = int(math.sqrt(len(self.blocks)))
+        if symmetrically_placeable(self):
+            for block_idx in range(len(self.blocks)):
+                if block_idx == partition_cap:
+                    current_row = start_row
+                current_row = self.blocks[block_idx].place(row_list, current_row)
+        else:
+            for ablock in self.blocks:
+                current_row = ablock.place(row_list, current_row)
 
         current_row += 1
 
@@ -702,3 +732,9 @@ class HigherLevelPlaceable(Placeable):
 
 
         return current_row
+
+    def word_count(self):
+        return len(self.blocks) * (self.blocks[0].word_count())
+
+constructor = {r"\bBANK_B(\d+)\b":Block,
+                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b")}

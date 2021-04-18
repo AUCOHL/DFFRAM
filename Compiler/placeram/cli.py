@@ -39,7 +39,7 @@ class Placer:
 
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
-    SUPPORTED_WORD_COUNTS = [8, 32, 128]
+    SUPPORTED_WORD_COUNTS = [8, 32, 128, 512]
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width != 32:
@@ -90,13 +90,19 @@ class Placer:
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
+        includes = {32:r"\bBANK_B(\d+)\b",
+                    128: r"\bBANK128_B(\d+)\b"}
         # TODO: E X P A N D
         if word_count == 8:
             self.hierarchy = Slice(self.instances)
         elif word_count == 32:
             self.hierarchy = Block(self.instances)
-        elif word_count >= 128:
-            self.hierarchy = HigherLevelPlaceable(self.instances)
+        elif word_count == 128:
+            self.hierarchy = \
+            HigherLevelPlaceable(includes[32], self.instances)
+        elif word_count == 512:
+            self.hierarchy = \
+            HigherLevelPlaceable(includes[128], self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)
@@ -195,7 +201,7 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def
             exit(73)
 
     eprint("Wrote width and height to %s." % write_dimensions)
-    
+
     eprint("Done.")
 
 def main():
