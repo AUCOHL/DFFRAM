@@ -39,7 +39,9 @@ git push -fu origin main
 Then, create your pull request. If all went well, the CI should pass.
 
 ## Note to maintainers
-Always **squash and merge** when merging a pull request.
+If the number of commits is low, rebase and merge, but if it is high (5 commits or more), squash and merge.
+
+Squash and merge makes for a cleaner commit history, but will require pretty much everyone to rebase any work they've had off the main branch with a great degree more difficulty.
 
 # Legal
 By submitting a pull request, you (the Contributor) hereby grant The American University in Cairo and the Cloud V Project a world-wide, royalty-free, non-exclusive license under intellectual property rights (other than patent or trademark) licensable by such Contributor to:
@@ -50,4 +52,4 @@ By submitting a pull request, you (the Contributor) hereby grant The American Un
 
 Copyright notice: above text adapted from the Mozilla Public License, version 2.0.
 
-You are entitled and encourage to add your name and email to the AUTHORS document at the root of the repository under 'Other Contributors', as well as include your name in any modified or created file.
+You are entitled and encouraged to add your name and email to the AUTHORS document at the root of the repository under 'Other Contributors', as well as include your name in any modified or created file.
