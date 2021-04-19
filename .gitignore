@@ -11,3 +11,6 @@ log.txt
 .gl.v
 .rpt
 __pycache__
+*.lib
+pdk
+timing/
