@@ -37,6 +37,7 @@ class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
     TAP_DISTANCE_MICRONS = 15
 
+    DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
     SUPPORTED_WORD_COUNTS = [8, 32, 128, 512]
@@ -61,13 +62,20 @@ class Placer:
         ## Extract the tap cell for later use
         self.tap_cell = list(filter(lambda x: x.getName() == Placer.TAP_CELL_NAME, self.cells))[0]
 
-        ## Extract the fill cell for later use
+        ## Extract the fill cells for later use
+        ### We use decap cells to substitute fills wherever possible.
         raw_fill_cells = list(filter(lambda x: re.match(Placer.FILL_CELL_RX, x.getName()), self.cells))
+        raw_decap_cells = list(filter(lambda x: re.match(Placer.DECAP_CELL_RX, x.getName()), self.cells))
         self.fill_cells_by_sites = {}
         for cell in raw_fill_cells:
             match_info = re.match(Placer.FILL_CELL_RX, cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
+        for cell in raw_decap_cells:
+            match_info = re.match(Placer.DECAP_CELL_RX, cell.getName())
+            site_count = int(match_info[1])
+            self.fill_cells_by_sites[site_count] = cell
+
         fill_cell_sizes = list(self.fill_cells_by_sites.keys())
 
         # Process DEF data
@@ -90,8 +98,10 @@ class Placer:
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
-        includes = {32:r"\bBANK_B(\d+)\b",
-                    128: r"\bBANK128_B(\d+)\b"}
+        includes = {
+            32: r"\bBANK_B(\d+)\b",
+            128:  r"\bBANK128_B(\d+)\b"
+        }
         # TODO: E X P A N D
         if word_count == 8:
             self.hierarchy = Slice(self.instances)
