@@ -146,6 +146,7 @@ module MUX4x1_32(
 
 endmodule
 
+
 module MUX2x1_32(
     input   wire [31:0]      A0, A1, A2, A3,
     input   wire [0:0]       S,
@@ -262,7 +263,7 @@ module RAM128x32 #(parameter USE_LATCH=1) (
 
     // Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[31:0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_2   CLKBUF      (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_4   CLKBUF      (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[3:0]  (.X(WE_buf),  .A(WE));
     sky130_fd_sc_hd__clkbuf_2   ENBUF       (.X(EN_buf),  .A(EN));
     sky130_fd_sc_hd__clkbuf_2   ABUF[6:0]   (.X(A_buf),   .A(A));
@@ -275,7 +276,7 @@ module RAM128x32 #(parameter USE_LATCH=1) (
     RAM32x32 #(.USE_LATCH(USE_LATCH)) BANK_B2 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[4:0]) );    
     RAM32x32 #(.USE_LATCH(USE_LATCH)) BANK_B3 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[4:0]) );    
 
-    // Output MUX
+    // Output MUX    
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A_buf[6:5]), .X(Do) );
 
 endmodule
