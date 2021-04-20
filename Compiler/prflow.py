@@ -163,6 +163,23 @@ def pdngen(build_folder, cfg_file, in_file, out_file):
         f.write(pdn_tcl)
     openlane("openroad", "%s/pdn.tcl" % build_folder)
 
+def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
+    print("--- Routing Obstruction Creation---")
+    # using the tcl interface to openlane, openroad seems
+    # a bit dangerous to use with regards to obstruction
+    # creation
+    openlane(
+        "python3",
+        "/openLANE_flow/scripts/add_def_obstructions.py",
+        "--lef", "./example_support/sky130_fd_sc_hd.merged.lef",
+        "--input-def", in_file,
+        "--obstructions",
+        "met{metal_layer} 0 0 {width} {height}".format(metal_layer=metal_layer,
+            width=width,
+            height=height),
+        "--output", out_file
+    )
+
 def route(build_folder, in_file, out_file):
     print("--- Route ---")
     global_route_guide = "%s/gr.guide" % build_folder
@@ -254,12 +271,17 @@ def flow(frm, to, only, size, disable_routing=False):
     no_pins_placement = i(".npp.def")
     final_placement = i(".placed.def")
     pdn = i(".pdn.def")
+    obstructed = i(".obs.def")
     routed = i(".routed.def")
     report = i(".rpt")
+    try:
+        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+    except Exception:
+        width, height = 20000, 20000
 
 
     def placement():
-        floorplan(build_folder, design, 5, 1500, 1500, netlist, initial_floorplan)
+        floorplan(build_folder, design, 5, 20000, 20000, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3 # OR fails to create the proper amount of rows without some slack.
@@ -271,8 +293,10 @@ def flow(frm, to, only, size, disable_routing=False):
     steps = [
         ("synthesis", lambda: synthesis(build_folder, design, netlist)),
         ("placement", lambda: placement()),
-        ("pdngen", lambda: pdngen(build_folder, "pdn.cfg", final_placement, pdn_design)),
-        ("routing", lambda: route(build_folder, pdn, routed)),
+        ("pdngen", lambda: pdngen(build_folder, "pdn.cfg", final_placement, pdn)),
+        ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
+            obstructed)),
+        ("routing", lambda: route(build_folder, obstructed, routed)),
         ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
     ]
 
