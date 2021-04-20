@@ -737,4 +737,6 @@ class HigherLevelPlaceable(Placeable):
         return len(self.blocks) * (self.blocks[0].word_count())
 
 constructor = {r"\bBANK_B(\d+)\b":Block,
-                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b")}
+                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b"),
+                r"\bBANK512_B(\d+)\b":partial(HigherLevelPlaceable,
+                    r"\bBANK128_B(\d+)\b")}

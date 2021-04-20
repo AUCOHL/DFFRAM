@@ -37,22 +37,15 @@ def synthesis(build_folder, design, out_file):
     with open("%s/synth.tcl" % build_folder, 'w') as f:
         f.write("""
         yosys -import
-
         set SCL $env(LIBERTY)
-
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
         read_verilog BB.v
-
         hierarchy -check -top {design}
-
         synth -top {design} -flatten
-
         splitnets
         opt_clean -purge
-
         write_verilog -noattr -noexpr -nodec {out_file}
         stat -top {design} -liberty $SCL
-
         exit
         """.format(design=design, out_file=out_file))
 
@@ -71,19 +64,14 @@ def floorplan(build_folder, design, margin, width, height, in_file, out_file):
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
-
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
-
         read_verilog {in_file}
-
         link_design {design}
-
         initialize_floorplan\
             -die_area "0 0 {full_width} {full_height}"\
             -core_area "{margin} {margin} {width} {height}"\
             -site unithd\
             -tracks ./example_support/sky130hd.tracks
-
         write_def {out_file}
         """.format(
             design=design,
@@ -145,20 +133,35 @@ def verify_placement(build_folder, in_file):
     with open("%s/verify.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+        read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+        read_def {in_file}
+        if [check_placement -verbose] {{
+            puts "Placement failed: Check placement returned a nonzero value."
+            exit 65
+        }}
+        puts "Placement successful."
+        """.format(in_file=in_file))
+
+    openlane("openroad", "%s/verify.tcl" % build_folder)
+
+def pdngen(build_folder, cfg_file, in_file, out_file):
+    print("--- Power Distributin Network Construction ---")
+    pdn_tcl = """
 
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
         read_def {in_file}
 
-        if [check_placement -verbose] {{
-            puts "Placement failed: Check placement returned a nonzero value."
-            exit 65
-        }}
+        pdngen {cfg_file} -verbose
 
-        puts "Placement successful."
-        """.format(in_file=in_file))
+        write_def {out_file}
+        """.format(cfg_file=cfg_file,
+                in_file=in_file,
+                out_file=out_file)
 
-    openlane("openroad", "%s/verify.tcl" % build_folder)
+    with open("%s/pdn.tcl" % build_folder, 'w') as f:
+        f.write(pdn_tcl)
+    openlane("openroad", "%s/pdn.tcl" % build_folder)
 
 def route(build_folder, in_file, out_file):
     print("--- Route ---")
@@ -179,20 +182,15 @@ def route(build_folder, in_file, out_file):
     with open("%s/route.tcl" % build_folder, 'w') as f:
         f.write("""
         source ./example_support/sky130hd.vars
-
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
-
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
-
         read_def {in_file}
-
         global_route \\
             -guide_file {global_route_guide} \\
             -layers $global_routing_layers \\
             -clock_layers $global_routing_clock_layers \\
             -unidirectional_routing \\
             -overflow_iterations 100
-
         tr::detailed_route_cmd {build_folder}/tr.param
         """.format(in_file=in_file, global_route_guide=global_route_guide, build_folder=build_folder))
 
@@ -213,7 +211,6 @@ def lvs(build_folder, design, in_1, in_2, report):
         extract no adjust
         extract unique
         extract
-
         ext2spice lvs
         ext2spice
         """.format(design=design, in_1=in_1))
@@ -256,8 +253,10 @@ def flow(frm, to, only, size, disable_routing=False):
     final_floorplan = i(".fp.def")
     no_pins_placement = i(".npp.def")
     final_placement = i(".placed.def")
+    pdn = i(".pdn.def")
     routed = i(".routed.def")
     report = i(".rpt")
+
 
     def placement():
         floorplan(build_folder, design, 5, 1500, 1500, netlist, initial_floorplan)
@@ -272,9 +271,10 @@ def flow(frm, to, only, size, disable_routing=False):
     steps = [
         ("synthesis", lambda: synthesis(build_folder, design, netlist)),
         ("placement", lambda: placement()),
-        ("routing", lambda: route(build_folder, final_placement, routed)),
+        ("pdngen", lambda: pdngen(build_folder, "pdn.cfg", final_placement, pdn_design)),
+        ("routing", lambda: route(build_folder, pdn, routed)),
         ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
-    ]    
+    ]
 
     execute_steps = False
     for step in steps:
