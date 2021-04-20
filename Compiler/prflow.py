@@ -229,13 +229,14 @@ def lvs(build_folder, design, in_1, in_2, report):
     openlane("bash", "%s/lvs.sh" % build_folder)
 
 @click.command()
+@click.option("-f", "--frm", default="synthesis", help="Start from this step")
+@click.option("-t", "--to", default="lvs", help="End after this step")
+@click.option("--only", default=None, help="Only execute this step")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-d", "--disable_routing", is_flag=True, default=False, help="disable routing")
-def flow(size, disable_routing=False):
+def flow(frm, to, only, size, disable_routing=False):
     design = "RAM%s" % size
     build_folder = "./build/%s" % design
-
-    start = time.time()
 
     ensure_dir(build_folder)
 
@@ -246,41 +247,48 @@ def flow(size, disable_routing=False):
         print("Untarring support files…")
         subprocess.run(["tar", "-xJf", "./example/example_support.tar.xz"])
 
+    start = time.time()
+
     netlist = i(".nl.v")
-    synthesis(build_folder, design, netlist)
-
     initial_floorplan = i(".initfp.def")
-    floorplan(build_folder, design, 5, 1500, 1500, netlist, initial_floorplan)
-
     initial_placement = i(".initp.def")
     dimensions_file = i(".dimensions.txt")
-    placeram(initial_floorplan, initial_placement, size, dimensions_file)
-
-    width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-
-    height += 3 # OR fails to create the proper amount of rows without some slack.
-
     final_floorplan = i(".fp.def")
-    floorplan(build_folder, design, 5, width, height, netlist, final_floorplan)
-
     no_pins_placement = i(".npp.def")
-    placeram(final_floorplan, no_pins_placement, size)
-
     final_placement = i(".placed.def")
-    place_pins(no_pins_placement, final_placement)
+    routed = i(".routed.def")
+    report = i(".rpt")
 
-    verify_placement(build_folder, final_placement)
+    def placement():
+        floorplan(build_folder, design, 5, 1500, 1500, netlist, initial_floorplan)
+        placeram(initial_floorplan, initial_placement, size, dimensions_file)
+        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        height += 3 # OR fails to create the proper amount of rows without some slack.
+        floorplan(build_folder, design, 5, width, height, netlist, final_floorplan)
+        placeram(final_floorplan, no_pins_placement, size)
+        place_pins(no_pins_placement, final_placement)
+        verify_placement(build_folder, final_placement)
 
-    if not disable_routing:
-        routed = i(".routed.def")
-        route(build_folder, final_placement, routed)
+    steps = [
+        ("synthesis", lambda: synthesis(build_folder, design, netlist)),
+        ("placement", lambda: placement()),
+        ("routing", lambda: route(build_folder, final_placement, routed)),
+        ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
+    ]    
 
-        report = i(".rpt")
-        lvs(build_folder, design, routed, netlist, report)
+    execute_steps = False
+    for step in steps:
+        if frm == step[0]:
+            execute_steps = True
+        if execute_steps:
+            if only is None or only == step[0]:
+                step[1]()
+        if to == step[0]:
+            execute_steps = False
 
-        elapsed = time.time() - start
+    elapsed = time.time() - start
 
-        print("Done in %.2fs." % elapsed)
+    print("Done in %.2fs." % elapsed)
 
 def main():
     try:

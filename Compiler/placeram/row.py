@@ -7,12 +7,9 @@ class Row(object):
 
     create_fill = None
 
-    # Assumptions:
-    #   All fills are powers of 2.
-    #   If fill 2^n is available, then for 0 <= i < n: 2^i is available.
+    # Assumption: A fill of size 1 is always available.
+    # If not, there WILL be an out of bounds error.
     supported_fill_sizes = None
-
-    max_fill_size = None
 
     def __init__(self, ordinal, row_obj):
         self.ordinal = ordinal
@@ -59,8 +56,7 @@ class Row(object):
         Row.tap_distance = max_tap_distance
 
         Row.create_fill = create_fill
-        Row.supported_fill_sizes = supported_fill_sizes
-        Row.max_fill_size = max(supported_fill_sizes)
+        Row.supported_fill_sizes = sorted(supported_fill_sizes, reverse=True)
 
         returnable = []
         for i, row in enumerate(rows):
@@ -87,22 +83,20 @@ class Row(object):
         Technology's amazing, innit?
 
         """
-        def bin_pack(remaining, max_fill_size):
+        def pack(size, fill_sizes):
             fills = []
-            while remaining > max_fill_size:
-                fills.append(max_fill_size)
-                remaining -= max_fill_size
+            current = size
+            tracker = 0
 
-            # I'm using nature's bin-packing algorithm for base-2.
-            # Binary representation.
-            current_size = 1
-            while remaining > 0:
-                if remaining & 1:
-                    fills.append(current_size)
-                remaining >>= 1
-                current_size <<= 1
+            while current > 0:
+                current_fill = fill_sizes[tracker]
+                while current >= current_fill:
+                    fills.append(current_fill)
+                    current -= current_fill
+                tracker += 1
 
             return fills
+
         max_sw = -1
         for i in range(from_index, to_index):
             r = rows[i]
@@ -119,7 +113,7 @@ class Row(object):
 
             remaining = empty
 
-            fills = bin_pack(empty, Row.max_fill_size)
+            fills = pack(empty, Row.supported_fill_sizes)
 
             for fill in fills:
                 fill_cell = Row.create_fill("fill_%i_%i" % (i, r.fill_counter), fill)
