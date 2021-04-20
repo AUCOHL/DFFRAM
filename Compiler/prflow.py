@@ -144,8 +144,38 @@ def verify_placement(build_folder, in_file):
 
     openlane("openroad", "%s/verify.tcl" % build_folder)
 
-def pdngen(build_folder, cfg_file, in_file, out_file):
+def pdngen(build_folder, width, height, in_file, out_file):
     print("--- Power Distributin Network Construction ---")
+    pitch = 50 # temp: till we arrive at a function that takes in width
+    offset = 25 # temp: till we arrive at a function that takes in width
+    pdn_cfg = """
+
+    set ::halo 0
+    # POWER or GROUND #Std. cell rails starting with power or ground rails at the bottom of the core area
+    set ::rails_start_with "POWER" ;
+
+    # POWER or GROUND #Upper metal stripes starting with power or ground rails at the left/bottom of the core area
+    set ::stripes_start_with "POWER" ;
+
+    set ::power_nets "VPWR";
+    set ::ground_nets "VGND";
+
+    pdngen::specify_grid stdcell {
+        name grid
+        rails {{
+            met1 {{width 0.17 pitch 2.7 offset 0}}
+        }}
+        straps {{
+            met4 {{width 1.6 pitch {pitch} offset {offset}}
+        }}
+        connect {{met1 met4}}
+    }}
+    """.format(pitch=pitch, offset=offset)
+
+    pdn_cfg_file = "%s/pdn.cfg" % build_folder
+    with open(pdn_cfg_file, 'w') as f:
+        f.write(pdn_cfg)
+
     pdn_tcl = """
 
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
@@ -155,7 +185,7 @@ def pdngen(build_folder, cfg_file, in_file, out_file):
         pdngen {cfg_file} -verbose
 
         write_def {out_file}
-        """.format(cfg_file=cfg_file,
+        """.format(cfg_file=pdn_cfg_file,
                 in_file=in_file,
                 out_file=out_file)
 
