@@ -160,15 +160,15 @@ def pdngen(build_folder, width, height, in_file, out_file):
     set ::power_nets "VPWR";
     set ::ground_nets "VGND";
 
-    pdngen::specify_grid stdcell {
+    pdngen::specify_grid stdcell {{
         name grid
         rails {{
             met1 {{width 0.17 pitch 2.7 offset 0}}
         }}
         straps {{
-            met4 {{width 1.6 pitch {pitch} offset {offset}}
+            met4 {{width 1.6 pitch {pitch} offset {offset}}}
         }}
-        connect {{met1 met4}}
+        connect {{{{ met1 met4 }}}}
     }}
     """.format(pitch=pitch, offset=offset)
 
@@ -323,7 +323,7 @@ def flow(frm, to, only, size, disable_routing=False):
     steps = [
         ("synthesis", lambda: synthesis(build_folder, design, netlist)),
         ("placement", lambda: placement()),
-        ("pdngen", lambda: pdngen(build_folder, "pdn.cfg", final_placement, pdn)),
+        ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
             obstructed)),
         ("routing", lambda: route(build_folder, obstructed, routed)),
