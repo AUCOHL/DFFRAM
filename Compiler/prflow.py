@@ -37,22 +37,15 @@ def synthesis(build_folder, design, out_file):
     with open("%s/synth.tcl" % build_folder, 'w') as f:
         f.write("""
         yosys -import
-
         set SCL $env(LIBERTY)
-
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
         read_verilog BB.v
-
         hierarchy -check -top {design}
-
         synth -top {design} -flatten
-
         splitnets
         opt_clean -purge
-
         write_verilog -noattr -noexpr -nodec {out_file}
         stat -top {design} -liberty $SCL
-
         exit
         """.format(design=design, out_file=out_file))
 
@@ -71,19 +64,14 @@ def floorplan(build_folder, design, margin, width, height, in_file, out_file):
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
-
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
-
         read_verilog {in_file}
-
         link_design {design}
-
         initialize_floorplan\
             -die_area "0 0 {full_width} {full_height}"\
             -core_area "{margin} {margin} {width} {height}"\
             -site unithd\
             -tracks ./example_support/sky130hd.tracks
-
         write_def {out_file}
         """.format(
             design=design,
@@ -145,20 +133,82 @@ def verify_placement(build_folder, in_file):
     with open("%s/verify.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
+        read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+        read_def {in_file}
+        if [check_placement -verbose] {{
+            puts "Placement failed: Check placement returned a nonzero value."
+            exit 65
+        }}
+        puts "Placement successful."
+        """.format(in_file=in_file))
+
+    openlane("openroad", "%s/verify.tcl" % build_folder)
+
+def pdngen(build_folder, width, height, in_file, out_file):
+    print("--- Power Distribution Network Construction ---")
+    pitch = 50 # temp: till we arrive at a function that takes in width
+    offset = 25 # temp: till we arrive at a function that takes in width
+    pdn_cfg = """
+
+    set ::halo 0
+    # POWER or GROUND #Std. cell rails starting with power or ground rails at the bottom of the core area
+    set ::rails_start_with "POWER" ;
+
+    # POWER or GROUND #Upper metal stripes starting with power or ground rails at the left/bottom of the core area
+    set ::stripes_start_with "POWER" ;
+
+    set ::power_nets "VPWR";
+    set ::ground_nets "VGND";
+
+    pdngen::specify_grid stdcell {{
+        name grid
+        rails {{
+            met1 {{width 0.17 pitch 2.7 offset 0}}
+        }}
+        straps {{
+            met4 {{width 1.6 pitch {pitch} offset {offset}}}
+        }}
+        connect {{{{ met1 met4 }}}}
+    }}
+    """.format(pitch=pitch, offset=offset)
+
+    pdn_cfg_file = "%s/pdn.cfg" % build_folder
+    with open(pdn_cfg_file, 'w') as f:
+        f.write(pdn_cfg)
+
+    pdn_tcl = """
 
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
 
         read_def {in_file}
 
-        if [check_placement -verbose] {{
-            puts "Placement failed: Check placement returned a nonzero value."
-            exit 65
-        }}
+        pdngen {cfg_file} -verbose
 
-        puts "Placement successful."
-        """.format(in_file=in_file))
+        write_def {out_file}
+        """.format(cfg_file=pdn_cfg_file,
+                in_file=in_file,
+                out_file=out_file)
 
-    openlane("openroad", "%s/verify.tcl" % build_folder)
+    with open("%s/pdn.tcl" % build_folder, 'w') as f:
+        f.write(pdn_tcl)
+    openlane("openroad", "%s/pdn.tcl" % build_folder)
+
+def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
+    print("--- Routing Obstruction Creation---")
+    # using the tcl interface to openlane, openroad seems
+    # a bit dangerous to use with regards to obstruction
+    # creation
+    openlane(
+        "python3",
+        "/openLANE_flow/scripts/add_def_obstructions.py",
+        "--lef", "./example_support/sky130_fd_sc_hd.merged.lef",
+        "--input-def", in_file,
+        "--obstructions",
+        "met{metal_layer} 0 0 {width} {height}".format(metal_layer=metal_layer,
+            width=width,
+            height=height),
+        "--output", out_file
+    )
 
 def route(build_folder, in_file, out_file):
     print("--- Route ---")
@@ -179,20 +229,15 @@ def route(build_folder, in_file, out_file):
     with open("%s/route.tcl" % build_folder, 'w') as f:
         f.write("""
         source ./example_support/sky130hd.vars
-
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
-
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
-
         read_def {in_file}
-
         global_route \\
             -guide_file {global_route_guide} \\
             -layers $global_routing_layers \\
             -clock_layers $global_routing_clock_layers \\
             -unidirectional_routing \\
             -overflow_iterations 100
-
         tr::detailed_route_cmd {build_folder}/tr.param
         """.format(in_file=in_file, global_route_guide=global_route_guide, build_folder=build_folder))
 
@@ -213,7 +258,6 @@ def lvs(build_folder, design, in_1, in_2, report):
         extract no adjust
         extract unique
         extract
-
         ext2spice lvs
         ext2spice
         """.format(design=design, in_1=in_1))
@@ -256,11 +300,19 @@ def flow(frm, to, only, size, disable_routing=False):
     final_floorplan = i(".fp.def")
     no_pins_placement = i(".npp.def")
     final_placement = i(".placed.def")
+    pdn = i(".pdn.def")
+    obstructed = i(".obs.def")
     routed = i(".routed.def")
     report = i(".rpt")
+    try:
+        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        height += 3
+    except Exception:
+        width, height = 20000, 20000
 
-    def placement():
-        floorplan(build_folder, design, 5, 1500, 1500, netlist, initial_floorplan)
+
+    def placement(width, height):
+        floorplan(build_folder, design, 5, width, height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3 # OR fails to create the proper amount of rows without some slack.
@@ -271,10 +323,13 @@ def flow(frm, to, only, size, disable_routing=False):
 
     steps = [
         ("synthesis", lambda: synthesis(build_folder, design, netlist)),
-        ("placement", lambda: placement()),
-        ("routing", lambda: route(build_folder, final_placement, routed)),
+        ("placement", lambda: placement(width, height)),
+        ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
+        ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
+            obstructed)),
+        ("routing", lambda: route(build_folder, obstructed, routed)),
         ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
-    ]    
+    ]
 
     execute_steps = False
     for step in steps:
