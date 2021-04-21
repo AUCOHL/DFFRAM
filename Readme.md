@@ -14,7 +14,7 @@ A beta version of the compiler is under the `Compiler/` directory. Check [its Re
 - 2048x32 (8kbytes) single port RAM with byte write enable.
 
 Below is the Compiler-placed and openroad routed [RAM128x32 module](./Compiler/BB.v)
-[](./Compiler/docs/img/8kb_layout.png) 
+[2048x32 RAM Layout](./Compiler/docs/img/8kb_layout.png) 
 
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
