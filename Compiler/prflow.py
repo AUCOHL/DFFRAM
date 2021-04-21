@@ -145,7 +145,7 @@ def verify_placement(build_folder, in_file):
     openlane("openroad", "%s/verify.tcl" % build_folder)
 
 def pdngen(build_folder, width, height, in_file, out_file):
-    print("--- Power Distributin Network Construction ---")
+    print("--- Power Distribution Network Construction ---")
     pitch = 50 # temp: till we arrive at a function that takes in width
     offset = 25 # temp: till we arrive at a function that takes in width
     pdn_cfg = """
@@ -306,12 +306,13 @@ def flow(frm, to, only, size, disable_routing=False):
     report = i(".rpt")
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        height += 3
     except Exception:
         width, height = 20000, 20000
 
 
-    def placement():
-        floorplan(build_folder, design, 5, 20000, 20000, netlist, initial_floorplan)
+    def placement(width, height):
+        floorplan(build_folder, design, 5, width, height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3 # OR fails to create the proper amount of rows without some slack.
@@ -322,7 +323,7 @@ def flow(frm, to, only, size, disable_routing=False):
 
     steps = [
         ("synthesis", lambda: synthesis(build_folder, design, netlist)),
-        ("placement", lambda: placement()),
+        ("placement", lambda: placement(width, height)),
         ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
             obstructed)),
