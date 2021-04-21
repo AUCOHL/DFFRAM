@@ -12,6 +12,7 @@ import pathlib
 import textwrap
 import traceback
 import subprocess
+import math
 
 def rp(path):
     return os.path.realpath(path)
@@ -243,6 +244,27 @@ def route(build_folder, in_file, out_file):
 
     openlane("openroad", "%s/route.tcl" % build_folder)
 
+def write_RAM_LEF(build_folder, design, in_file, out_file):
+    print("--- Write LEF view of the RAM Module ---")
+    with open("%s/write_lef.tcl" % build_folder, "w") as f:
+        f.write("""
+        puts "Running magic script…"
+        lef read ./example_support/sky130_fd_sc_hd.merged.lef
+        def read {in_file}
+        load {design} -dereference
+        lef write {out_file}
+        """.format(design=design,
+            in_file=in_file,
+            out_file=out_file))
+
+    openlane("magic",
+            "-dnull",
+            "-noconsole",
+            "-rcfile",
+            "./example_support/sky130A.magicrc",
+            "%s/write_lef.tcl" % build_folder)
+
+
 def lvs(build_folder, design, in_1, in_2, report):
     print("--- LVS ---")
     with open("%s/lvs.tcl" % build_folder, "w") as f:
@@ -303,6 +325,7 @@ def flow(frm, to, only, size, disable_routing=False):
     pdn = i(".pdn.def")
     obstructed = i(".obs.def")
     routed = i(".routed.def")
+    lef_view = i(".lef")
     report = i(".rpt")
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
@@ -328,6 +351,8 @@ def flow(frm, to, only, size, disable_routing=False):
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
             obstructed)),
         ("routing", lambda: route(build_folder, obstructed, routed)),
+        ("write_lef", lambda: write_RAM_LEF(build_folder, design, routed,
+            lef_view)),
         ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
     ]
 
