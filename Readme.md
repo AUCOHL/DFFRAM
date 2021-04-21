@@ -13,7 +13,7 @@ A beta version of the compiler is under the `Compiler/` directory. Check [its Re
 - 512x32 (2kbytes) single port RAM with byte write enable.
 - 2048x32 (8kbytes) single port RAM with byte write enable.
 
-Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![Layout](./Compiler/docs/img/8kb_layout.png) 
+Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compiler/BB.v) ![Layout](./Compiler/docs/img/8kb_layout.png) 
 
 <table>
   <tr>
@@ -41,13 +41,13 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
     <td> 386 x 456 </td> <td> 46541 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 425 x 820 </td> <td> 23506 </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 1,050 x 1,060 </td> <td> 7,360 </td>
   </tr>
   <tr>
     <td> 2 kbytes </td>
     <td> Dim </td> <td> Bit Density </td>
     <td> 793.5 x 783.36 </td> <td> 26358 </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 1,210 x 621 </td> <td> 21,789 </td>
     <td> Dim </td> <td> Bit Density </td>
   </tr>
   <tr>
@@ -55,17 +55,18 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
     <td> 584 x 708 </td> <td> 79250 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 1,628 x 911 </td> <td> 22094 </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 2,074 x 2,085 </td> <td> 7,578 </td>
+    
   </tr>
   <tr>
     <td> 8 kbytes </td>
     <td> Dim </td> <td> Bit Density </td>
-    <td> 1589.3 x 1572.16 </td> <td> 26229 </td>
+    <td> 1,589 x 1,572</td> <td> 26229 </td>
     <td> Dim </td> <td> Bit Density </td>
     <td> Dim </td> <td> Bit Density </td>
   </tr>
-  
 </table>
+
 \* Values are based on original layout produced by teh compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 ## Handcrafted
