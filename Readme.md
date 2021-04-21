@@ -18,7 +18,7 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
 <table>
   <tr>
     <th rowspan="2">Size</th> 
-    <th colspan="2">OpenRAM</th> 
+    <th colspan="2">OpenRAM*</th> 
     <th colspan="2">DFFRAM Compiler</th> 
     <th colspan="2">Handcrafted</th> 
     <th colspan="2">RTL</th>
@@ -38,7 +38,7 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
   </tr>
   <tr>
     <td> 1 kbytes </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 386 x 456 </td> <td> 46541 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 425 x 820 </td> <td> 23506 </td>
     <td> Dim </td> <td> Bit Density </td>
@@ -52,7 +52,7 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
   </tr>
   <tr>
     <td> 4 kbytes </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 584 x 708 </td> <td> 79250 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 1,628 x 911 </td> <td> 22094 </td>
     <td> Dim </td> <td> Bit Density </td>
@@ -66,7 +66,7 @@ Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![La
   </tr>
   
 </table>
-  
+\* Values are based on original layout produced by teh compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
