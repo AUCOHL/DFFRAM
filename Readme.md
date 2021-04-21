@@ -8,11 +8,13 @@ The objective of this project is to develop DFF-based RAM and Register File (Reg
 The layout generated from the compiler will be highly compacted (we target over 95% placement density) as the cells are placed on the floor plan using a custom placer. Moreover, the custom placer ensures that the routing will be relatively simple. The project will consider the creation of a custom router if automatic routing using open-source global and detailed routers does not give good results, though, they are, so far!
 
 ## Compiler
-A beta version of the compiler is under the `Compiler/` directory. Check [its Readme](./Compiler/Readme.md) for more info.
+A beta version of the compiler is under the `Compiler/` directory. Check [its Readme](./Compiler/Readme.md) for more info. Currently, it can generate the following configurations:
+- 128x32 (512 bytes) single port RAM with byte write enable.
+- 512x32 (2kbytes) single port RAM with byte write enable.
+- 2048x32 (8kbytes) single port RAM with byte write enable.
 
 Below is the Compiler-placed and openroad routed [RAM128x32 module](./Compiler/BB.v)
-
-![Klayout showing the 128x32 routed with custom pin placement](./Compiler/docs/img/128x32_routed_manual_pin_placement.png) 
+[](./Compiler/docs/img/8kb_layout.png) 
 
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
