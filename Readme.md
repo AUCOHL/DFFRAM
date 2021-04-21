@@ -15,6 +15,59 @@ A beta version of the compiler is under the `Compiler/` directory. Check [its Re
 
 Below is the Compiler-placed and routed [RAM128x32 module](./Compiler/BB.v) ![Layout](./Compiler/docs/img/8kb_layout.png) 
 
+<table>
+  <tr>
+    <th rowspan="2">Size</th> 
+    <th colspan="2">OpenRAM</th> 
+    <th colspan="2">DFFRAM Compiler</th> 
+    <th colspan="2">Handcrafted</th> 
+    <th colspan="2">RTL</th>
+  </tr>
+  <tr style="border-top:4px solid darkblue;">
+    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+  </tr>
+  <tr>
+    <td> 512 bytes </td>
+    <td> N/A </td> <td> N/A </td>
+    <td> 395.6 x 388.96 </td> <td> 26619 </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> Dim </td> <td> Bit Density </td>
+  </tr>
+  <tr>
+    <td> 1 kbytes </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> TBD </td> <td> TBD </td>
+    <td> 425 x 820 </td> <td> 23506 </td>
+    <td> Dim </td> <td> Bit Density </td>
+  </tr>
+  <tr>
+    <td> 2 kbytes </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> 793.5 x 783.36 </td> <td> 26358 </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> Dim </td> <td> Bit Density </td>
+  </tr>
+  <tr>
+    <td> 4 kbytes </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> TBD </td> <td> TBD </td>
+    <td> 1,628 x 911 </td> <td> 22094 </td>
+    <td> Dim </td> <td> Bit Density </td>
+  </tr>
+  <tr>
+    <td> 8 kbytes </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> 1589.3 x 1572.16 </td> <td> 26229 </td>
+    <td> Dim </td> <td> Bit Density </td>
+    <td> Dim </td> <td> Bit Density </td>
+  </tr>
+  
+</table>
+  
+
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
 
