@@ -38,11 +38,13 @@ def synthesis(build_folder, design, out_file):
     with open("%s/synth.tcl" % build_folder, 'w') as f:
         f.write("""
         yosys -import
+        set vtop {design}
         set SCL $env(LIBERTY)
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
         read_verilog BB.v
         hierarchy -check -top {design}
         synth -top {design} -flatten
+        opt_clean -purge
         splitnets
         opt_clean -purge
         write_verilog -noattr -noexpr -nodec {out_file}
@@ -124,7 +126,7 @@ def place_pins(in_file, out_file):
         "--hor-width-mult", "2",
         "--hor-extension", "-1",
         "--ver-extension", "-1",
-        "--length", "4",
+        "--length", "2",
         "-o", out_file
     )
 
@@ -161,6 +163,17 @@ def pdngen(build_folder, width, height, in_file, out_file):
     set ::power_nets "VPWR";
     set ::ground_nets "VGND";
 
+    set pdngen::global_connections {{
+      VPWR {{
+        {{inst_name .* pin_name VPWR}}
+        {{inst_name .* pin_name VPB}}
+      }}
+      VGND {{
+        {{inst_name .* pin_name VGND}}
+        {{inst_name .* pin_name VNB}}
+      }}
+    }}
+
     pdngen::specify_grid stdcell {{
         name grid
         rails {{
@@ -169,7 +182,9 @@ def pdngen(build_folder, width, height, in_file, out_file):
         straps {{
             met4 {{width 1.6 pitch {pitch} offset {offset}}}
         }}
-        connect {{{{ met1 met4 }}}}
+        connect {{
+        {{ met1 met4 }}
+        }}
     }}
     """.format(pitch=pitch, offset=offset)
 
@@ -243,6 +258,48 @@ def route(build_folder, in_file, out_file):
         """.format(in_file=in_file, global_route_guide=global_route_guide, build_folder=build_folder))
 
     openlane("openroad", "%s/route.tcl" % build_folder)
+
+# ("add_pwr_gnd_pins", lambda: add_pwr_gnd_pins(build_folder, pdn,
+# powered_def,
+# norewrite_powered_netlist,
+# powered_netlist)),
+def add_pwr_gnd_pins(build_folder, original_netlist,
+        def_file, intermediate_file, out_file1,
+        out_file2):
+    print("--- Adding power and ground pins to netlist ---")
+
+    openlane("python3", "/openLANE_flow/scripts/write_powered_def.py",
+            "-d", def_file,
+            "-l", "./example_support/sky130_fd_sc_hd.merged.lef",
+            "--power-port", "VPWR",
+            "--ground-port", "VGND",
+            "-o", intermediate_file)
+
+    with open("%s/write_pwr_gnd_verilog.tcl" % build_folder, "w") as f:
+        f.write("""
+        read_lef ./example_support/sky130_fd_sc_hd.merged.lef
+        read_def {def_file}
+        read_verilog {netlist}
+        puts "Writing the modified nl.v "
+        puts "writing file"
+        puts {out_file}
+        write_verilog -include_pwr_gnd {out_file}
+        """.format(netlist=original_netlist, def_file=intermediate_file,
+            out_file=out_file1))
+
+    openlane("openroad",
+            "%s/write_pwr_gnd_verilog.tcl" % build_folder)
+
+    with open("%s/rewrite_netlist.tcl" % build_folder, 'w') as f:
+        f.write("""
+        yosys -import
+        read_verilog {verilog_file}; # usually from openroad
+        write_verilog -noattr -noexpr -nohex -nodec {out_file};
+        """.format(verilog_file=out_file1, out_file=out_file2))
+
+    openlane("yosys",
+            "-c", "%s/rewrite_netlist.tcl" % build_folder)
+
 
 def write_RAM_LEF(build_folder, design, in_file, out_file):
     print("--- Write LEF view of the RAM Module ---")
@@ -326,7 +383,11 @@ def flow(frm, to, only, size, disable_routing=False):
     obstructed = i(".obs.def")
     routed = i(".routed.def")
     lef_view = i(".lef")
+    powered_def = i(".powered.def")
+    norewrite_powered_netlist = i(".norewrite_powered.nl.v")
+    powered_netlist = i(".powered.nl.v")
     report = i(".rpt")
+
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3
@@ -334,8 +395,9 @@ def flow(frm, to, only, size, disable_routing=False):
         width, height = 20000, 20000
 
 
-    def placement(width, height):
-        floorplan(build_folder, design, 5, width, height, netlist, initial_floorplan)
+    def placement(in_width, in_height):
+        nonlocal width, height
+        floorplan(build_folder, design, 5, in_width, in_height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3 # OR fails to create the proper amount of rows without some slack.
@@ -351,9 +413,14 @@ def flow(frm, to, only, size, disable_routing=False):
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
             obstructed)),
         ("routing", lambda: route(build_folder, obstructed, routed)),
+        ("add_pwr_gnd_pins", lambda: add_pwr_gnd_pins(build_folder, netlist,
+            routed,
+            powered_def,
+            norewrite_powered_netlist,
+            powered_netlist)),
         ("write_lef", lambda: write_RAM_LEF(build_folder, design, routed,
             lef_view)),
-        ("lvs", lambda: lvs(build_folder, design, routed, netlist, report))
+        ("lvs", lambda: lvs(build_folder, design, routed, powered_netlist, report))
     ]
 
     execute_steps = False
