@@ -17,8 +17,8 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
 
 <table>
   <tr>
-    <th rowspan="2">Size</th> 
-    <th colspan="2">OpenRAM*</th> 
+    <th rowspan="2">Size*</th> 
+    <th colspan="2">OpenRAM**</th> 
     <th colspan="2">DFFRAM Compiler</th> 
     <th colspan="2">Handcrafted</th> 
     <th colspan="2">RTL</th>
@@ -32,38 +32,38 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
   <tr>
     <td> 512 bytes </td>
     <td> N/A </td> <td> N/A </td>
-    <td> 395.6 x 388.96 </td> <td> 26619 </td>
-    <td> Dim </td> <td> Bit Density </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> 395.6 x 388.96 </td> <td> 26,619 </td>
+    <td> TBD </td> <td> TBD </td>
+    <td> TBD </td> <td> TBD </td>
   </tr>
   <tr>
     <td> 1 kbytes </td>
-    <td> 386 x 456 </td> <td> 46541 </td>
+    <td> 386 x 456 </td> <td> 46,541 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> 425 x 820 </td> <td> 23506 </td>
+    <td> 425 x 820 </td> <td> 23,506 </td>
     <td> 1,050 x 1,060 </td> <td> 7,360 </td>
   </tr>
   <tr>
     <td> 2 kbytes </td>
-    <td> Dim </td> <td> Bit Density </td>
-    <td> 793.5 x 783.36 </td> <td> 26358 </td>
+    <td> 659.98 x 398.18  </td> <td> 62,372 </td>
+    <td> 793.5 x 783.36 </td> <td> 26,358 </td>
     <td> 1,210 x 621 </td> <td> 21,789 </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> TBD </td> <td> TBD </td>
   </tr>
   <tr>
     <td> 4 kbytes </td>
-    <td> 584 x 708 </td> <td> 79250 </td>
+    <td> 670.86 x 651.14 </td> <td> 75,014 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> 1,628 x 911 </td> <td> 22094 </td>
+    <td> 1,628 x 911 </td> <td> 22,094 </td>
     <td> 2,074 x 2,085 </td> <td> 7,578 </td>
     
   </tr>
   <tr>
     <td> 8 kbytes </td>
-    <td> Dim </td> <td> Bit Density </td>
-    <td> 1,589 x 1,572</td> <td> 26229 </td>
-    <td> Dim </td> <td> Bit Density </td>
-    <td> Dim </td> <td> Bit Density </td>
+    <td> N/A </td> <td> N/A </td>
+    <td> 1,589 x 1,572</td> <td> 26,229 </td>
+    <td> TBD </td> <td> TBD </td>
+    <td> TBD </td> <td> TBD </td>
   </tr>
 </table>
 
@@ -78,7 +78,8 @@ Until the compiler is fully ready, you may harden pre-existing handcrafted desig
 | 2KiB* | *40,554* vs 103,933                 | *84.8%* vs 61%                        | *1,210 x 610* vs 1,470 x 1,481                 |
 | 4KiB  | *81,044* vs 207,822                 | *84.8%* vs 61%                        | *1,628 x 911* vs 2,074 x 2,085                 |
 
-\*  OpenLANE did not produce a clean GDSII for the RTL.
+\* All support 32-bit word reads and 1, 2,and 4 bytes writes.
+\*\*  OpenLANE did not produce a clean GDSII for the RTL.
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
