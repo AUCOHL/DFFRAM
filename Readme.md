@@ -67,7 +67,9 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
   </tr>
 </table>
 
-\* Values are based on original layout produced by teh compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
+<font size="8px"> \* All support 32-bit word reads and 1, 2, and 4 bytes writes.  </font>
+
+\*\* Values are based on original layout produced by teh compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
@@ -78,8 +80,7 @@ Until the compiler is fully ready, you may harden pre-existing handcrafted desig
 | 2KiB* | *40,554* vs 103,933                 | *84.8%* vs 61%                        | *1,210 x 610* vs 1,470 x 1,481                 |
 | 4KiB  | *81,044* vs 207,822                 | *84.8%* vs 61%                        | *1,628 x 911* vs 2,074 x 2,085                 |
 
-\* All support 32-bit word reads and 1, 2,and 4 bytes writes.
-\*\*  OpenLANE did not produce a clean GDSII for the RTL.
+\*  OpenLANE did not produce a clean GDSII for the RTL.
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
