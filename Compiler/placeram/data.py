@@ -641,33 +641,39 @@ class HigherLevelPlaceable(Placeable):
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
+        if self.enbuf:
+            print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
 
-        print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
+        if self.clkbuf:
+            print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
 
-        print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.decoder_ands:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
+        if self.decoder_ands:
+            print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
+            tab_level += 1
+            for instance in self.decoder_ands:
+                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+            tab_level -= 1
 
-        print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.webufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
+        if self.webufs:
+            print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
+            tab_level += 1
+            for instance in self.webufs:
+                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+            tab_level -= 1
 
-        print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.abufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
+        if self.abufs:
+            print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
+            tab_level += 1
+            for instance in self.abufs:
+                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+            tab_level -= 1
 
-        print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.dibufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
+        if self.dibufs:
+            print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
+            tab_level += 1
+            for instance in self.dibufs:
+                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+            tab_level -= 1
 
         print("%sBlocks" % "".join(["  "] * tab_level), file=file)
         tab_level += 1
@@ -724,9 +730,10 @@ class HigherLevelPlaceable(Placeable):
 
         c2 = start_row
         for el in last_column:
-            r = row_list[c2]
-            r.place(el)
-            c2 += 1
+            if el:
+                r = row_list[c2]
+                r.place(el)
+                c2 += 1
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -737,4 +744,6 @@ class HigherLevelPlaceable(Placeable):
         return len(self.blocks) * (self.blocks[0].word_count())
 
 constructor = {r"\bBANK_B(\d+)\b":Block,
-                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b")}
+                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b"),
+                r"\bBANK512_B(\d+)\b":partial(HigherLevelPlaceable,
+                    r"\bBANK128_B(\d+)\b")}
