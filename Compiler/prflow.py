@@ -321,12 +321,12 @@ def write_RAM_LEF(build_folder, design, in_file, out_file):
             "./example_support/sky130A.magicrc",
             "%s/write_lef.tcl" % build_folder)
 
-def write_RAM_LIB(build_folder, design, in_file, out_file):
+def write_RAM_LIB(build_folder, design, netlist, libfile):
     openlane("perl",
-            "./verilog_to_lib.pl",
+            "./scripts/perl/verilog_to_lib.pl",
             design,
-            in_file,
-            out_file)
+            netlist,
+            libfile)
 
 
 def lvs(build_folder, design, in_1, in_2, report):
@@ -428,7 +428,8 @@ def flow(frm, to, only, size, disable_routing=False):
             powered_netlist)),
         ("write_lef", lambda: write_RAM_LEF(build_folder, design, routed,
             lef_view)),
-        ("write_lib", lambda: write_RAM_LIB(build_folder, design, netlist,
+        ("write_lib", lambda: write_RAM_LIB(build_folder, design,
+            powered_netlist,
             lib_view)),
         ("lvs", lambda: lvs(build_folder, design, routed, powered_netlist, report))
     ]
