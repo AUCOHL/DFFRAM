@@ -301,8 +301,8 @@ module BLOCK_1RW1R #( parameter     USE_LATCH=1,
                 .Di(Di_buf), 
                 .Do0(Do0_pre), 
                 .Do1(Do1_pre), 
-                .A(A0_buf[2:0]),
-                .A(A1_buf[2:0])  
+                .A0(A0_buf[2:0]),
+                .A1(A1_buf[2:0])  
             ); 
         end
     endgenerate
