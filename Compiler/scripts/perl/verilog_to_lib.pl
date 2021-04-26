@@ -1,7 +1,6 @@
-# This script is taken from 'VLSI Professional Network' website
-# This script is written by Sini Mukundan
-
-#!/usr/bin/perl
+#!/usr/bin/env perl
+# Author: Sini Mukundan
+# https://vlsi.pro/creating-lib-file-from-verilog/
 
 use strict;
 
