@@ -1,6 +1,6 @@
 changeable_sub = """
 /*
-    An auto generated testbench to verify RAM{0}x32
+    An auto generated testbench to verify RAM{word_num}x{word_size}
     Author: Mohamed Shalan (mshalan@aucegypt.edu)
 */
 `define     VERBOSE_1
@@ -18,9 +18,9 @@ changeable_sub = """
 
 `include "BB.v"
 
-module tb_RAM{0}x32;
+module tb_RAM{word_num}x{word_size};
 
-    localparam A_W = {1}+2;
+    localparam A_W = {addr_width}+2;
     localparam M_SZ = 2**A_W;
 
     reg             CLK;
@@ -34,7 +34,7 @@ module tb_RAM{0}x32;
 
     event           done;
 
-    RAM{0}x32 #(.USE_LATCH(`USE_LATCH)) SRAM (
+    RAM{word_num}x{word_size} #(.USE_LATCH(`USE_LATCH)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
@@ -44,8 +44,8 @@ module tb_RAM{0}x32;
     );
 
     initial begin
-        $dumpfile("tb_RAM{0}x32.vcd");
-        $dumpvars(0, tb_RAM{0}x32);
+        $dumpfile("tb_RAM{word_num}x{word_size}.vcd");
+        $dumpvars(0, tb_RAM{word_num}x{word_size});
         @(done) $finish;
     end
 
