@@ -48,4 +48,4 @@ jobs:
       - name: Run
         run: |
           cd Compiler/
-          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }}
+          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} --experimental-bb
