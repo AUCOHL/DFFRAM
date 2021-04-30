@@ -146,7 +146,7 @@ class Placer:
         # before returning and pick the width of the nth row or whatever.
         width_units = 0
         for row in self.rows:
-            width_units = max(row.x, width_units)
+            width_units = max(row.width, width_units)
 
         self.core_width = width_units / self.micron_in_units
 

@@ -119,28 +119,36 @@ def synthesis(build_folder, design, word_length_bytes, out_file):
 
     STA(build_folder, design, out_file, None)
 
-def floorplan(build_folder, design, margin, width, height, in_file, out_file):
+def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height, in_file, out_file):
+    SITE_WIDTH=0.46
+    SITE_HEIGHT=2.72
     print("--- Floorplan ---")
-    full_width = width + margin
-    full_height = height + margin
+
+    wmargin = wmargin_sites * SITE_WIDTH
+    hmargin = hmargin_sites * SITE_HEIGHT
+
+    full_width = width + (wmargin * 2)
+    full_height = height + (hmargin * 2)
+    
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./example_support/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef ./example_support/sky130_fd_sc_hd.merged.lef
         read_verilog {in_file}
         link_design {design}
-        initialize_floorplan\
-            -die_area "0 0 {full_width} {full_height}"\
-            -core_area "{margin} {margin} {width} {height}"\
-            -site unithd\
+        initialize_floorplan\\
+            -die_area "0 0 {full_width} {full_height}"\\
+            -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
+            -site unithd\\
             -tracks ./example_support/sky130hd.tracks
         write_def {out_file}
         """.format(
             design=design,
-            margin=margin,
-            width=width,
+            wmargin=wmargin,
+            hmargin=hmargin,
+            wpm=width + wmargin,
             full_width=full_width,
-            height=height,
+            hpm=height + hmargin,
             full_height=full_height,
             in_file=in_file,
             out_file=out_file
@@ -459,10 +467,12 @@ def flow(frm, to, only, size, experimental_bb, variant):
 
     design = "RAM%s" % size 
     build_folder = "./build/%s" % design
+    wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
     if experimental_bb:
         design = "RAM%i" % words
         if variant is not None and variant != "DEFAULT":
             design += "_" + variant
+            wmargin *= 2; hmargin *= 2 # Avoid congestion, too many pins!
         build_folder = "./build/%s_SIZE%i" % (design, word_length)
 
     ensure_dir(build_folder)
@@ -497,18 +507,16 @@ def flow(frm, to, only, size, experimental_bb, variant):
 
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        height += 3
     except Exception:
         width, height = 20000, 20000
 
 
     def placement(in_width, in_height):
-        nonlocal width, height
-        floorplan(build_folder, design, 5, in_width, in_height, netlist, initial_floorplan)
+        nonlocal width, height, wmargin, hmargin
+        floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        height += 3 # OR fails to create the proper amount of rows without some slack.
-        floorplan(build_folder, design, 5, width, height, netlist, final_floorplan)
+        floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeram(final_floorplan, no_pins_placement, size, experimental_bb)
         place_pins(no_pins_placement, final_placement)
         verify_placement(build_folder, final_placement)
