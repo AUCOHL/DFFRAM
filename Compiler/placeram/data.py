@@ -30,6 +30,8 @@ def str_instance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
 
 class Placeable(object):
+    experimental_mode = True
+
     def place(self, row_list, current_row=0):
         raise Exception("Method unimplemented.")
 
@@ -43,23 +45,23 @@ class Placeable(object):
     def represent_instance(name, instance, tab_level, file=sys.stderr):
         if name != "":
             name += " "
-        print("%s%s%s", ("".join(["  "] * tab_level, name, str_instance(instance))), file=file)
+        print("%s%s%s" % ("".join(["  "] * tab_level), name, str_instance(instance)), file=file)
 
     ri = represent_instance
 
     @staticmethod
     def represent_array(name, array, tab_level, file=sys.stderr, header=None):
         if name != "":
-            print("%s%s" % "".join(["  "] * tab_level, name), file=file)
+            print("%s%s" % ("".join(["  "] * tab_level), name), file=file)
         tab_level += 1
         for i, instance in enumerate(array):
             if header is not None:
-                print("%s%s %i" % "".join(["  "] * tab_level, header, i), file=file)
+                print("%s%s %i" % ("".join(["  "] * tab_level), header, i), file=file)
 
             if isinstance(instance, list):
-                Placeable.represent_array("", array, tab_level, file)
+                Placeable.represent_array("", instance, tab_level, file)
             elif isinstance(instance, Placeable):
-                instance.represent(self, tab_level, file)
+                instance.represent(tab_level, file)
             else:
                 Placeable.represent_instance("", instance, tab_level, file)
 
@@ -156,7 +158,7 @@ class Byte(Placeable):
         P.ri("Clock Gate AND", self.cgand, tab_level, file)
         P.ra("Selection Line Inverters", self.selinvs, tab_level, file)
         if self.clkinv is not None:
-            P.ri("Clock Inverter", self, tab_level, file)
+            P.ri("Clock Inverter", self.clkinv, tab_level, file)
 
         P.ra("Bits", self.bits, tab_level, file, header="Bit")
 
@@ -169,7 +171,7 @@ class Byte(Placeable):
         r.place(self.clockgate)
         r.place(self.cgand)
         for selinv in self.selinvs:
-            r.place(self.selinvs)
+            r.place(selinv)
         if self.clkinv is not None:
             r.place(self.clkinv)
 
@@ -184,6 +186,8 @@ class Word(Placeable):
         clkbuf = r"\bCLKBUF\b"
         selbuf = r"\bSEL(\d*)BUF\b"
         byte = r"\bB(\d+)\b"
+        if P.experimental_mode:
+            byte = r"\bBYTE\\\[(\d+)\\\]"
 
         for instance in instances:
             n = instance.getName()
@@ -218,7 +222,7 @@ class Word(Placeable):
 
         r.place(self.clkbuf)
         for selbuf in self.selbufs:
-            r.place(self.selbuf)
+            r.place(selbuf)
 
         return start_row
 
@@ -335,12 +339,23 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        last_column = [self.webufs[0], self.webufs[1], self.webufs[2], self.webufs[3], self.clkbuf, None, None, None]
+        place_clkbuf_alone = False
+        last_column = [*self.webufs]
+        if len(last_column) == 8:
+            place_clkbuf_alone = True
+        else:
+            last_column.append(self.clkbuf)
+        
+        while len(last_column) < 8:
+            last_column.append(None)
 
         for i in range(8):
             r = row_list[start_row + i]
             if last_column[i] is not None:
                 r.place(last_column[i])
+
+        if place_clkbuf_alone:
+            row_list[start_row].place(self.clkbuf)
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -354,10 +369,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
     def word_count(self):
         return 8
 
-class Block(Placeable): # A block is defined as 4 slices (32 words).
-    
-    use_experimental_floatbuf = False
-
+class Block(Placeable): # A block is defined as 4 slices (32 words)
     def __init__(self, instances):
         self.clkbuf = None
         self.enbuf = None
@@ -390,13 +402,13 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         abuf = r"\bA(\d*)BUF\\\[(\d+)\\\]"
         enbuf = r"\bEN(\d*)BUF\b"
 
-        tie = r"\bTIE\\\[(\d+)\\\]"
+        tie = r"\bTIE(\d*)\\\[(\d+)\\\]"
         fbufenbuf = r"\bFBUFENBUF(\d*)\\\[(\d+)\\\]"
 
         # match groups: byte, address, bit
         floatbuf = r"\bFLOATBUF_B(\d+)\\(\d*)\[(\d+)\\\]"  # address set to dummy value because only experimental supports multiple addressing
-        if Block.use_experimental_floatbuf:
-            floatbuf = r"\bBYTE\\\[(\d+)\\\].FLOATBUF(\d*)\\\[(\d+)\\\]\b"
+        if P.experimental_mode:
+            floatbuf = r"\bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d*)\\\[(\d+)\\\]"
 
         for instance in instances:
             n = instance.getName()
@@ -428,7 +440,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 raw_enbufs[address] = instance
             elif tie_match := re.search(tie, n):
                 address = int(tie_match[1] or "0")
-                i = int(tie_match[1])
+                i = int(tie_match[2])
                 raw_ties[address] = raw_ties.get(address) or {}
                 raw_ties[address][i] = instance
             elif fbufenbuf_match := re.search(fbufenbuf, n):
@@ -437,7 +449,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 raw_fbufenbufs[address] = raw_fbufenbufs.get(address) or {}
                 raw_fbufenbufs[address][i] = instance
             elif floatbuf_match := re.search(floatbuf, n):
-                byte, address, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[2]))
+                byte, address, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[3]))
                 raw_floatbufs[address] = raw_floatbufs.get(address) or {}
                 raw_floatbufs[address][byte] = raw_floatbufs[address].get(byte) or {}
                 raw_floatbufs[address][byte][bit] = instance
@@ -512,17 +524,23 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        for i in range(0, len(abufs)):
+        addresses = len(self.abufs)
+        common = [self.clkbuf] + self.webufs
+        chunks = []
+        per_chunk = math.ceil(len(common) / addresses)
+        i = 0
+
+        while i < len(common):
+            chunks.append(common[i: i + per_chunk])
+            i += per_chunk
+
+        for i in range(0, len(self.abufs)):
             last_column = [
                 self.enbufs[i],
-                *self.webufs[i],
                 *self.abufs[i],
                 *self.decoder_ands[i],
                 *self.fbufenbufs[i]
-            ]
-
-            if i == 0:
-                last_column.append(self.clkbuf)
+            ] + chunks[i]
 
             c2 = start_row
             for el in last_column:

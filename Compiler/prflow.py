@@ -149,7 +149,7 @@ def floorplan(build_folder, design, margin, width, height, in_file, out_file):
     openlane("openroad", "%s/fp_init.tcl" % build_folder)
 
 
-def placeram(in_file, out_file, size, dimensions=os.devnull, represent=os.devnull):
+def placeram(in_file, out_file, size, experimental=False, dimensions=os.devnull, represent=os.devnull):
     print("--- placeRAM Script ---")
     unaltered = out_file + ".ref"
 
@@ -160,7 +160,8 @@ def placeram(in_file, out_file, size, dimensions=os.devnull, represent=os.devnul
         "--tech-lef", "./example_support/sky130_fd_sc_hd.tlef",
         "--size", size,
         "--write-dimensions", dimensions,
-        "--represent", represent,
+        "--represent", represent
+    ] + (["--experimental"] if experimental else []) + [
         in_file
     ])
 
@@ -456,7 +457,7 @@ def flow(frm, to, only, size, experimental_bb):
     word_length_bytes = word_length / 8
 
     design = "RAM%s" % size if not experimental_bb else "RAM%i" % words
-    build_folder = "./build/%s" % design
+    build_folder = "./build/%s" % design if not experimental_bb else "./build/RAM%i_SIZE%i" % (words, word_length)
 
     ensure_dir(build_folder)
 
@@ -498,11 +499,11 @@ def flow(frm, to, only, size, experimental_bb):
     def placement(in_width, in_height):
         nonlocal width, height
         floorplan(build_folder, design, 5, in_width, in_height, netlist, initial_floorplan)
-        placeram(initial_floorplan, initial_placement, size, dimensions_file)
+        placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         height += 3 # OR fails to create the proper amount of rows without some slack.
         floorplan(build_folder, design, 5, width, height, netlist, final_floorplan)
-        placeram(final_floorplan, no_pins_placement, size)
+        placeram(final_floorplan, no_pins_placement, size, experimental_bb)
         place_pins(no_pins_placement, final_placement)
         verify_placement(build_folder, final_placement)
 

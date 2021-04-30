@@ -144,8 +144,9 @@ module WORD #( parameter    USE_LATCH=1,
     sky130_fd_sc_hd__clkbuf_1 CLKBUF (.X(CLK_buf), .A(CLK));
     generate
         genvar i;
-            for(i=0; i<SIZE; i=i+1) 
+            for(i=0; i<SIZE; i=i+1) begin : BYTE
                 BYTE #(.USE_LATCH(USE_LATCH)) B ( .CLK(CLK_buf), .WE(WE[i]), .SEL(SEL_buf), .Di(Di[(i+1)*8-1:i*8]), .Do(Do[(i+1)*8-1:i*8]) );
+            end
     endgenerate
     
 endmodule 
@@ -168,7 +169,7 @@ module WORD_1RW1R #( parameter  USE_LATCH=1,
     sky130_fd_sc_hd__clkbuf_1 CLKBUF (.X(CLK_buf), .A(CLK));
     generate
         genvar i;
-            for(i=0; i<SIZE; i=i+1) 
+            for(i=0; i<SIZE; i=i+1) begin : BYTE
                 BYTE_1RW1R #(.USE_LATCH(USE_LATCH)) B ( 
                     .CLK(CLK_buf), 
                     .WE(WE[i]), 
@@ -178,6 +179,7 @@ module WORD_1RW1R #( parameter  USE_LATCH=1,
                     .Do0(Do0[(i+1)*8-1:i*8]),
                     .Do1(Do1[(i+1)*8-1:i*8])  
                 );
+            end
     endgenerate
     
 endmodule 
@@ -197,7 +199,7 @@ module RAM8 #( parameter    USE_LATCH=1,
     wire                 CLK_buf;
 
     DEC3x8 DEC (.EN(EN), .A(A), .SEL(SEL));
-    sky130_fd_sc_hd__clkbuf_2 WEBUF (.X(WE_buf), .A(WE));
+    sky130_fd_sc_hd__clkbuf_2 WEBUF[SIZE-1:0] (.X(WE_buf), .A(WE));
     sky130_fd_sc_hd__clkbuf_2 CLKBUF (.X(CLK_buf), .A(CLK));
 
     generate

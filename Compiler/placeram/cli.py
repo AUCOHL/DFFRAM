@@ -37,7 +37,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, HigherLevelPlaceable
+from .data import Block, Slice, HigherLevelPlaceable, Placeable
 from .row import Row
 
 import os
@@ -58,10 +58,11 @@ class Placer:
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
     SUPPORTED_WORD_COUNTS = [8, 32, 128, 512, 2048]
+    SUPPORTED_WORD_WIDTHS = [8, 16, 32, 64]
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
-        if word_width != 32:
-            eprint("Only 32-bit words are supported so far.")
+        if word_width not in Placer.SUPPORTED_WORD_WIDTHS:
+            eprint("Only the following word widths are supported so far: %s" % Placer.SUPPORTED_WORD_WIDTHS)
             exit(64)
         if word_count not in Placer.SUPPORTED_WORD_COUNTS:
             eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
@@ -189,9 +190,9 @@ def check_readable(file):
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
-@click.option('--experimental-floatbufs', is_flag=True, default=False, help="Uses the new regex for floatbufs as in BB.wip.v.")
+@click.option('--experimental', is_flag=True, default=False, help="Uses the new regexes for BB.wip.v.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental_floatbufs, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -208,8 +209,8 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, exp
     for input in [lef, tlef, def_file]:
         check_readable(input)
 
-    if experimental_floatbufs:
-        Block.use_experimental_floatbuf = True
+    if experimental:
+        Placeable.experimental_mode = True
 
     placer = Placer(lef, tlef, def_file, words, word_length)
 
