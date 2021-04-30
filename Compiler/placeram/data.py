@@ -30,7 +30,7 @@ def str_instance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
 
 class Placeable(object):
-    experimental_mode = True
+    experimental_mode = False
 
     def place(self, row_list, current_row=0):
         raise Exception("Method unimplemented.")
@@ -188,7 +188,7 @@ class Word(Placeable):
         byte = r"\bB(\d+)\b"
         if P.experimental_mode:
             byte = r"\bBYTE\\\[(\d+)\\\]"
-
+            
         for instance in instances:
             n = instance.getName()
 

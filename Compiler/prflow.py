@@ -442,7 +442,8 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("--only", default=None, help="Only execute this step")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-e", "--experimental-bb", is_flag=True, default=False, help="Use BB.wip.v instead of BB.v.")
-def flow(frm, to, only, size, experimental_bb):
+@click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R). Experimental only.")
+def flow(frm, to, only, size, experimental_bb, variant):
     global bb_used
     if experimental_bb:
         bb_used = "BB.wip.v"
@@ -456,8 +457,13 @@ def flow(frm, to, only, size, experimental_bb):
     word_length = int(m[2])
     word_length_bytes = word_length / 8
 
-    design = "RAM%s" % size if not experimental_bb else "RAM%i" % words
-    build_folder = "./build/%s" % design if not experimental_bb else "./build/RAM%i_SIZE%i" % (words, word_length)
+    design = "RAM%s" % size 
+    build_folder = "./build/%s" % design
+    if experimental_bb:
+        design = "RAM%i" % words
+        if variant is not None and variant != "DEFAULT":
+            design += "_" + variant
+        build_folder = "./build/%s_SIZE%i" % (design, word_length)
 
     ensure_dir(build_folder)
 
