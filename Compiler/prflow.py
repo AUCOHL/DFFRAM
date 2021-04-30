@@ -49,7 +49,6 @@ def openlane(*args_tuple, interactive=False):
     run_docker("efabless/openlane", args)
 
 def STA(build_folder, design, netlist, spef_file):
-
     print("--- Static Timing Analysis ---")
     with open("%s/sta.tcl" % build_folder, 'w') as f:
         env_vars = """
@@ -85,16 +84,21 @@ def STA(build_folder, design, netlist, spef_file):
         f.write(env_vars)
     openlane("sta", "%s/sta.tcl" % build_folder)
 
+bb_used = "BB.v"
 # Not true synthesis, just elaboration.
-def synthesis(build_folder, design, out_file):
+def synthesis(build_folder, design, word_length_bytes, out_file):
     print("--- Synthesis ---")
+    chparam = ""
+    if word_length_bytes is not None:
+        chparam = "chparam -set SIZE %i %s" % (word_length_bytes, design)
     with open("%s/synth.tcl" % build_folder, 'w') as f:
         f.write("""
         yosys -import
         set vtop {design}
         set SCL $env(LIBERTY)
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-        read_verilog BB.v
+        read_verilog {bb_used}
+        {chparam}
         hierarchy -check -top {design}
         synth -top {design} -flatten
         opt_clean -purge
@@ -103,7 +107,7 @@ def synthesis(build_folder, design, out_file):
         write_verilog -noattr -noexpr -nodec {out_file}
         stat -top {design} -liberty $SCL
         exit
-        """.format(design=design, out_file=out_file))
+        """.format(design=design, out_file=out_file, bb_used=bb_used, chparam=chparam))
 
     with open("%s/synth.sh" % build_folder, 'w') as f:
         f.write("""
@@ -112,6 +116,8 @@ def synthesis(build_folder, design, out_file):
         """ % build_folder)
 
     openlane("bash", "%s/synth.sh" % build_folder)
+
+    STA(build_folder, design, out_file, None)
 
 def floorplan(build_folder, design, margin, width, height, in_file, out_file):
     print("--- Floorplan ---")
@@ -434,9 +440,22 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-t", "--to", default="lvs", help="End after this step")
 @click.option("--only", default=None, help="Only execute this step")
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-d", "--disable_routing", is_flag=True, default=False, help="disable routing")
-def flow(frm, to, only, size, disable_routing=False):
-    design = "RAM%s" % size
+@click.option("-e", "--experimental-bb", is_flag=True, default=False, help="Use BB.wip.v instead of BB.v.")
+def flow(frm, to, only, size, experimental_bb):
+    global bb_used
+    if experimental_bb:
+        bb_used = "BB.wip.v"
+    
+    m = re.match(r"(\d+)x(\d+)", size)
+    if m is None:
+        eprint("Invalid RAM size '%s'." % size)
+        exit(64)
+    
+    words = int(m[1])
+    word_length = int(m[2])
+    word_length_bytes = word_length / 8
+
+    design = "RAM%s" % size if not experimental_bb else "RAM%i" % words
     build_folder = "./build/%s" % design
 
     ensure_dir(build_folder)
@@ -488,9 +507,7 @@ def flow(frm, to, only, size, disable_routing=False):
         verify_placement(build_folder, final_placement)
 
     steps = [
-        ("synthesis", lambda:(
-            synthesis(build_folder, design, netlist),
-            STA(build_folder, design, netlist, None))),
+        ("synthesis", lambda: synthesis(build_folder, design, word_length_bytes if experimental_bb else None, netlist)),
         ("placement", lambda: placement(width, height)),
         ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,

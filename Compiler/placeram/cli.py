@@ -153,7 +153,6 @@ class Placer:
 
         self.core_height = height_units / self.micron_in_units
 
-
         eprint("Placement concluded with core size of %fµm x %fµm." % (self.core_width, self.core_height))
         eprint("Done.")
 
@@ -190,8 +189,9 @@ def check_readable(file):
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
+@click.option('--experimental-floatbufs', is_flag=True, default=False, help="Uses the new regex for floatbufs as in BB.wip.v.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental_floatbufs, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -207,6 +207,9 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def
 
     for input in [lef, tlef, def_file]:
         check_readable(input)
+
+    if experimental_floatbufs:
+        Block.use_experimental_floatbuf = True
 
     placer = Placer(lef, tlef, def_file, words, word_length)
 

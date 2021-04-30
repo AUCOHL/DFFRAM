@@ -26,7 +26,7 @@ import sys
 import math
 from functools import partial
 # --
-def RepresentInstance(instance):
+def str_instance(instance):
     return "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
 
 class Placeable(object):
@@ -39,18 +39,49 @@ class Placeable(object):
     def word_count(self):
         raise Exception("Method unimplemented.")
 
+    @staticmethod
+    def represent_instance(name, instance, tab_level, file=sys.stderr):
+        if name != "":
+            name += " "
+        print("%s%s%s", ("".join(["  "] * tab_level, name, str_instance(instance))), file=file)
+
+    ri = represent_instance
+
+    @staticmethod
+    def represent_array(name, array, tab_level, file=sys.stderr, header=None):
+        if name != "":
+            print("%s%s" % "".join(["  "] * tab_level, name), file=file)
+        tab_level += 1
+        for i, instance in enumerate(array):
+            if header is not None:
+                print("%s%s %i" % "".join(["  "] * tab_level, header, i), file=file)
+
+            if isinstance(instance, list):
+                Placeable.represent_array("", array, tab_level, file)
+            elif isinstance(instance, Placeable):
+                instance.represent(self, tab_level, file)
+            else:
+                Placeable.represent_instance("", instance, tab_level, file)
+
+        tab_level -= 1
+
+    ra = represent_array
+
 class DataError(Exception):
     pass
 # --
 
+P = Placeable
+
 class Bit(Placeable):
     def __init__(self, instances):
         self.store = None
-        self.obuf = None
+        
+        raw_obufs = {}
 
         latch = r"\bLATCH\b"
         ff = r"\bFF\b"
-        obuf = r"\bOBUF\b"
+        obuf = r"\bOBUF(\d*)?\b"
 
         for instance in instances:
             n = instance.getName()
@@ -58,23 +89,27 @@ class Bit(Placeable):
             if ff_match := re.search(ff, n):
                 self.store = instance
             elif obuf_match := re.search(obuf, n):
-                self.obuf = instance
+                address = int(obuf_match[1] or "0")
+                raw_obufs[address] = instance
             elif latch_match := re.search(latch, n):
                 self.store = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
+        self.obufs = d2a(raw_obufs)
+
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sStorage Element %s" % ("".join(["  "] * tab_level), RepresentInstance(self.store)), file=file)
-        print("%sOutput Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.obuf)), file=file)
+        P.ri("Storage Element", self.store, tab_level, file)
+        P.ra("Output Buffers", self.obufs, tab_level, file)
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
 
         r.place(self.store)
-        r.place(self.obuf)
+        for obuf in self.obufs:
+            r.place(obuf)
 
         return start_row
 
@@ -82,14 +117,14 @@ class Byte(Placeable):
     def __init__(self, instances):
         self.clockgate = None
         self.cgand = None
-        self.selinv = None
         self.clkinv = None
         raw_bits = {}
+        raw_selinvs = {}
 
         bit = r"\BIT\\\[(\d+)\\\]"
         cg = r"\bCG\b"
         cgand = r"\bCGAND\b"
-        selinv = r"\bSELINV\b"
+        selinv = r"\bSEL(\d*)?INV\b"
         clkinv = r"\bCLKINV\b"
 
         for instance in instances:
@@ -104,29 +139,26 @@ class Byte(Placeable):
             elif cgand_match := re.search(cgand, n):
                 self.cgand = instance
             elif selinv_match := re.search(selinv, n):
-                self.selinv = instance
+                address = int(selinv_match[1] or "0")
+                raw_selinvs[address] = instance
             elif clkinv_match := re.search(clkinv, n):
                 self.clkinv = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
+        self.selinvs = d2a(raw_selinvs)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sClock Gate %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clockgate)), file=file)
-        print("%sClock Gate AND%s" % ("".join(["  "] * tab_level), RepresentInstance(self.cgand)), file=file)
-        print("%sSelect Line Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.selinv)), file=file)
+        P.ri("Clock Gate", self.clockgate, tab_level, file)
+        P.ri("Clock Gate AND", self.cgand, tab_level, file)
+        P.ra("Selection Line Inverters", self.selinvs, tab_level, file)
         if self.clkinv is not None:
-            print("%sClock Inverter%s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkinv)), file=file)
+            P.ri("Clock Inverter", self, tab_level, file)
 
-        print("%sBits" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, bit in enumerate(self.bits):
-            print("%sBit %i" % ("".join(["  "] * tab_level), i), file=file)
-            bit.represent(tab_level=tab_level, file=file)
-        tab_level -= 1
+        P.ra("Bits", self.bits, tab_level, file, header="Bit")
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
@@ -136,7 +168,8 @@ class Byte(Placeable):
 
         r.place(self.clockgate)
         r.place(self.cgand)
-        r.place(self.selinv)
+        for selinv in self.selinvs:
+            r.place(self.selinvs)
         if self.clkinv is not None:
             r.place(self.clkinv)
 
@@ -145,11 +178,11 @@ class Byte(Placeable):
 class Word(Placeable):
     def __init__(self, instances):
         self.clkbuf = None
-        self.selbuf = None
+        raw_selbufs = {}
         raw_bytes = {}
 
         clkbuf = r"\bCLKBUF\b"
-        selbuf = r"\bSELBUF\b"
+        selbuf = r"\bSEL(\d*)BUF\b"
         byte = r"\bB(\d+)\b"
 
         for instance in instances:
@@ -160,26 +193,22 @@ class Word(Placeable):
                 raw_bytes[i] = raw_bytes.get(i) or []
                 raw_bytes[i].append(instance)
             elif sb_match := re.search(selbuf, n):
-                self.selbuf = instance
+                address = int(sb_match[1] or "0")
+                raw_selbufs[address] = instance
             elif cb_match := re.search(clkbuf, n):
                 self.clkbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
+        self.selbufs = d2a(raw_selbufs)
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
-        print("%sSelect Line Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.selbuf)), file=file)
-
-        print("%sBytes" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, byte in enumerate(self.bytes):
-            print("%sByte %i" % ("".join(["  "] * tab_level), i), file=file)
-            byte.represent(tab_level=tab_level, file=file)
-        tab_level -= 1
+        P.ri("Clock Buffer", self.clkbuf, tab_level, file)
+        P.ra("Selection Line Buffers", self.selbufs, tab_level, file)
+        P.ra("Bytes", self.bytes, tab_level, file, header="Byte")
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
@@ -188,7 +217,8 @@ class Word(Placeable):
             byte.place(row_list, start_row)
 
         r.place(self.clkbuf)
-        r.place(self.selbuf)
+        for selbuf in self.selbufs:
+            r.place(self.selbuf)
 
         return start_row
 
@@ -229,21 +259,9 @@ class Decoder3x8(Placeable):
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
-
-        print("%sAND Gates" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.and_gates:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.abufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        tab_level -= 1
+        P.ri("Enable Buffer", self.enbuf, tab_level, file)
+        P.ra("AND Gates", self.and_gates, tab_level, file)
+        P.ra("Addreess Buffers", self.abufs, tab_level, file)
 
     def place(self, row_list, start_row=0):
         """
@@ -266,16 +284,15 @@ class Decoder3x8(Placeable):
 class Slice(Placeable): # A slice is defined as 8 words.
     def __init__(self, instances):
         raw_words = {}
-        self.decoder = None
         self.webufs = []
         self.clkbuf = None
 
         word = r"\bWORD\\\[(\d+)\\\]"
         webuf = r"\bWEBUF\b"
         clkbuf = r"\bCLKBUF\b"
-        decoder = r"\bDEC\b"
+        decoder = r"\bDEC(\d*)\b"
 
-        decoder_instances = []
+        raw_decoders = {}
 
         for instance in instances:
             n = instance.getName()
@@ -285,7 +302,9 @@ class Slice(Placeable): # A slice is defined as 8 words.
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
             elif d_match := re.search(decoder, n):
-                decoder_instances.append(instance)
+                address = int(d_match[1] or "0")
+                raw_decoders[address] = raw_decoders.get(address) or []
+                raw_decoders[address].append(instance)
             elif wb_match := re.search(webuf, n):
                 self.webufs.append(instance)
             elif cb_match := re.search(clkbuf, n):
@@ -293,8 +312,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.decoder = Decoder3x8(decoder_instances)
-
+        self.decoders = d2a({k: Decoder3x8(v) for k, v in raw_decoders.items()})
         self.words = d2a({k: Word(v) for k, v in raw_words.items()})
 
         word_count = len(self.words)
@@ -304,21 +322,9 @@ class Slice(Placeable): # A slice is defined as 8 words.
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sDecoder" % "".join(["  "] * tab_level), file=file)
-        self.decoder.represent(tab_level=tab_level, file=file)
-
-        print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.webufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sWords" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, word in enumerate(self.words):
-            print("%sWord %i" % ("".join(["  "] * tab_level), i), file=file)
-            word.represent(tab_level=tab_level, file=file)
-        tab_level -= 1
+        P.ra("Decoders", self.decoders, tab_level, file, header="Decoder")
+        P.ra("Write Enable Buffers", self.webufs, tab_level, file)
+        P.ra("Words", self.words, tab_level, file, header="Word")
 
     def place(self, row_list, start_row=0):
         current_row = start_row
@@ -338,7 +344,8 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        self.decoder.place(row_list, start_row)
+        for decoder in self.decoders:
+            decoder.place(row_list, start_row)
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -348,9 +355,14 @@ class Slice(Placeable): # A slice is defined as 8 words.
         return 8
 
 class Block(Placeable): # A block is defined as 4 slices (32 words).
+    
+    use_experimental_floatbuf = False
+
     def __init__(self, instances):
         self.clkbuf = None
         self.enbuf = None
+
+        raw_enbufs = {}
 
         raw_slices = {}
         raw_decoder_ands = {}
@@ -367,20 +379,24 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         raw_floatbufs = {}
 
         slice = r"\SLICE\\\[(\d+)\\\]"
-        decoder_and = r"\bDEC\.AND(\d+)\b"
+        decoder_and = r"\bDEC(\d*)\.AND(\d+)\b"
 
         dibuf = r"\bDIBUF\\\[(\d+)\\\]"
-        dobuf = r"\bDo_FF\\\[(\d+)\\\]"
+        dobuf = r"\bDo(\d*)_FF\\\[(\d+)\\\]"
 
         webuf = r"\bWEBUF\\\[(\d+)\\\]"
         clkbuf = r"\bCLKBUF\b"
 
-        abuf = r"\bABUF\\\[(\d+)\\\]"
-        enbuf = r"\bENBUF\b"
+        abuf = r"\bA(\d*)BUF\\\[(\d+)\\\]"
+        enbuf = r"\bEN(\d*)BUF\b"
 
         tie = r"\bTIE\\\[(\d+)\\\]"
-        fbufenbuf = r"\bFBUFENBUF\\\[(\d+)\\\]"
-        floatbuf = r"\bFLOATBUF_B(\d+)\\\[(\d+)\\\]"
+        fbufenbuf = r"\bFBUFENBUF(\d*)\\\[(\d+)\\\]"
+
+        # match groups: byte, address, bit
+        floatbuf = r"\bFLOATBUF_B(\d+)\\(\d*)\[(\d+)\\\]"  # address set to dummy value because only experimental supports multiple addressing
+        if Block.use_experimental_floatbuf:
+            floatbuf = r"\bBYTE\\\[(\d+)\\\].FLOATBUF(\d*)\\\[(\d+)\\\]\b"
 
         for instance in instances:
             n = instance.getName()
@@ -390,8 +406,10 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
                 raw_slices[i] = raw_slices.get(i) or []
                 raw_slices[i].append(instance)
             elif decoder_and_match := re.search(decoder_and, n):
-                i = int(decoder_and_match[1])
-                raw_decoder_ands[i] = instance
+                address = int(decoder_and_match[1] or "0")
+                i = int(decoder_and_match[2])
+                raw_decoder_ands[address] = raw_decoder_ands.get(address) or {}
+                raw_decoder_ands[address][i] = instance
             elif dibuf_match := re.search(dibuf, n):
                 i = int(dibuf_match[1])
                 raw_dibufs[i] = instance
@@ -401,104 +419,70 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
             elif clkbuf_match := re.search(clkbuf, n):
                 self.clkbuf = instance
             elif abuf_match := re.search(abuf, n):
-                i = int(abuf_match[1])
-                raw_abufs[i] = instance
+                address = int(abuf_match[1] or "0")
+                i = int(abuf_match[2])
+                raw_abufs[address] = raw_abufs.get(address) or {}
+                raw_abufs[address][i] = instance
             elif enbuf_match := re.search(enbuf, n):
-                self.enbuf = instance
+                address = int(enbuf_match[1] or "0")
+                raw_enbufs[address] = instance
             elif tie_match := re.search(tie, n):
+                address = int(tie_match[1] or "0")
                 i = int(tie_match[1])
-                raw_ties[i] = instance
+                raw_ties[address] = raw_ties.get(address) or {}
+                raw_ties[address][i] = instance
             elif fbufenbuf_match := re.search(fbufenbuf, n):
-                i = int(fbufenbuf_match[1])
-                raw_fbufenbufs[i] = instance
+                address = int(fbufenbuf_match[1] or "0")
+                i = int(fbufenbuf_match[2])
+                raw_fbufenbufs[address] = raw_fbufenbufs.get(address) or {}
+                raw_fbufenbufs[address][i] = instance
             elif floatbuf_match := re.search(floatbuf, n):
-                byte, bit = (floatbuf_match[1], floatbuf_match[2])
-                raw_floatbufs[byte] = raw_floatbufs.get(byte) or {}
-                raw_floatbufs[byte][bit] = instance
+                byte, address, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[2]))
+                raw_floatbufs[address] = raw_floatbufs.get(address) or {}
+                raw_floatbufs[address][byte] = raw_floatbufs[address].get(byte) or {}
+                raw_floatbufs[address][byte][bit] = instance
             elif dobuf_match := re.search(dobuf, n):
-                i = int(dobuf_match[1])
-                raw_dobufs[i] = instance
+                address = int(dobuf_match[1] or "0")
+                i = int(dobuf_match[2])
+                raw_dobufs[address] = raw_dobufs.get(address) or {}
+                raw_dobufs[address][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
 
-        self.decoder_ands = d2a(raw_decoder_ands)
+        self.decoder_ands = d2a({k: d2a(v) for k, v in raw_decoder_ands.items()})
 
+        self.enbufs = d2a(raw_enbufs)
         self.dibufs = d2a(raw_dibufs)
-        self.dobufs = d2a(raw_dobufs)
+        self.dobufs = d2a({k: d2a(v) for k, v in raw_dobufs.items()})
 
         self.webufs = d2a(raw_webufs)
-        self.abufs = d2a(raw_abufs)
-        self.ties = d2a(raw_ties)
-        self.fbufenbufs = d2a(raw_fbufenbufs)
-        self.floatbufs = d2a({k: d2a(v) for k, v in raw_floatbufs.items()})
+        self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
+
+        self.fbufenbufs = d2a({k: d2a(v) for k, v in raw_fbufenbufs.items()})
+
+        self.ties = d2a({k: d2a(v) for k, v in raw_ties.items()})
+        self.floatbufs = d2a({k: d2a({k: d2a(v2) for k, v2 in v.items()}) for k, v in raw_floatbufs.items()})
 
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
+        def ra(n, a, **kwargs):
+            P.ra(n, a, tab_level, file, **kwargs)
 
-        print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
+        P.ri("Clock Buffer", self.clkbuf, tab_level, file)
 
-        print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.decoder_ands:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.webufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.abufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sTies" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.ties:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sFloatbuf Enable Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.fbufenbufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.dibufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sOutput Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for instance in self.dobufs:
-            print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-        tab_level -= 1
-
-        print("%sFloat Buffers" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, group in enumerate(self.floatbufs):
-            print("%sGroup %i" % ("".join(["  "] * tab_level), i), file=file)
-            tab_level += 1
-            for instance in group:
-                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
-            tab_level -= 1
-        tab_level -= 1
-
-        print("%sSlices" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, slice in enumerate(self.slices):
-            print("%sSlice %i" % ("".join(["  "] * tab_level), i), file=file)
-            slice.represent(tab_level=tab_level, file=file)
-        tab_level -= 1
+        ra("Enable Buffers", self.enbufs)
+        ra("Decoder AND Gates", self.decoder_ands, header="Address")
+        ra("Write Enable Buffers", self.webufs)
+        ra("Address Buffers", self.abufs, header="Address")
+        ra("Data Input Buffers", self.dibufs)
+        ra("Data Output Buffers", self.dobufs, header="Address")
+        ra("Ties", self.ties, header="Address")
+        ra("Float Buffer Enable Buffers", self.fbufenbufs, header="Address")
+        ra("Float Buffers", self.floatbufs, header="Address")
+        ra("Slices", self.slices, header="Slice")
 
     def place(self, row_list, start_row=0):
         current_row = start_row
@@ -512,41 +496,39 @@ class Block(Placeable): # A block is defined as 4 slices (32 words).
         for slice in self.slices:
             current_row = slice.place(row_list, current_row)
 
-        r = row_list[current_row]
-        for i, tie in enumerate(self.ties):
-            r.place(tie)
-            for floatbuf in self.floatbufs[i]:
-                r.place(floatbuf)
+        for i, address in enumerate(self.ties):
+            r = row_list[current_row]
+            for j, tie in enumerate(address):
+                r.place(tie)
+                for floatbuf in self.floatbufs[i][j]:
+                    r.place(floatbuf)
+            current_row += 1
 
-        current_row += 1
-
-        r = row_list[current_row]
-        for dobuf in self.dobufs:
-            r.place(dobuf)
-
-        current_row += 1
+        for address in self.dobufs:
+            r = row_list[current_row]
+            for dobuf in address:
+                r.place(dobuf)
+                current_row += 1
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        last_column = [
-            self.clkbuf,
-            self.enbuf,
-            *self.webufs,
-            *self.abufs,
-            *self.decoder_ands
-        ]
+        for i in range(0, len(abufs)):
+            last_column = [
+                self.enbufs[i],
+                *self.webufs[i],
+                *self.abufs[i],
+                *self.decoder_ands[i],
+                *self.fbufenbufs[i]
+            ]
 
-        c2 = start_row
-        for el in last_column:
-            r = row_list[c2]
-            r.place(el)
-            c2 += 1
+            if i == 0:
+                last_column.append(self.clkbuf)
 
-        c3 = current_row - 1
-        for el in reversed(self.fbufenbufs):
-            r = row_list[c3]
-            r.place(el)
-            c3 -= 1
+            c2 = start_row
+            for el in last_column:
+                r = row_list[c2]
+                r.place(el)
+                c2 += 1
 
         Row.fill_rows(row_list, start_row, current_row)
 
@@ -659,37 +641,37 @@ class HigherLevelPlaceable(Placeable):
         tab_level += 1
 
         if self.enbuf:
-            print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.enbuf)), file=file)
+            print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), str_instance(self.enbuf)), file=file)
 
         if self.clkbuf:
-            print("%sClock Buffer %s" % ("".join(["  "] * tab_level), RepresentInstance(self.clkbuf)), file=file)
+            print("%sClock Buffer %s" % ("".join(["  "] * tab_level), str_instance(self.clkbuf)), file=file)
 
         if self.decoder_ands:
             print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
             tab_level += 1
             for instance in self.decoder_ands:
-                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
             tab_level -= 1
 
         if self.webufs:
             print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
             tab_level += 1
             for instance in self.webufs:
-                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
             tab_level -= 1
 
         if self.abufs:
             print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
             tab_level += 1
             for instance in self.abufs:
-                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
             tab_level -= 1
 
         if self.dibufs:
             print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
             tab_level += 1
             for instance in self.dibufs:
-                print("%s%s" % ("".join(["  "] * tab_level), RepresentInstance(instance)), file=file)
+                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
             tab_level -= 1
 
         print("%sBlocks" % "".join(["  "] * tab_level), file=file)

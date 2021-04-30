@@ -112,8 +112,8 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
         end else
             sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
     
-        sky130_fd_sc_hd__inv_1 SEL0_INV (.Y(SEL0_B), .A(SEL0));
-        sky130_fd_sc_hd__inv_1 SEL1_INV (.Y(SEL1_B), .A(SEL1));
+        sky130_fd_sc_hd__inv_1 SEL0INV (.Y(SEL0_B), .A(SEL0));
+        sky130_fd_sc_hd__inv_1 SEL1INV (.Y(SEL1_B), .A(SEL1));
         sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE), .X(we_wire) );
     
         for(i=0; i<8; i=i+1) begin : BIT
@@ -297,7 +297,7 @@ module RAM32 #( parameter   USE_LATCH=1,
     // Provides default values for floating lines (lo)
     generate
         for (i=0; i< SIZE; i=i+1) begin : BYTE
-            sky130_fd_sc_hd__ebufn_2 FLOATBUF_B0[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
+            sky130_fd_sc_hd__ebufn_2 FLOATBUF[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
         end
     endgenerate
     
@@ -345,7 +345,7 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : SLICE
-            RAM8_1RW1R #(.USE_LATCH(USE_LATCH), .SIZE(SIZE)) RAM8_1RW1R (
+            RAM8_1RW1R #(.USE_LATCH(USE_LATCH), .SIZE(SIZE)) RAM8 (
                 .CLK(CLK_buf), 
                 .WE(WE_buf),
                 .EN0(SEL0[i]), 
