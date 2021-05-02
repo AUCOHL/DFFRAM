@@ -84,6 +84,50 @@ Until the compiler is fully ready, you may harden pre-existing handcrafted desig
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
+# How to use the DFFRAM Compiler -Frequently Updated-
+
+The prflow.py script at least needs the size of the RAM module, implemented in [BB.v](./Compiler/BB.v)
+
+Run this
+```shell
+git clone https://github.com/Cloud-V/DFFRAM 
+cd DFFRAM/Compiler
+./prflow.py -s 8x32 # you can choose from those sizes: 32x32, 128x32, 512x32, 1024x32, 2048x32  
+```
+### Options
+
+```
+./prflow.py    
+    -f , --frm # Start from this step
+    -t , --to # End after this step
+    --only # Only execute this step
+    -s , --size
+    -d , --disable_routing
+
+```
+
+### Steps
+
+1- synthesis : Obtain gate level netlist from the verilog top level module
+
+2- placement : perform custom placement of the RAM module usine placeRAM.py
+
+3- pdngen : Generate power distribution network
+
+4- obs_route : Create Obstruction/Blockage for routing algorithm on metal layer 5
+
+5- routing : Route the design
+
+6- add_pwr_gnd_pins : Add power and ground pins to the verilog gate level netlist obtained from synthesis, needed for lvs
+
+7- write_lef : Write a lef view of the design
+
+8- write_lib : Write a lib view of the design
+
+9- antenna_check : Check for antenna rules violations after routing 
+
+10- lvs : perform Layout Vs Schematic check after routing
+
+
 # ⚖️ License
 Copyright ©2021-present The American University in Cairo and the Cloud V Project. You may use and redistribute this code under the Apache 2.0 license. See 'License'.
-
