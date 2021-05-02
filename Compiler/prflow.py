@@ -48,6 +48,43 @@ def openlane(*args_tuple, interactive=False):
     args = list(args_tuple)
     run_docker("efabless/openlane", args)
 
+def STA(build_folder, design, netlist, spef_file):
+
+    print("--- Static Timing Analysis ---")
+    with open("%s/sta.tcl" % build_folder, 'w') as f:
+        env_vars = """
+            set ::env(SYNTH_DRIVING_CELL) "sky130_fd_sc_hd__inv_8"
+            set ::env(SYNTH_DRIVING_CELL_PIN) "Y"
+            set ::env(SYNTH_CAP_LOAD) "17.65"
+            set ::env(IO_PCT) 0.2
+            set ::env(SYNTH_MAX_FANOUT) 5
+            set ::env(CLOCK_PORT) "CLK"
+            set ::env(CLOCK_PERIOD) "3"
+            set ::env(LIB_FASTEST) ./example_support/sky130_fd_sc_hd__ff_n40C_1v95.lib
+            set ::env(LIB_SLOWEST) ./example_support/sky130_fd_sc_hd__ss_100C_1v60.lib
+            set ::env(CURRENT_NETLIST) {netlist}
+            set ::env(DESIGN_NAME) {design}
+            set ::env(BASE_SDC_FILE) /openLANE_flow/scripts/base.sdc
+            source "/openLANE_flow/scripts/sta.tcl"
+
+        """.format(
+            build_folder=build_folder,
+            design=design,
+            netlist=netlist)
+        if spef_file:
+            env_vars =\
+                    """
+                    set ::env(CURRENT_SPEF) {spef_file}
+                    set ::env(opensta_report_file_tag) {spef_file}.sta
+                    """.format(spef_file=spef_file) + env_vars
+        else:
+            env_vars =\
+                    """
+                    set ::env(opensta_report_file_tag) {netlist}.sta
+                    """.format(netlist=netlist) + env_vars
+        f.write(env_vars)
+    openlane("sta", "%s/sta.tcl" % build_folder)
+
 # Not true synthesis, just elaboration.
 def synthesis(build_folder, design, out_file):
     print("--- Synthesis ---")
@@ -227,9 +264,6 @@ def pdngen(build_folder, width, height, in_file, out_file):
 
 def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
     print("--- Routing Obstruction Creation---")
-    # using the tcl interface to openlane, openroad seems
-    # a bit dangerous to use with regards to obstruction
-    # creation
     openlane(
         "python3",
         "/openLANE_flow/scripts/add_def_obstructions.py",
@@ -239,8 +273,7 @@ def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
         "met{metal_layer} 0 0 {width} {height}".format(metal_layer=metal_layer,
             width=width,
             height=height),
-        "--output", out_file
-    )
+        "--output", out_file)
 
 def route(build_folder, in_file, out_file):
     print("--- Route ---")
@@ -275,10 +308,14 @@ def route(build_folder, in_file, out_file):
 
     openlane("openroad", "%s/route.tcl" % build_folder)
 
-# ("add_pwr_gnd_pins", lambda: add_pwr_gnd_pins(build_folder, pdn,
-# powered_def,
-# norewrite_powered_netlist,
-# powered_netlist)),
+def SPEF_extract(build_folder, def_file, spef_file=None):
+    print("--- Extract SPEF ---")
+    openlane("python3", "/openLANE_flow/scripts/spef_extractor/main.py",
+            "--def_file", def_file,
+            "--lef_file", "./example_support/sky130_fd_sc_hd.merged.lef",
+            "--wire_model", "L",
+            "--edge_cap_factor", "1")
+
 def add_pwr_gnd_pins(build_folder, original_netlist,
         def_file, intermediate_file, out_file1,
         out_file2):
@@ -374,6 +411,24 @@ def lvs(build_folder, design, in_1, in_2, report):
 
     openlane("bash", "%s/lvs.sh" % build_folder)
 
+def antenna_check(build_folder, def_file, out_file):
+    # using openroad antenna check
+    print("--- Antenna Check ---")
+    with open("%s/antenna_check.tcl" % build_folder, 'w') as f:
+        f.write("""
+            set ::env(REPORTS_DIR) {build_folder}
+            set ::env(MERGED_LEF_UNPADDED) ./example_support/sky130_fd_sc_hd.merged.lef
+            set ::env(CURRENT_DEF) {def_file}
+            read_lef $::env(MERGED_LEF_UNPADDED)
+            read_def -order_wires {def_file}
+            check_antennas -path {build_folder}
+            # source /openLANE_flow/scripts/openroad/or_antenna_check.tcl
+        """.format(build_folder=build_folder,
+            def_file=def_file,
+            out_file=out_file))
+    openlane("openroad", "%s/antenna_check.tcl" % build_folder)
+    openlane("mv", "%s/antenna.rpt" % build_folder, out_file)
+
 @click.command()
 @click.option("-f", "--frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="lvs", help="End after this step")
@@ -405,11 +460,13 @@ def flow(frm, to, only, size, disable_routing=False):
     pdn = i(".pdn.def")
     obstructed = i(".obs.def")
     routed = i(".routed.def")
+    spef = i(".routed.spef")
     lef_view = i(".lef")
     lib_view = i(".lib")
     powered_def = i(".powered.def")
     norewrite_powered_netlist = i(".norewrite_powered.nl.v")
     powered_netlist = i(".powered.nl.v")
+    antenna_report = i(".antenna.rpt")
     report = i(".rpt")
 
     try:
@@ -431,12 +488,17 @@ def flow(frm, to, only, size, disable_routing=False):
         verify_placement(build_folder, final_placement)
 
     steps = [
-        ("synthesis", lambda: synthesis(build_folder, design, netlist)),
+        ("synthesis", lambda:(
+            synthesis(build_folder, design, netlist),
+            STA(build_folder, design, netlist, None))),
         ("placement", lambda: placement(width, height)),
         ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
         ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
             obstructed)),
-        ("routing", lambda: route(build_folder, obstructed, routed)),
+        ("routing", lambda:(
+            route(build_folder, obstructed, routed),
+            SPEF_extract(build_folder, routed, spef),
+            STA(build_folder, design, netlist, spef))),
         ("add_pwr_gnd_pins", lambda: add_pwr_gnd_pins(build_folder, netlist,
             routed,
             powered_def,
@@ -447,6 +509,7 @@ def flow(frm, to, only, size, disable_routing=False):
         ("write_lib", lambda: write_RAM_LIB(build_folder, design,
             powered_netlist,
             lib_view)),
+        ("antenna_check", lambda: antenna_check(build_folder, routed, antenna_report)),
         ("lvs", lambda: lvs(build_folder, design, routed, powered_netlist, report))
     ]
 
