@@ -26,5 +26,5 @@ You can use Docker to substitute all of these dependencies, but:
 * `./prflow.py` is a flow going from building blocks to LVS.
 
 # Documentation
-1. [Using Opendbpy](./md/Using%20Opendbpy.md)
-2. [How PlaceRAM Works](./md/How%20PlaceRAM%20Works.md)
+1. [Using Opendbpy](./docs/md/Using%20Opendbpy.md)
+2. [How PlaceRAM Works](./docs/md/How%20PlaceRAM%20Works.md)
