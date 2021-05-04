@@ -649,8 +649,8 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        P.ra("Selection Buffers", self.selbufs, header="Byte")
-        P.ra("Logic Elements", self.muxes, header="Byte")
+        P.ra("Selection Buffers", self.selbufs, tab_level, file, header="Byte")
+        P.ra("Logic Elements", self.muxes, tab_level, file, header="Byte")
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]

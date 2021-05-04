@@ -487,7 +487,6 @@ def flow(frm, to, only, skip, size, experimental_bb, variant):
         design = "RAM%i" % words
         if variant is not None and variant != "DEFAULT":
             design += "_" + variant
-            wmargin *= 8; hmargin *= 2 # Congestion adjustment
         build_folder = "./build/%s_SIZE%i" % (design, word_length)
 
     ensure_dir(build_folder)
