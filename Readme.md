@@ -67,9 +67,8 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
   </tr>
 </table>
 
-<font size="8px"> \* All support 32-bit word reads and 1, 2, and 4 bytes writes.  </font>
-
-\*\* Values are based on original layout produced by teh compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
+* All support 32-bit word reads and 1, 2, and 4 bytes writes.  
+* Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 ## Handcrafted
 Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
@@ -84,7 +83,7 @@ Until the compiler is fully ready, you may harden pre-existing handcrafted desig
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
-# How to use the DFFRAM Compiler -Frequently Updated-
+# Using the Compiler (WIP)
 
 The prflow.py script at least needs the size of the RAM module, implemented in [BB.v](./Compiler/BB.v)
 
@@ -129,5 +128,18 @@ cd DFFRAM/Compiler
 10- lvs : perform Layout Vs Schematic check after routing
 
 
-# ⚖️ License
-Copyright ©2021-present The American University in Cairo and the Cloud V Project. You may use and redistribute this code under the Apache 2.0 license. See 'License'.
+# ⚖️ Copyright and Licensing
+Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+
+Licensed under the Apache License, Version 2.0 (the "Open Source License");
+you may not use this file except in compliance with the Open Source License.
+You may obtain a copy of the Open Source License at the root of this repository
+(see the file 'License') or at
+
+> http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the Open Source License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the Open Source License for the specific language governing permissions and
+limitations under the Open Source License.
