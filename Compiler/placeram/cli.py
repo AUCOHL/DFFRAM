@@ -58,7 +58,7 @@ class Placer:
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
     SUPPORTED_WORD_COUNTS = [8, 32, 128, 512, 2048]
-    SUPPORTED_WORD_WIDTHS = [8, 16, 32, 64]
+    SUPPORTED_WORD_WIDTHS = [8, 16, 24, 32, 40, 48, 56, 64] # Only 8, 32 and 64 will be tested with CI.
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
         if word_width not in Placer.SUPPORTED_WORD_WIDTHS:

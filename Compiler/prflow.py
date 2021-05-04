@@ -23,12 +23,13 @@ except ImportError:
 
 import os
 import re
+import sys
+import math
 import time
 import pathlib
 import textwrap
 import traceback
 import subprocess
-import math
 
 def rp(path):
     return os.path.realpath(path)
@@ -48,7 +49,7 @@ def openlane(*args_tuple, interactive=False):
     args = list(args_tuple)
     run_docker("efabless/openlane", args)
 
-def STA(build_folder, design, netlist, spef_file):
+def sta(build_folder, design, netlist, spef_file=None):
     print("--- Static Timing Analysis ---")
     with open("%s/sta.tcl" % build_folder, 'w') as f:
         env_vars = """
@@ -116,8 +117,6 @@ def synthesis(build_folder, design, word_length_bytes, out_file):
         """ % build_folder)
 
     openlane("bash", "%s/synth.sh" % build_folder)
-
-    STA(build_folder, design, out_file, None)
 
 def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height, in_file, out_file):
     SITE_WIDTH=0.46
@@ -211,9 +210,25 @@ def verify_placement(build_folder, in_file):
             exit 65
         }}
         puts "Placement successful."
-        """.format(in_file=in_file))
+        """.format(in_file=in_file)
+    )
 
     openlane("openroad", "%s/verify.tcl" % build_folder)
+
+last_image = None
+def create_image(build_folder, in_file):
+    global last_image
+    if not os.getenv("PRFLOW_SKIP_IMAGE") == "1":
+        print("--- Create Image ---")
+        openlane(
+            "bash",
+            "xvfb-run", "-a", "klayout", "-z",
+            "-rd", "input_layout=%s" % in_file,
+            "-rd", "extra_lefs=%s" % "./example_support/sky130_fd_sc_hd.merged.lef",
+            "-rd", "tech_file=%s" % "./example_support/sky130A.lyt",
+            "-rm", "./scripts/klayout/scrot_layout.py"
+        )
+        last_image = in_file + ".png"
 
 def pdngen(build_folder, width, height, in_file, out_file):
     print("--- Power Distribution Network Construction ---")
@@ -323,7 +338,7 @@ def route(build_folder, in_file, out_file):
 
     openlane("openroad", "%s/route.tcl" % build_folder)
 
-def SPEF_extract(build_folder, def_file, spef_file=None):
+def spef_extract(build_folder, def_file, spef_file=None):
     print("--- Extract SPEF ---")
     openlane("python3", "/openLANE_flow/scripts/spef_extractor/main.py",
             "--def_file", def_file,
@@ -365,11 +380,10 @@ def add_pwr_gnd_pins(build_folder, original_netlist,
         write_verilog -noattr -noexpr -nohex -nodec {out_file};
         """.format(verilog_file=out_file1, out_file=out_file2))
 
-    openlane("yosys",
-            "-c", "%s/rewrite_netlist.tcl" % build_folder)
+    openlane("yosys", "-c", "%s/rewrite_netlist.tcl" % build_folder)
 
 
-def write_RAM_LEF(build_folder, design, in_file, out_file):
+def write_ram_lef(build_folder, design, in_file, out_file):
     print("--- Write LEF view of the RAM Module ---")
     with open("%s/write_lef.tcl" % build_folder, "w") as f:
         f.write("""
@@ -389,7 +403,7 @@ def write_RAM_LEF(build_folder, design, in_file, out_file):
             "./example_support/sky130A.magicrc",
             "%s/write_lef.tcl" % build_folder)
 
-def write_RAM_LIB(build_folder, design, netlist, libfile):
+def write_ram_lib(build_folder, design, netlist, libfile):
     openlane("perl",
             "./scripts/perl/verilog_to_lib.pl",
             design,
@@ -447,11 +461,12 @@ def antenna_check(build_folder, def_file, out_file):
 @click.command()
 @click.option("-f", "--frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="lvs", help="End after this step")
-@click.option("--only", default=None, help="Only execute this step")
+@click.option("--only", default=None, help="Only execute these comma;delimited;steps")
+@click.option("--skip", default=None, help="Skip these comma;delimited;steps")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-e", "--experimental-bb", is_flag=True, default=False, help="Use BB.wip.v instead of BB.v.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R). Experimental only.")
-def flow(frm, to, only, size, experimental_bb, variant):
+def flow(frm, to, only, skip, size, experimental_bb, variant):
     global bb_used
     if experimental_bb:
         bb_used = "BB.wip.v"
@@ -472,7 +487,7 @@ def flow(frm, to, only, size, experimental_bb, variant):
         design = "RAM%i" % words
         if variant is not None and variant != "DEFAULT":
             design += "_" + variant
-            wmargin *= 2; hmargin *= 2 # Avoid congestion, too many pins!
+            wmargin *= 8; hmargin *= 2 # Congestion adjustment
         build_folder = "./build/%s_SIZE%i" % (design, word_length)
 
     ensure_dir(build_folder)
@@ -512,7 +527,7 @@ def flow(frm, to, only, size, experimental_bb, variant):
 
 
     def placement(in_width, in_height):
-        nonlocal width, height, wmargin, hmargin
+        nonlocal width, height
         floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
@@ -520,44 +535,117 @@ def flow(frm, to, only, size, experimental_bb, variant):
         placeram(final_floorplan, no_pins_placement, size, experimental_bb)
         place_pins(no_pins_placement, final_placement)
         verify_placement(build_folder, final_placement)
+        create_image(build_folder, final_placement)
 
     steps = [
-        ("synthesis", lambda: synthesis(build_folder, design, word_length_bytes if experimental_bb else None, netlist)),
+        (
+            "synthesis",
+            lambda: synthesis(
+                build_folder,
+                design,
+                word_length_bytes if experimental_bb else None,
+                netlist
+            )
+        ),
+        ("sta_1", lambda: sta(build_folder, design, netlist)),
         ("placement", lambda: placement(width, height)),
-        ("pdngen", lambda: pdngen(build_folder, width, height, final_placement, pdn)),
-        ("obs_route", lambda: obs_route(build_folder, 5, width, height, pdn,
-            obstructed)),
-        ("routing", lambda:(
-            route(build_folder, obstructed, routed),
-            SPEF_extract(build_folder, routed, spef),
-            STA(build_folder, design, netlist, spef))),
-        ("add_pwr_gnd_pins", lambda: add_pwr_gnd_pins(build_folder, netlist,
-            routed,
-            powered_def,
-            norewrite_powered_netlist,
-            powered_netlist)),
-        ("write_lef", lambda: write_RAM_LEF(build_folder, design, routed,
-            lef_view)),
-        ("write_lib", lambda: write_RAM_LIB(build_folder, design,
-            powered_netlist,
-            lib_view)),
-        ("antenna_check", lambda: antenna_check(build_folder, routed, antenna_report)),
-        ("lvs", lambda: lvs(build_folder, design, routed, powered_netlist, report))
+        (
+            "pdngen",
+            lambda: pdngen(build_folder, width, height, final_placement, pdn)
+        ),
+        (
+            "obs_route",
+            lambda: obs_route(build_folder, 5, width, height, pdn, obstructed)
+        ),
+        (
+            "routing",
+            lambda: (
+                route(build_folder, obstructed, routed),
+                create_image(build_folder, routed)
+            )
+        ),
+        (
+            "sta_2",
+            lambda: (
+                spef_extract(build_folder, routed, spef),
+                sta(build_folder, design, netlist, spef)
+            )
+        ),
+        (
+            "add_pwr_gnd_pins",
+            lambda: (
+                add_pwr_gnd_pins(
+                    build_folder,
+                    netlist,
+                    routed,
+                    powered_def,
+                    norewrite_powered_netlist,
+                    powered_netlist
+                ),
+                create_image(build_folder, powered_def)
+            )
+        ),
+        (
+            "write_lef",
+            lambda: write_ram_lef(
+                build_folder,
+                design,
+                routed,
+                lef_view
+            )
+        ),
+        (
+            "write_lib",
+            lambda: write_ram_lib(
+                build_folder,
+                design,
+                powered_netlist,
+                lib_view
+            )
+        ),
+        (
+            "antenna_check",
+            lambda: antenna_check(
+                build_folder,
+                routed,
+                antenna_report
+            )
+        ),
+        (
+            "lvs",
+            lambda: lvs(
+                build_folder,
+                design,
+                routed,
+                powered_netlist,
+                report
+            )
+        )
     ]
+
+    only = only.split(";") if only is not None else None
+    skip = skip.split(";") if skip is not None else []
 
     execute_steps = False
     for step in steps:
-        if frm == step[0]:
+        name, action = step
+        if frm == name:
             execute_steps = True
         if execute_steps:
-            if only is None or only == step[0]:
-                step[1]()
-        if to == step[0]:
+            if (only is None or name in only) and (name not in skip):
+                action()
+        if to == name:
             execute_steps = False
 
     elapsed = time.time() - start
 
     print("Done in %.2fs." % elapsed)
+    
+    if last_image is not None and sys.platform == "darwin":
+        subprocess.run([
+            "open",
+            last_image
+        ], check=True)
 
 def main():
     try:

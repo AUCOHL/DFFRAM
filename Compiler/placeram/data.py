@@ -331,8 +331,33 @@ class Slice(Placeable): # A slice is defined as 8 words.
         P.ra("Words", self.words, tab_level, file, header="Word")
 
     def place(self, row_list, start_row=0):
-        current_row = start_row
+        """
+        Decoders for odd addressing ports are placed on the left,
+        and for even addressing ports are placed on the right.
 
+        This is to avoid congestion.
+        """
+        # Prologue. Split vertical elements into left and right columns
+        vertical_left = []
+        vertical_right = []
+        right = True
+
+        for decoder in self.decoders:
+            target = vertical_right if right else vertical_left
+            target.append(decoder)
+            right = not right
+
+        final_rows = []
+        
+        # Act 1. Place Left Vertical Elements
+        current_row = start_row
+        for decoder in vertical_left:
+            current_row = decoder.place(row_list, start_row)
+
+        final_rows.append(current_row)
+
+        # Act 2. Place Horizontal Elements
+        current_row = start_row
         for word in self.words:
             word.place(row_list, current_row)
             current_row += 1
@@ -359,12 +384,20 @@ class Slice(Placeable): # A slice is defined as 8 words.
 
         Row.fill_rows(row_list, start_row, current_row)
 
-        for decoder in self.decoders:
-            decoder.place(row_list, start_row)
+        final_rows.append(current_row)
+        
+        # Act 3. Place Right Vertical Elements
+        current_row = start_row
+        for decoder in vertical_right:
+            current_row = decoder.place(row_list, start_row)
 
         Row.fill_rows(row_list, start_row, current_row)
+        final_rows.append(current_row)
 
-        return current_row
+        # Epilogue 
+        max_row = max(*final_rows)
+        Row.fill_rows(row_list, start_row, max_row)
+        return max_row
 
     def word_count(self):
         return 8
@@ -497,7 +530,50 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         ra("Slices", self.slices, header="Slice")
 
     def place(self, row_list, start_row=0):
+        # Prologue. Split vertical elements into left and right columns
+        addresses = len(self.abufs)
+        common = [self.clkbuf] + self.webufs
+        chunks = []
+        per_chunk = math.ceil(len(common) / addresses)
+        i = 0
+
+        while i < len(common):
+            chunks.append(common[i: i + per_chunk])
+            i += per_chunk
+
+        vertical_left = []
+        vertical_right = []
+        right = True
+
+        for i in range(0, len(self.abufs)):
+            target = vertical_right if right else vertical_left
+            target.append([
+                self.enbufs[i],
+                *self.abufs[i],
+                *self.decoder_ands[i],
+                *self.fbufenbufs[i]
+            ] + chunks[i])
+            right = not right
+
+        final_rows = []
+
+        # Act 1. Place Left Vertical Elements
         current_row = start_row
+
+        for column in vertical_left:
+            current_row = start_row
+            for el in column:
+                r = row_list[current_row]
+                r.place(el)
+                current_row += 1
+        
+        Row.fill_rows(row_list, start_row, current_row)
+        
+        final_rows.append(current_row)
+
+        # Act 2. Place Horizontal Elements
+        current_row = start_row
+
         r = row_list[current_row]
 
         for dibuf in self.dibufs:
@@ -520,37 +596,28 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
             r = row_list[current_row]
             for dobuf in address:
                 r.place(dobuf)
+            current_row += 1
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+        final_rows.append(current_row)
+
+        # Act 3. Place Right Vertical Elements
+        current_row = start_row
+        
+        for column in vertical_right:
+            current_row = start_row
+            for el in column:
+                r = row_list[current_row]
+                r.place(el)
                 current_row += 1
 
-        Row.fill_rows(row_list, start_row, current_row)
+        final_rows.append(current_row)
 
-        addresses = len(self.abufs)
-        common = [self.clkbuf] + self.webufs
-        chunks = []
-        per_chunk = math.ceil(len(common) / addresses)
-        i = 0
-
-        while i < len(common):
-            chunks.append(common[i: i + per_chunk])
-            i += per_chunk
-
-        for i in range(0, len(self.abufs)):
-            last_column = [
-                self.enbufs[i],
-                *self.abufs[i],
-                *self.decoder_ands[i],
-                *self.fbufenbufs[i]
-            ] + chunks[i]
-
-            c2 = start_row
-            for el in last_column:
-                r = row_list[c2]
-                r.place(el)
-                c2 += 1
-
-        Row.fill_rows(row_list, start_row, current_row)
-
-        return current_row
+        # Epilogue 
+        max_row = max(*final_rows)
+        Row.fill_rows(row_list, start_row, max_row)
+        return max_row
 
     def word_count(self):
         return 32
@@ -582,7 +649,8 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
-        # TODO
+        P.ra("Selection Buffers", self.selbufs, header="Byte")
+        P.ra("Logic Elements", self.muxes, header="Byte")
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
@@ -658,49 +726,30 @@ class HigherLevelPlaceable(Placeable):
     def represent(self, tab_level=-1, file=sys.stderr):
         tab_level += 1
 
+        def ra(n, a, **kwargs):
+            P.ra(n, a, tab_level, file, **kwargs)
+
         if self.enbuf:
-            print("%sEnable Buffer %s" % ("".join(["  "] * tab_level), str_instance(self.enbuf)), file=file)
+            P.ri("Enable Buffer", self.enbuf, tab_level, file)
 
         if self.clkbuf:
-            print("%sClock Buffer %s" % ("".join(["  "] * tab_level), str_instance(self.clkbuf)), file=file)
+            P.ri("Clock Buffer", self.clkbuf, tab_level, file)
 
         if self.decoder_ands:
-            print("%sDecoder AND Gates" % "".join(["  "] * tab_level), file=file)
-            tab_level += 1
-            for instance in self.decoder_ands:
-                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
-            tab_level -= 1
+            ra("Decoder AND Gates", self.decoder_ands)
 
         if self.webufs:
-            print("%sWrite Enable Buffers" % "".join(["  "] * tab_level), file=file)
-            tab_level += 1
-            for instance in self.webufs:
-                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
-            tab_level -= 1
+            ra("Write Enable Buffers", self.webufs)
 
         if self.abufs:
-            print("%sAddress Buffers" % "".join(["  "] * tab_level), file=file)
-            tab_level += 1
-            for instance in self.abufs:
-                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
-            tab_level -= 1
+            ra("Address Buffers", self.abufs)
 
         if self.dibufs:
-            print("%sInput Buffers" % "".join(["  "] * tab_level), file=file)
-            tab_level += 1
-            for instance in self.dibufs:
-                print("%s%s" % ("".join(["  "] * tab_level), str_instance(instance)), file=file)
-            tab_level -= 1
+            ra("Input Buffers", self.dibufs)
 
-        print("%sBlocks" % "".join(["  "] * tab_level), file=file)
-        tab_level += 1
-        for i, ablock in enumerate(self.blocks):
-            print("%sBlock %i" % ("".join(["  "] * tab_level), i), file=file)
-            ablock.represent(tab_level=tab_level, file=file)
-        tab_level -= 1
+        ra("Blocks", self.blocks, header="Block")
 
-        # TODO: Mux
-        tab_level -= 1
+        self.domux.represent(tab_level, file)
 
     def place(self, row_list, start_row=0):
 
