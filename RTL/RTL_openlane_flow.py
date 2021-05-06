@@ -46,20 +46,20 @@ def write_file(filename, data):
         print("writing file %s" % filename)
         f.write(data)
 
-def run_docker(image, args, interactive=False):
+def run_docker(image, args, pdk_path, interactive=False):
     subprocess.run([
         "docker", "run",
         "-tiv" if interactive else "-v",
         "%s:/mnt/dffram" % rp(".."),
         "-v", "%s:/openLANE_flow/designs" % rp("designs"),
-        "-v", "%s:/pdks" % rp("../../pdks"),
+        "-v", "%s:/pdks" % rp(pdk_path),
         "-e", "PDK_ROOT=%s" % "/pdks",
         "-w", "/openLANE_flow",
     ] + [image] + args, check=True)
 
-def openlane(*args_tuple, interactive=False):
+def openlane(*args_tuple, pdk_path, interactive=False):
     args = list(args_tuple)
-    run_docker("efabless/openlane:current", args)
+    run_docker("efabless/openlane:current", args, pdk_path)
 
 def gen_v_file(size, design, filename):
     size = int(size)
@@ -100,6 +100,7 @@ def RTL_openlane_flow(size, tag, pdk_path):
         return "%s/%s/%s%s" %(designs_folder, design, name, ext)
     def filepath_docker(ext=""):
         return "/mnt/dffram/RTL/%s/%s/%s%s" %(designs_folder, design, design, ext)
+
     verilog_filename = filepath_src(".v")
     cfg_filename = filepath(".tcl")
     pin_order_cfg_filename = filepath_unnamed("pin_order", ".cfg")
@@ -110,7 +111,7 @@ def RTL_openlane_flow(size, tag, pdk_path):
             "-design", design,
             "-tag", tag,
             "-src", filepath_src_docker(".v"),
-            "-config_file", filepath_docker(".tcl"))
+            "-config_file", filepath_docker(".tcl"), pdk_path=pdk_path)
 
 def main():
     try:
