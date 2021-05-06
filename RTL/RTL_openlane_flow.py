@@ -31,7 +31,7 @@ import subprocess
 import math
 from datetime import datetime, date
 
-from DFFRAM_template import parameterized_module
+from DFFRAM_template import parameterized_module, parameterized_config, pin_order_cfg
 
 
 def rp(path):
@@ -40,41 +40,77 @@ def rp(path):
 def ensure_dir(path):
     return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
+def write_file(filename, data):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w+') as f:
+        print("writing file %s" % filename)
+        f.write(data)
+
 def run_docker(image, args, interactive=False):
     subprocess.run([
         "docker", "run",
         "-tiv" if interactive else "-v",
         "%s:/mnt/dffram" % rp(".."),
-        "-w", "/mnt/dffram/RTL",
+        "-v", "%s:/openLANE_flow/designs" % rp("designs"),
+        "-v", "%s:/pdks" % rp("../../pdks"),
+        "-e", "PDK_ROOT=%s" % "/pdks",
+        "-w", "/openLANE_flow",
     ] + [image] + args, check=True)
 
 def openlane(*args_tuple, interactive=False):
     args = list(args_tuple)
-    run_docker("efabless/openlane", args)
+    run_docker("efabless/openlane:current", args)
 
 def gen_v_file(size, design, filename):
     size = int(size)
     module = parameterized_module.format(size=int(size),
                                         words_num=int(size/4),
                                         addr_width=int(math.log2(size/4)))
-    with open(filename, 'w+') as f:
-        f.write(module)
+    write_file(filename, module)
+
+
+def write_pin_order_cfg(filename):
+    write_file(filename, pin_order_cfg)
+
+def gen_cfg_file(size, design, cfg_filename):
+    cfg = parameterized_config.format(size=int(size),
+            design=design)
+    write_file(cfg_filename, cfg)
 
 @click.command()
-@click.option("-s", "--size", default=512, help="size in bytes")
-@click.option("-t", "--tag", default="", help="size in bytes")
-def RTL_openlane_flow(size):
-    designs_folder = './designs'
+@click.option("-s", "--size",
+        default=512,
+        help="size in bytes")
+@click.option("-t", "--tag",
+        default="{:%Y_%m_%d_%H_%M_%S}".format(datetime.now()),
+        help="size in bytes")
+@click.option("-p", "--pdk_path",
+        default="/pdks",
+        help="path to the pdk directory")
+def RTL_openlane_flow(size, tag, pdk_path):
+    designs_folder = 'designs'
     design = "DFFRAM_RTL_{size}".format(size=size)
-    def i(ext=""):
-        return "%s/%s%s" %(designs_folder, design, ext)
-
-    filename = i(".v")
-    gen_v_file(size, design, filename)
+    def filepath_src(ext=""):
+        return "%s/%s/src/%s%s" %(designs_folder, design, design, ext)
+    def filepath_src_docker(ext=""):
+        return "/mnt/dffram/RTL/%s/%s/src/%s%s" %(designs_folder, design, design, ext)
+    def filepath(ext):
+        return "%s/%s/%s%s" %(designs_folder, design, design, ext)
+    def filepath_unnamed(name, ext):
+        return "%s/%s/%s%s" %(designs_folder, design, name, ext)
+    def filepath_docker(ext=""):
+        return "/mnt/dffram/RTL/%s/%s/%s%s" %(designs_folder, design, design, ext)
+    verilog_filename = filepath_src(".v")
+    cfg_filename = filepath(".tcl")
+    pin_order_cfg_filename = filepath_unnamed("pin_order", ".cfg")
+    gen_v_file(size, design, verilog_filename)
+    gen_cfg_file(size, design, cfg_filename)
+    write_pin_order_cfg(pin_order_cfg_filename)
     openlane("tclsh", "flow.tcl",
             "-design", design,
-            "-tag", "{:%Y_%m_%d_%H_%M_%S}".format(datetime.now()),
-            "-src", filename)
+            "-tag", tag,
+            "-src", filepath_src_docker(".v"),
+            "-config_file", filepath_docker(".tcl"))
 
 def main():
     try:
