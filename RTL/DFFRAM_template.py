@@ -41,7 +41,7 @@ set ::env(SYNTH_READ_BLACKBOX_LIB) 1
 # Fill this
 set ::env(CLOCK_PERIOD) "10"
 set ::env(CLOCK_PORT) "CLK"
-set ::env(CLOCK_TREE_SYNTH) 0
+set ::env(CLOCK_TREE_SYNTH) 1
 
 set ::env(FP_PIN_ORDER_CFG) $::env(DESIGN_DIR)/pin_order.cfg
 
