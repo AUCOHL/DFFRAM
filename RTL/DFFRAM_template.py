@@ -46,8 +46,8 @@ set ::env(CLOCK_TREE_SYNTH) 0
 set ::env(FP_PIN_ORDER_CFG) $::env(DESIGN_DIR)/pin_order.cfg
 
 
-set ::env(FP_CORE_UTIL) 75
-set ::env(PL_TARGET_DENSITY) 0.80
+set ::env(FP_CORE_UTIL) 40
+set ::env(PL_TARGET_DENSITY) 0.45
 
 # set ::env(PDN_CFG) $::env(DESIGN_DIR)/pdn.tcl
 set ::env(GLB_RT_MAXLAYER) 5
