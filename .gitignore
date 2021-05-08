@@ -16,3 +16,4 @@ pdk
 timing/
 *.pyc
 *.rpt
+RTL/designs/*
