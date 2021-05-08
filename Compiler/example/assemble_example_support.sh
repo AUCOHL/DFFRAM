@@ -30,12 +30,16 @@ if [ ! -d $PDK_ROOT/sky130A ]; then
 fi
 
 cp -r $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/mag ./example_support/magic_reference_cells
-c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib 
+c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ff_n40C_1v95.lib 
+c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ss_100C_1v60.lib 
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/techlef/sky130_fd_sc_hd.tlef 
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/lef/sky130_fd_sc_hd.lef 
 c $PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/sky130_fd_sc_hd.merged.lef # Requires handmerge
 c $PDK_ROOT/sky130A/libs.tech/magic/sky130A.tech
 c $PDK_ROOT/sky130A/libs.tech/magic/sky130A.tcl
+c $PDK_ROOT/sky130A/libs.tech/klayout/sky130A.lyt
+c $PDK_ROOT/sky130A/libs.tech/klayout/sky130A.lyp
 
 cat <<HEREDOC > ./example_support/sky130A.magicrc
 puts stdout "Sourcing design .magicrc for technology sky130A ..."

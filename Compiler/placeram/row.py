@@ -34,15 +34,23 @@ class Row(object):
 
         self.origin = self.obj.getOrigin()
         [self.x, self.y] = self.obj.getOrigin()
+
+        self.xmin = self.obj.getBBox().xMin()
         self.xmax = self.obj.getBBox().xMax()
 
+        self.ymin = self.obj.getBBox().yMin()
         self.ymax = self.obj.getBBox().yMax()
+
         self.orientation = self.obj.getOrient()
 
         self.cell_counter = 0
         self.tap_counter = 0
         self.fill_counter = 0
         self.since_last_tap = 0 if self.ordinal % 2 == 0 else Row.tap_distance
+
+    @property
+    def width(self):
+        return self.x - self.xmin
 
     def tap(self, width=0):
         location = self.x

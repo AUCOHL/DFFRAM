@@ -35,3 +35,18 @@ jobs:
         run: |
           cd Compiler/
           ./prflow.py -s ${{ matrix.size }}
+  build_linux_experimental:
+    name: Build/Linux (Experimental)
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          count: ["8", "32"]
+          width: ["8", "32"] # 64 temporarily removed (crashes)
+          variant: ["DEFAULT", "1RW1R"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run
+        run: |
+          cd Compiler/
+          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} --experimental-bb -v ${{ matrix.variant }}
