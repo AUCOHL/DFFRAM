@@ -31,7 +31,7 @@ import subprocess
 import math
 from datetime import datetime, date
 
-from DFFRAM_template import parameterized_module, parameterized_config, pin_order_cfg
+from DFFRAM_template import parameterized_module, parameterized_config, pin_order_cfg, pdn_tcl_cfg
 
 
 def rp(path):
@@ -69,8 +69,6 @@ def gen_v_file(size, design, filename):
     write_file(filename, module)
 
 
-def write_pin_order_cfg(filename):
-    write_file(filename, pin_order_cfg)
 
 def gen_cfg_file(size, design, cfg_filename):
     cfg = parameterized_config.format(size=int(size),
@@ -103,10 +101,12 @@ def RTL_openlane_flow(size, tag, pdk_path):
 
     verilog_filename = filepath_src(".v")
     cfg_filename = filepath(".tcl")
+    pdn_cfg_filename = filepath_unnamed("pdn", ".tcl")
     pin_order_cfg_filename = filepath_unnamed("pin_order", ".cfg")
     gen_v_file(size, design, verilog_filename)
     gen_cfg_file(size, design, cfg_filename)
-    write_pin_order_cfg(pin_order_cfg_filename)
+    write_file(pin_order_cfg_filename, pin_order_cfg)
+    write_file(pdn_cfg_filename, pdn_tcl_cfg)
     openlane("tclsh", "flow.tcl",
             "-design", design,
             "-tag", tag,

@@ -49,7 +49,7 @@ set ::env(FP_PIN_ORDER_CFG) $::env(DESIGN_DIR)/pin_order.cfg
 set ::env(FP_CORE_UTIL) 40
 set ::env(PL_TARGET_DENSITY) 0.45
 
-# set ::env(PDN_CFG) $::env(DESIGN_DIR)/pdn.tcl
+set ::env(PDN_CFG) $::env(DESIGN_DIR)/pdn.tcl
 set ::env(GLB_RT_MAXLAYER) 5
 
 set ::env(PL_OPENPHYSYN_OPTIMIZATIONS) 0
