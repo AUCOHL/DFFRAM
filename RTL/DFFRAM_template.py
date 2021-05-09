@@ -55,6 +55,7 @@ set ::env(GLB_RT_MAXLAYER) 5
 set ::env(PL_OPENPHYSYN_OPTIMIZATIONS) 0
 
 set ::env(CELL_PAD) 0
+set ::env(FP_PDN_CHECK_NODES) 0
 set ::env(DIODE_INSERTION_STRATEGY) 4
 
 
