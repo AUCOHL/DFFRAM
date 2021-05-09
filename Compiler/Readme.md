@@ -1,4 +1,4 @@
-# PlaceRAM
+# DFFRAM Compiler
 This is the custom placer for the SKY130A DFFRAM compiler. At the moment it is capable of placing the cells of DFFRAM 2048x32 block. A sample output is given below:
 ![Klayout showing the 2048x32 module placed](./docs/img/8kb_layout.png)
 
