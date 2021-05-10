@@ -24,10 +24,10 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
     <th colspan="2">RTL/OpenLane</th>
   </tr>
   <tr style="border-top:4px solid darkblue;">
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
   </tr>
   <tr>
     <td> 512 bytes </td>
