@@ -17,8 +17,8 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
 
 <table>
   <tr>
-    <th rowspan="2">Size*</th> 
-    <th colspan="2">OpenRAM**</th> 
+    <th rowspan="2">Size<sup>1</sup></th> 
+    <th colspan="2">OpenRAM<sup>2</sup></th> 
     <th colspan="2">DFFRAM Compiler</th> 
     <th colspan="2">DFFRAM/OpenLane</th> 
     <th colspan="2">RTL/OpenLane</th>
@@ -67,8 +67,8 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
   </tr>
 </table>
 
-* All support 32-bit word reads and 1, 2, and 4 bytes writes.  
-* Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
+<sup>1</sup> All support 32-bit word reads and 1, 2, and 4 bytes writes.  
+<sup>2</sup> Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
