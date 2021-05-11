@@ -1,4 +1,4 @@
 build/
-example_support/
 __pycache__
 *.ext
+sky130/support
