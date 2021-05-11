@@ -17,44 +17,44 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
 
 <table>
   <tr>
-    <th rowspan="2">Size*</th> 
-    <th colspan="2">OpenRAM**</th> 
+    <th rowspan="2">Size<sup>1</sup></th> 
+    <th colspan="2">OpenRAM<sup>2</sup></th> 
     <th colspan="2">DFFRAM Compiler</th> 
-    <th colspan="2">Handcrafted</th> 
-    <th colspan="2">RTL</th>
+    <th colspan="2">DFFRAM/OpenLane</th> 
+    <th colspan="2">RTL/OpenLane</th>
   </tr>
   <tr style="border-top:4px solid darkblue;">
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
-    <td> Dim (microns) </td> <td> Bit Density (bits/mm^2) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
+    <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>
   </tr>
   <tr>
     <td> 512 bytes </td>
     <td> N/A </td> <td> N/A </td>
     <td> 395.6 x 388.96 </td> <td> 26,619 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> TBD </td> <td> TBD </td>
+    <td> 680.25 x 690.97 </td> <td> 8,714 </td>
   </tr>
   <tr>
     <td> 1 kbytes </td>
     <td> 386 x 456 </td> <td> 46,541 </td>
+    <td> 788.44 x 394.4 <td> 26,344 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> 425 x 820 </td> <td> 23,506 </td>
     <td> 1,050 x 1,060 </td> <td> 7,360 </td>
   </tr>
   <tr>
     <td> 2 kbytes </td>
     <td> 659.98 x 398.18  </td> <td> 62,372 </td>
     <td> 793.5 x 783.36 </td> <td> 26,358 </td>
-    <td> 1,210 x 621 </td> <td> 21,789 </td>
     <td> TBD </td> <td> TBD </td>
+    <td> 1,439.615 x 1,450.335 </td> <td> 7,847 </td>
   </tr>
   <tr>
     <td> 4 kbytes </td>
     <td> 670.86 x 651.14 </td> <td> 75,014 </td>
+    <td> 1,584.24 x 788.8 </td> <td> 26,196 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> 1,628 x 911 </td> <td> 22,094 </td>
     <td> 2,074 x 2,085 </td> <td> 7,578 </td>
     
   </tr>
@@ -63,23 +63,12 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
     <td> N/A </td> <td> N/A </td>
     <td> 1,589 x 1,572</td> <td> 26,229 </td>
     <td> TBD </td> <td> TBD </td>
-    <td> TBD </td> <td> TBD </td>
+    <td> 2,686.610 x 2,697.330 </td> <td> 9,043 </td>
   </tr>
 </table>
 
-* All support 32-bit word reads and 1, 2, and 4 bytes writes.  
-* Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
-
-## Handcrafted
-Until the compiler is fully ready, you may harden pre-existing handcrafted designs using Openlane.  Here is a high-level view of the improvement over RTL synthesis:
-
-| Size  | No of Instances (*Handcrafted*/RTL) | Placement Density (*Handcrafted*/RTL) | Dimensions X (µm) x Y (µm) (*Handcrafted*/RTL) |
-| -     | -                                   | -                                     | -                                              |
-| 1KiB  | *19,897* vs 51,972                  | *87.2%* vs 61%                        | *425	x 820* vs 1,050 x 1,060                  |
-| 2KiB* | *40,554* vs 103,933                 | *84.8%* vs 61%                        | *1,210 x 610* vs 1,470 x 1,481                 |
-| 4KiB  | *81,044* vs 207,822                 | *84.8%* vs 61%                        | *1,628 x 911* vs 2,074 x 2,085                 |
-
-\*  OpenLANE did not produce a clean GDSII for the RTL.
+<sup>1</sup> All support 32-bit word reads and 1, 2, and 4 bytes writes.  
+<sup>2</sup> Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 

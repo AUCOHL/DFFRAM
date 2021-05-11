@@ -1,4 +1,4 @@
-# PlaceRAM
+# DFFRAM Compiler
 This is the custom placer for the SKY130A DFFRAM compiler. At the moment it is capable of placing the cells of DFFRAM 2048x32 block. A sample output is given below:
 ![Klayout showing the 2048x32 module placed](./docs/img/8kb_layout.png)
 
@@ -16,10 +16,11 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 * Klayout (to view the final result)
 
 # Structure
-* `BB.v` contains the building blocks used by the compiler
-* `example/` contains support files.
+* `docs/` contains documentation files. (😨)
+* `sky130/` contains support files for sky130_fd_sc_hd, the SCL currently supported by this tool.
 * `placeram/` contains the core Python script.
-* `./prflow.py` is a flow going from building blocks to LVS.
+* `BB(.wip).v` contain building blocks used by the compiler
+* `prflow.py` is a flow going from building blocks to LVS.
 
 # Documentation
 1. [Using placeram as part of the flow](https://github.com/Cloud-V/DFFRAM#using-the-compiler-wip)
