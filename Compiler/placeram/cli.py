@@ -37,7 +37,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, HigherLevelPlaceable
+from .data import Block, Slice, HigherLevelPlaceable, Placeable
 from .row import Row
 
 import os
@@ -58,10 +58,11 @@ class Placer:
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
     SUPPORTED_WORD_COUNTS = [8, 32, 128, 512, 2048]
+    SUPPORTED_WORD_WIDTHS = [8, 16, 24, 32, 40, 48, 56, 64] # Only 8, 32 and 64 will be tested with CI.
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
-        if word_width != 32:
-            eprint("Only 32-bit words are supported so far.")
+        if word_width not in Placer.SUPPORTED_WORD_WIDTHS:
+            eprint("Only the following word widths are supported so far: %s" % Placer.SUPPORTED_WORD_WIDTHS)
             exit(64)
         if word_count not in Placer.SUPPORTED_WORD_COUNTS:
             eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
@@ -145,14 +146,13 @@ class Placer:
         # before returning and pick the width of the nth row or whatever.
         width_units = 0
         for row in self.rows:
-            width_units = max(row.x, width_units)
+            width_units = max(row.width, width_units)
 
         self.core_width = width_units / self.micron_in_units
 
         height_units = self.rows[last_row-1].ymax - self.rows[0].y
 
         self.core_height = height_units / self.micron_in_units
-
 
         eprint("Placement concluded with core size of %fµm x %fµm." % (self.core_width, self.core_height))
         eprint("Done.")
@@ -190,8 +190,9 @@ def check_readable(file):
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
+@click.option('--experimental', is_flag=True, default=False, help="Uses the new regexes for BB.wip.v.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental, def_file):
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -207,6 +208,9 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def
 
     for input in [lef, tlef, def_file]:
         check_readable(input)
+
+    if experimental:
+        Placeable.experimental_mode = True
 
     placer = Placer(lef, tlef, def_file, words, word_length)
 

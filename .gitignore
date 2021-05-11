@@ -17,3 +17,4 @@ timing/
 *.pyc
 RTL/designs/
 RTL/designs/*
+*.rpt
