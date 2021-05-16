@@ -15,5 +15,7 @@ __pycache__
 pdk
 timing/
 *.pyc
+RTL/designs/
+RTL/designs/*
 *.rpt
 RTL/designs/*
