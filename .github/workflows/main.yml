@@ -49,4 +49,4 @@ jobs:
       - name: Run
         run: |
           cd Compiler/
-          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} -b  -v ${{ matrix.variant }}
+          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:experimental -v ${{ matrix.variant }}
