@@ -1,0 +1,5 @@
+lib: sky130_fd_sc_hd
+counts: [32]
+widths: [32]
+variants:
+  - 2R1W

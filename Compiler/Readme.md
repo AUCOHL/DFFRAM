@@ -17,9 +17,11 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 
 # Structure
 * `docs/` contains documentation files. (😨)
-* `sky130/` contains support files for sky130_fd_sc_hd, the SCL currently supported by this tool.
-* `placeram/` contains the core Python script.
-* `BB(.wip).v` contain building blocks used by the compiler
+* `sky130A/` contains PDK-specific files:
+  * `BB/` contains a list of building blocks supported by the compiler.
+  * `assemble_support.sh` assembles a support tarball with a subset of the PDK…
+  * … and `support.tar.xz` is the aforementioned tarball.
+* `placeram/` contains the core Python utility.
 * `prflow.py` is a flow going from building blocks to LVS.
 
 # Documentation
