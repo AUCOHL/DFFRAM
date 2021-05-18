@@ -28,7 +28,7 @@ import yaml
 import math
 from functools import partial
 # --
-REGEX_DICT = yaml.safe_load(open(os.path.join(os.path.dirname(__file__), "rx_List.yml")))
+REGEX_DICT = yaml.safe_load(open(os.path.join(os.path.dirname(__file__), "rx_list.yml")))
 def override_regex_dict(override_dict):
     for key, value in override_dict.items():
         class_name, regex = key.split(".")
