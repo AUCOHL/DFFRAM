@@ -29,8 +29,9 @@ module DFFRF_2R1W (
 
 	generate
 		genvar e;
-		for(e=1; e<32; e=e+1)
+        for(e=1; e<32; e=e+1) begin : FILE 
 			RFWORD RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(DA), .D2(DB), .DW(DW) );	
+        end
 	endgenerate
 endmodule
 
@@ -75,10 +76,10 @@ module RFWORD0 (
 );
 
     wire [31:0]  q_wire;
-    wire   we_wire;
+    wire         we_wire;
     wire [3:0]   SEL1_B, SEL2_B;
-    wire [3:0]  GCLK;
-	wire [7:0]	lo;
+    wire [3:0]   GCLK;
+	wire [7:0]	 lo;
 
     sky130_fd_sc_hd__inv_4 INV1[3:0] (.Y(SEL1_B), .A(SEL1));
 	sky130_fd_sc_hd__inv_4 INV2[3:0] (.Y(SEL2_B), .A(SEL2));
@@ -89,7 +90,7 @@ module RFWORD0 (
         genvar i;
         for(i=0; i<32; i=i+1) begin : BIT
             sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(lo[i/8]), .Z(D1[i]), .TE_B(SEL1_B[i/8]) );
-			sky130_fd_sc_hd__ebufn_2 OBUF2 ( .A(lo[4+1/8]), .Z(D2[i]), .TE_B(SEL2_B[i/8]) );
+			sky130_fd_sc_hd__ebufn_2 OBUF2 ( .A(lo[4+i/8]), .Z(D2[i]), .TE_B(SEL2_B[i/8]) );
         end
     endgenerate 
 endmodule

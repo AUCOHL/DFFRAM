@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -15,12 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+from .cli import main
 
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-def d2a(d):
-    as_list = list(d.items())
-    as_list.sort(key=lambda x: x[0])
-    return list(map(lambda x: x[1], as_list))
+if __name__ == "__main__":
+    main()

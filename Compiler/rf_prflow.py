@@ -85,7 +85,7 @@ def sta(build_folder, design, netlist, spef_file=None):
         f.write(env_vars)
     openlane("sta", "%s/sta.tcl" % build_folder)
 
-bb_used = "BB.v"
+bb_used = "DFFRF_2R1W.v"
 # Not true synthesis, just elaboration.
 def synthesis(build_folder, design, word_length_bytes, out_file):
     print("--- Synthesis ---")
@@ -463,31 +463,23 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-t", "--to", default="lvs", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
-@click.option("-s", "--size", required=True, help="Size")
-@click.option("-e", "--experimental-bb", is_flag=True, default=False, help="Use BB.wip.v instead of BB.v.")
-@click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R). Experimental only.")
-def flow(frm, to, only, skip, size, experimental_bb, variant):
+# @click.option("-s", "--size", required=True, help="Size")
+def flow(frm, to, only, skip):
     global bb_used
-    if experimental_bb:
-        bb_used = "BB.wip.v"
 
-    m = re.match(r"(\d+)x(\d+)", size)
-    if m is None:
-        eprint("Invalid RAM size '%s'." % size)
-        exit(64)
+    # m = re.match(r"(\d+)x(\d+)", size)
+    # if m is None:
+    #     eprint("Invalid RAM size '%s'." % size)
+    #     exit(64)
 
-    words = int(m[1])
-    word_length = int(m[2])
-    word_length_bytes = word_length / 8
+    # words = int(m[1])
+    # word_length = int(m[2])
+    # word_length_bytes = word_length / 8
 
-    design = "RAM%s" % size
+    # design = "RAM%s" % size
+    design = "DFFRF_2R1W"
     build_folder = "./build/%s" % design
-    wmargin, hmargin = (8, 2) # in sites # note that the minimum site width is tiiiinnnyyy
-    if experimental_bb:
-        design = "RAM%i" % words
-        if variant is not None and variant != "DEFAULT":
-            design += "_" + variant
-        build_folder = "./build/%s_SIZE%i" % (design, word_length)
+    wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
 
     ensure_dir(build_folder)
 
@@ -526,16 +518,16 @@ def flow(frm, to, only, skip, size, experimental_bb, variant):
         width, height = 20000, 20000
 
 
-    def placement(in_width, in_height):
-        nonlocal width, height
-        floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
-        placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
-        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
-        placeram(final_floorplan, no_pins_placement, size, experimental_bb)
-        place_pins(no_pins_placement, final_placement)
-        verify_placement(build_folder, final_placement)
-        create_image(build_folder, final_placement)
+    # def placement(in_width, in_height):
+    #     nonlocal width, height
+    #     floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
+    #     placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
+    #     width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+    #     floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
+    #     placeram(final_floorplan, no_pins_placement, size, experimental_bb)
+    #     place_pins(no_pins_placement, final_placement)
+    #     verify_placement(build_folder, final_placement)
+    #     create_image(build_folder, final_placement)
 
     steps = [
         (
@@ -543,84 +535,97 @@ def flow(frm, to, only, skip, size, experimental_bb, variant):
             lambda: synthesis(
                 build_folder,
                 design,
-                word_length_bytes if experimental_bb else None,
+                None,
                 netlist
             )
         ),
         ("sta_1", lambda: sta(build_folder, design, netlist)),
-        ("placement", lambda: placement(width, height)),
+
+    #
         (
-            "pdngen",
-            lambda: pdngen(build_folder, width, height, final_placement, pdn)
-        ),
-        (
-            "obs_route",
-            lambda: obs_route(build_folder, 5, width, height, pdn, obstructed)
-        ),
-        (
-            "routing",
-            lambda: (
-                route(build_folder, obstructed, routed),
-                create_image(build_folder, routed)
-            )
-        ),
-        (
-            "sta_2",
-            lambda: (
-                spef_extract(build_folder, routed, spef),
-                sta(build_folder, design, netlist, spef)
-            )
-        ),
-        (
-            "add_pwr_gnd_pins",
-            lambda: (
-                add_pwr_gnd_pins(
-                    build_folder,
-                    netlist,
-                    routed,
-                    powered_def,
-                    norewrite_powered_netlist,
-                    powered_netlist
-                ),
-                create_image(build_folder, powered_def)
-            )
-        ),
-        (
-            "write_lef",
-            lambda: write_ram_lef(
-                build_folder,
+            "floorplan",
+            lambda: floorplan(build_folder,
                 design,
-                routed,
-                lef_view
-            )
+                wmargin,
+                hmargin,
+                width,
+                height,
+                netlist,
+                initial_floorplan)
         ),
-        (
-            "write_lib",
-            lambda: write_ram_lib(
-                build_folder,
-                design,
-                powered_netlist,
-                lib_view
-            )
-        ),
-        (
-            "antenna_check",
-            lambda: antenna_check(
-                build_folder,
-                routed,
-                antenna_report
-            )
-        ),
-        (
-            "lvs",
-            lambda: lvs(
-                build_folder,
-                design,
-                routed,
-                powered_netlist,
-                report
-            )
-        )
+        # ("placement", lambda: placement(width, height)),
+        # (
+        #     "pdngen",
+        #     lambda: pdngen(build_folder, width, height, final_placement, pdn)
+        # ),
+        # (
+        #     "obs_route",
+        #     lambda: obs_route(build_folder, 5, width, height, pdn, obstructed)
+        # ),
+        # (
+        #     "routing",
+        #     lambda: (
+        #         route(build_folder, obstructed, routed),
+        #         create_image(build_folder, routed)
+        #     )
+        # ),
+        # (
+        #     "sta_2",
+        #     lambda: (
+        #         spef_extract(build_folder, routed, spef),
+        #         sta(build_folder, design, netlist, spef)
+        #     )
+        # ),
+        # (
+        #     "add_pwr_gnd_pins",
+        #     lambda: (
+        #         add_pwr_gnd_pins(
+        #             build_folder,
+        #             netlist,
+        #             routed,
+        #             powered_def,
+        #             norewrite_powered_netlist,
+        #             powered_netlist
+        #         ),
+        #         create_image(build_folder, powered_def)
+        #     )
+        # ),
+        # (
+        #     "write_lef",
+        #     lambda: write_ram_lef(
+        #         build_folder,
+        #         design,
+        #         routed,
+        #         lef_view
+        #     )
+        # ),
+        # (
+        #     "write_lib",
+        #     lambda: write_ram_lib(
+        #         build_folder,
+        #         design,
+        #         powered_netlist,
+        #         lib_view
+        #     )
+        # ),
+        # (
+        #     "antenna_check",
+        #     lambda: antenna_check(
+        #         build_folder,
+        #         routed,
+        #         antenna_report
+        #     )
+        # ),
+        # (
+        #     "lvs",
+        #     lambda: lvs(
+        #         build_folder,
+        #         design,
+        #         routed,
+        #         powered_netlist,
+        #         report
+        #     )
+        # )
     ]
 
     only = only.split(";") if only is not None else None

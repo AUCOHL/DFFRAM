@@ -78,7 +78,7 @@ P = Placeable
 class Bit(Placeable):
     def __init__(self, instances):
         self.store = None
-        
+
         raw_obufs = {}
 
         latch = r"\bLATCH\b"
@@ -188,7 +188,7 @@ class Word(Placeable):
         byte = r"\bB(\d+)\b"
         if P.experimental_mode:
             byte = r"\bBYTE\\\[(\d+)\\\]"
-            
+
         for instance in instances:
             n = instance.getName()
 
@@ -348,7 +348,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             right = not right
 
         final_rows = []
-        
+
         # Act 1. Place Left Vertical Elements
         current_row = start_row
         for decoder in vertical_left:
@@ -370,7 +370,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             place_clkbuf_alone = True
         else:
             last_column.append(self.clkbuf)
-        
+
         while len(last_column) < 8:
             last_column.append(None)
 
@@ -385,7 +385,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         Row.fill_rows(row_list, start_row, current_row)
 
         final_rows.append(current_row)
-        
+
         # Act 3. Place Right Vertical Elements
         current_row = start_row
         for decoder in vertical_right:
@@ -394,7 +394,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         Row.fill_rows(row_list, start_row, current_row)
         final_rows.append(current_row)
 
-        # Epilogue 
+        # Epilogue
         max_row = max(*final_rows)
         Row.fill_rows(row_list, start_row, max_row)
         return max_row
@@ -566,9 +566,9 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
                 r = row_list[current_row]
                 r.place(el)
                 current_row += 1
-        
+
         Row.fill_rows(row_list, start_row, current_row)
-        
+
         final_rows.append(current_row)
 
         # Act 2. Place Horizontal Elements
@@ -604,7 +604,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
 
         # Act 3. Place Right Vertical Elements
         current_row = start_row
-        
+
         for column in vertical_right:
             current_row = start_row
             for el in column:
@@ -614,7 +614,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
 
         final_rows.append(current_row)
 
-        # Epilogue 
+        # Epilogue
         max_row = max(*final_rows)
         Row.fill_rows(row_list, start_row, max_row)
         return max_row
@@ -767,7 +767,7 @@ class HigherLevelPlaceable(Placeable):
 
         # all of the big designs include 4 instances
         # of the smaller block they are constituted of
-        # so they can all be 1:1 if they are 4x4
+        # so they can all be 1:1 if they are 2x2
         # the smallest 1:1 is the 128 word block
         # it is placed all on top of each other
         partition_cap = int(math.sqrt(len(self.blocks)))
