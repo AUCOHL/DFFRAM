@@ -1,0 +1,6 @@
+lib: sky130_fd_sc_hd
+widths: [8, 16, 24, 32, 40, 48, 56, 64]
+counts: [8, 32, 128]
+variants:
+  - null
+  - "1RW1R"

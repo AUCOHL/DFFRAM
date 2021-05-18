@@ -37,18 +37,13 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, HigherLevelPlaceable, Placeable
+from .data import override_regex_dict, Block, Slice, HigherLevelPlaceable, Placeable
 from .row import Row
 
 import os
 import re
-import sys
-import math
-import pprint
-import argparse
+import yaml
 import traceback
-from pathlib import Path
-from functools import reduce
 
 class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
@@ -61,12 +56,6 @@ class Placer:
     SUPPORTED_WORD_WIDTHS = [8, 16, 24, 32, 40, 48, 56, 64] # Only 8, 32 and 64 will be tested with CI.
 
     def __init__(self, lef, tech_lef, df, word_count, word_width):
-        if word_width not in Placer.SUPPORTED_WORD_WIDTHS:
-            eprint("Only the following word widths are supported so far: %s" % Placer.SUPPORTED_WORD_WIDTHS)
-            exit(64)
-        if word_count not in Placer.SUPPORTED_WORD_COUNTS:
-            eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
-            exit(64)
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -189,10 +178,21 @@ def check_readable(file):
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
+@click.option('-b', '--building-blocks', default="sky130A:legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
-@click.option('--experimental', is_flag=True, default=False, help="Uses the new regexes for BB.wip.v.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, building_blocks, def_file):
+
+    pdk, blocks = building_blocks.split(":")
+    bb_dir = os.path.join(".", pdk, "BB", blocks)
+    if not os.path.isdir(bb_dir):
+        print("Building blocks %s not found." % building_blocks)
+        exit(66)
+
+    config_file = os.path.join(bb_dir, "config.yml")
+    config = yaml.safe_load(open(config_file))
+    override_regex_dict(config.get("rx_overrides") or {})
+
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -208,9 +208,6 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, exp
 
     for input in [lef, tlef, def_file]:
         check_readable(input)
-
-    if experimental:
-        Placeable.experimental_mode = True
 
     placer = Placer(lef, tlef, def_file, words, word_length)
 
