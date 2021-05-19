@@ -173,17 +173,16 @@ class Word(Placeable):
             # to make the clkgateand an equal distance from all
             # gates that need its output
 
-            if i == (word_width // 2): # 16 range(1)
-                r.place(self.clkgateand)
-
             if i % 8 == 0: # range(4) every 8 place an inv
                 r.place(self.invs1[i//8])
-            r.place(self.obufs1[i])
+                r.place(self.invs2[i//8])
+            if i == (word_width // 2): # 16 range(1)
+                r.place(self.clkgateand)
             if i % 8 == 0: # range(4) every 8 place a clk gate
                 r.place(self.clkgates[i//8])
+
             r.place(self.ffs[i])
-            if i % 8 == 0: # range(4) every 8 place an inv
-                r.place(self.invs2[i//8])
+            r.place(self.obufs1[i])
             r.place(self.obufs2[i])
 
         return start_row + 1
@@ -277,27 +276,24 @@ class DFFRF(Placeable): # 32 words
         for i in range(32):
             if i % 8 == 0: # range(4)
                 r.place(self.rfw0_invs1[i//8])
-            r.place(self.rfw0_obufs1[i])
-
+                r.place(self.rfw0_invs2[i//8])
             if i % 4 == 0: # range(8)
                 r.place(self.rfw0_ties[i//4])
-
-            if i % 8 == 0: # range(4)
-                r.place(self.rfw0_invs2[i//8])
+            r.place(self.rfw0_obufs1[i])
             r.place(self.rfw0_obufs2[i])
 
         current_row += 1
-        # D1 placement
 
         for aword in self.words:
             aword.place(row_list, current_row)
             current_row += 1
 
         highest_row = current_row
+        # D0 placement
         current_row = self.decoders5x32[0].place(row_list, start_row)
+        # D1 placement
         current_row = self.decoders5x32[1].place(row_list, start_row)
         Row.fill_rows(row_list, start_row, current_row)
-        # D0 placement
 
         return highest_row
 
