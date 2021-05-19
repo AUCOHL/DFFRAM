@@ -156,21 +156,18 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
     openlane("openroad", "%s/fp_init.tcl" % build_folder)
 
 
-def placeram(in_file, out_file, size, experimental=False, dimensions=os.devnull, represent=os.devnull):
-    print("--- placeRAM Script ---")
+def placeregfile(in_file, out_file, dimensions=os.devnull, represent=os.devnull):
+    print("--- placeregfile Script ---")
     unaltered = out_file + ".ref"
 
     run_docker("cloudv/dffram-env", [
-        "python3", "-m", "placeram",
+        "python3", "-m", "placeregfile",
         "--output", unaltered,
         "--lef", "./sky130/support/sky130_fd_sc_hd.lef",
         "--tech-lef", "./sky130/support/sky130_fd_sc_hd.tlef",
-        "--size", size,
         "--write-dimensions", dimensions,
-        "--represent", represent
-    ] + (["--experimental"] if experimental else []) + [
-        in_file
-    ])
+        "--represent", represent,
+        in_file])
 
     unaltered_str = open(unaltered).read()
 
@@ -186,7 +183,7 @@ def place_pins(in_file, out_file):
         "/openLANE_flow/scripts/io_place.py",
         "--input-lef", "./sky130/support/sky130_fd_sc_hd.merged.lef",
         "--input-def", in_file,
-        "--config", "./pin_order.cfg",
+        "--config", "./rf_pin_order.cfg",
         "--hor-layer", "4",
         "--ver-layer", "3",
         "--ver-width-mult", "2",
@@ -518,16 +515,16 @@ def flow(frm, to, only, skip):
         width, height = 20000, 20000
 
 
-    # def placement(in_width, in_height):
-    #     nonlocal width, height
-    #     floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
-    #     placeram(initial_floorplan, initial_placement, size, experimental_bb, dimensions_file)
-    #     width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-    #     floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
-    #     placeram(final_floorplan, no_pins_placement, size, experimental_bb)
-    #     place_pins(no_pins_placement, final_placement)
-    #     verify_placement(build_folder, final_placement)
-    #     create_image(build_folder, final_placement)
+    def placement(in_width, in_height):
+        nonlocal width, height
+        floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
+        placeregfile(initial_floorplan, initial_placement, dimensions_file)
+        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
+        placeregfile(final_floorplan, no_pins_placement)
+        place_pins(no_pins_placement, final_placement)
+        # verify_placement(build_folder, final_placement)
+        # create_image(build_folder, final_placement)
 
     steps = [
         (
@@ -542,90 +539,90 @@ def flow(frm, to, only, skip):
         ("sta_1", lambda: sta(build_folder, design, netlist)),
 
     #
+        # (
+        #     "floorplan",
+        #     lambda: floorplan(build_folder,
+        #         design,
+        #         wmargin,
+        #         hmargin,
+        #         width,
+        #         height,
+        #         netlist,
+        #         initial_floorplan)
+        # ),
+        ("placement", lambda: placement(width, height)),
         (
-            "floorplan",
-            lambda: floorplan(build_folder,
-                design,
-                wmargin,
-                hmargin,
-                width,
-                height,
-                netlist,
-                initial_floorplan)
+            "pdngen",
+            lambda: pdngen(build_folder, width, height, final_placement, pdn)
         ),
-        # ("placement", lambda: placement(width, height)),
-        # (
-        #     "pdngen",
-        #     lambda: pdngen(build_folder, width, height, final_placement, pdn)
-        # ),
-        # (
-        #     "obs_route",
-        #     lambda: obs_route(build_folder, 5, width, height, pdn, obstructed)
-        # ),
-        # (
-        #     "routing",
-        #     lambda: (
-        #         route(build_folder, obstructed, routed),
-        #         create_image(build_folder, routed)
-        #     )
-        # ),
-        # (
-        #     "sta_2",
-        #     lambda: (
-        #         spef_extract(build_folder, routed, spef),
-        #         sta(build_folder, design, netlist, spef)
-        #     )
-        # ),
-        # (
-        #     "add_pwr_gnd_pins",
-        #     lambda: (
-        #         add_pwr_gnd_pins(
-        #             build_folder,
-        #             netlist,
-        #             routed,
-        #             powered_def,
-        #             norewrite_powered_netlist,
-        #             powered_netlist
-        #         ),
-        #         create_image(build_folder, powered_def)
-        #     )
-        # ),
-        # (
-        #     "write_lef",
-        #     lambda: write_ram_lef(
-        #         build_folder,
-        #         design,
-        #         routed,
-        #         lef_view
-        #     )
-        # ),
-        # (
-        #     "write_lib",
-        #     lambda: write_ram_lib(
-        #         build_folder,
-        #         design,
-        #         powered_netlist,
-        #         lib_view
-        #     )
-        # ),
-        # (
-        #     "antenna_check",
-        #     lambda: antenna_check(
-        #         build_folder,
-        #         routed,
-        #         antenna_report
-        #     )
-        # ),
-        # (
-        #     "lvs",
-        #     lambda: lvs(
-        #         build_folder,
-        #         design,
-        #         routed,
-        #         powered_netlist,
-        #         report
-        #     )
-        # )
+        (
+            "obs_route",
+            lambda: obs_route(build_folder, 5, width, height, pdn, obstructed)
+        ),
+        (
+            "routing",
+            lambda: (
+                route(build_folder, obstructed, routed),
+                create_image(build_folder, routed)
+            )
+        ),
+        (
+            "sta_2",
+            lambda: (
+                spef_extract(build_folder, routed, spef),
+                sta(build_folder, design, netlist, spef)
+            )
+        ),
+        (
+            "add_pwr_gnd_pins",
+            lambda: (
+                add_pwr_gnd_pins(
+                    build_folder,
+                    netlist,
+                    routed,
+                    powered_def,
+                    norewrite_powered_netlist,
+                    powered_netlist
+                ),
+                create_image(build_folder, powered_def)
+            )
+        ),
+        (
+            "write_lef",
+            lambda: write_ram_lef(
+                build_folder,
+                design,
+                routed,
+                lef_view
+            )
+        ),
+        (
+            "write_lib",
+            lambda: write_ram_lib(
+                build_folder,
+                design,
+                powered_netlist,
+                lib_view
+            )
+        ),
+        (
+            "antenna_check",
+            lambda: antenna_check(
+                build_folder,
+                routed,
+                antenna_report
+            )
+        ),
+        (
+            "lvs",
+            lambda: lvs(
+                build_folder,
+                design,
+                routed,
+                powered_netlist,
+                report
+            )
+        )
     ]
 
     only = only.split(";") if only is not None else None

@@ -75,53 +75,54 @@ class DataError(Exception):
 
 P = Placeable
 
-class Bit(Placeable):
-    def __init__(self, instances):
-        self.store = None
-        self.obuf1 = None
-        self.obuf2 = None
+# REMOVED
+# class Bit(Placeable):
+#     def __init__(self, instances):
+#         self.store = None
+#         self.obuf1 = None
+#         self.obuf2 = None
 
-        latch = r"\bLATCH\b"
-        ff = r"\bFF\b"
-        obuf1 = r"\bOBUF1\b"
-        obuf2 = r"\bOBUF2\b"
+#         latch = r"\bLATCH\b"
+#         ff = r"\bFF\b"
+#         obuf1 = r"\bOBUF1\b"
+#         obuf2 = r"\bOBUF2\b"
 
-        for instance in instances:
-            n = instance.getName()
+#         for instance in instances:
+#             n = instance.getName()
 
-            if ff_match := re.search(ff, n):
-                self.store = instance
-            elif obuf1_match := re.search(obuf1, n):
-                self.obuf1 = instance
-            elif obuf2_match := re.search(obuf2, n):
-                self.obuf2 = instance
-            # TODO(ahmednofal): might be useful so left it
-            elif latch_match := re.search(latch, n):
-                self.store = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+#             if 1:
+#                 pass
+#             # TODO(ahmednofal): might be useful so left it
+#             elif latch_match := re.search(latch, n):
+#                 self.store = instance
+#             else:
+#                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-    def place(self, row_list, start_row=0):
-        r = row_list[start_row]
+#     def place(self, row_list, start_row=0):
+#         r = row_list[start_row]
 
-        r.place(self.obuf1)
-        r.place(self.store)
-        r.place(self.obuf2)
+#         r.place(self.obuf1)
+#         r.place(self.store)
+#         r.place(self.obuf2)
 
-        return start_row
+#         return start_row
 
 class Word(Placeable):
     def __init__(self, instances):
         self.clkgateand = None
 
-        clkgate = r"\bCG\\\[(\d+)\\\]\b"
-        clkgateand = r"\bCGAND\b" # placed at its pin at the right
-        inv1 = r"\bINV1\\\[(\d+)\\\]\b"
-        inv2 = r"\bINV2\\\[(\d+)\\\]\b"
-        bit = r"\bBIT\\\[(\d+)\\\]\b"
+        clkgate = r"CG\\\[(\d+)\\\]"
+        clkgateand = r"CGAND" # placed at its pin at the right
+        inv1 = r"INV1\\\[(\d+)\\\]"
+        inv2 = r"INV2\\\[(\d+)\\\]"
+        bit_ff = r"BIT\\\[(\d+)\\\]\.FF"
+        bit_obuf1 = r"BIT\\\[(\d+)\\\]\.OBUF1"
+        bit_obuf2 = r"BIT\\\[(\d+)\\\]\.OBUF2"
 
         raw_clkgates = {}
-        raw_bits = {}
+        raw_ffs = {}
+        raw_obufs1 = {}
+        raw_obufs2 = {}
         raw_invs1 = {}
         raw_invs2 = {}
 
@@ -130,23 +131,27 @@ class Word(Placeable):
 
             if clkgate_match := re.search(clkgate, n):
                 i = int(clkgate_match[1])
-                raw_clkgates[i] = raw_clkgates.get(i) or []
-                raw_clkgates[i].append(instance)
-
-            elif bit_match := re.search(bit, n):
-                i = int(bit_match[1])
-                raw_bits[i] = raw_bits.get(i) or []
-                raw_bits[i].append(instance)
+                raw_clkgates[i] = instance
 
             elif inv1_match := re.search(inv1, n):
                 i = int(inv1_match[1])
-                raw_invs1[i] = raw_invs1.get(i) or []
-                raw_invs1[i].append(instance)
+                raw_invs1[i] = instance
 
             elif inv2_match := re.search(inv2, n):
                 i = int(inv2_match[1])
-                raw_invs2[i] = raw_invs2.get(i) or []
-                raw_invs2[i].append(instance)
+                raw_invs2[i] = instance
+
+            elif bit_ff_match := re.search(bit_ff, n):
+                i = int(bit_ff_match[1])
+                raw_ffs[i] = instance
+
+            elif bit_obuf1_match := re.search(bit_obuf1, n):
+                i = int(bit_obuf1_match[1])
+                raw_obufs1[i] = instance
+
+            elif bit_obuf2_match := re.search(bit_obuf2, n):
+                i = int(bit_obuf2_match[1])
+                raw_obufs2[i] = instance
 
             elif clkgateand_match := re.search(clkgateand, n):
                 self.clkgateand = instance
@@ -157,22 +162,30 @@ class Word(Placeable):
         self.clkgates = grouped_sorted(raw_clkgates)
         self.invs1 = grouped_sorted(raw_invs1)
         self.invs2 = grouped_sorted(raw_invs2)
-        self.bits = grouped_sorted(
-                {k: Bit(v) for k, v in raw_bits.item()})
+        self.ffs = grouped_sorted(raw_ffs)
+        self.obufs1 = grouped_sorted(raw_obufs1)
+        self.obufs2 = grouped_sorted(raw_obufs2)
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
-        for i in range(4):
+        word_width = 32
+        for i in range(word_width): # 32
             # to make the clkgateand an equal distance from all
             # gates that need its output
-            if i == 2:
+
+            if i == (word_width // 2): # 16 range(1)
                 r.place(self.clkgateand)
 
-            r.place(self.invs1[i])
-            r.place(self.invs2[i])
-            r.place(self.clkgates[i])
-            for j in range(8):
-                r.place(self.bits[i*8+j])
+            if i % 8 == 0: # range(4) every 8 place an inv
+                r.place(self.invs1[i//8])
+            r.place(self.obufs1[i])
+            if i % 8 == 0: # range(4) every 8 place a clk gate
+                r.place(self.clkgates[i//8])
+            r.place(self.ffs[i])
+            if i % 8 == 0: # range(4) every 8 place an inv
+                r.place(self.invs2[i//8])
+            r.place(self.obufs2[i])
+
         return start_row + 1
 
     def word_count(self):
@@ -183,12 +196,10 @@ class DFFRF(Placeable): # 32 words
     def __init__(self, instances):
 
         raw_words = {}
-        raw_decoders2x4 = {}
-        raw_decoders3x8 = {}
+        raw_decoders5x32 = {}
 
-        word = r"\FILE\\\[(\d+)\\\]\.RFW"
-        decoder2x4 = r"\bDEC(\d+)\.D\b"
-        decoder3x8 = r"\bDEC(\d+)\.D(\d+)\b"
+        word = r"\bFILE\\\[(\d+)\\\]\.RFW\b"
+        decoder5x32 = r"\bDEC(\d+)\b"
 
         raw_rfw0_ties = {}
         raw_rfw0_invs1 = {}
@@ -196,9 +207,9 @@ class DFFRF(Placeable): # 32 words
         raw_rfw0_obufs1 = {}
         raw_rfw0_obufs2 = {}
 
-        rfw0_tie = r"\bRFW0\.TIE\\\[(\d+)\\\]\b"
-        rfw0_inv1 = r"\bRFW0\.INV1\\\[(\d+)\\\]\b"
-        rfw0_inv2 = r"\bRFW0\.INV2\\\[(\d+)\\\]\b"
+        rfw0_tie = r"RFW0\.TIE\\\[(\d+)\\\]"
+        rfw0_inv1 = r"RFW0\.INV1\\\[(\d+)\\\]"
+        rfw0_inv2 = r"RFW0\.INV2\\\[(\d+)\\\]"
         rfw0_obuf1 = r"\bRFW0\.BIT\\\[(\d+)\\\]\.OBUF1\b"
         rfw0_obuf2 = r"\bRFW0\.BIT\\\[(\d+)\\\]\.OBUF2\b"
 
@@ -210,47 +221,36 @@ class DFFRF(Placeable): # 32 words
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
 
-            elif decoder3x8_match := re.search(decoder3x8, n):
-                i = int(decoder3x8_match[1])
-                raw_decoders3x8[i] = raw_decoders3x8.get(i) or []
-                raw_decoders3x8[i].append(instance)
-
-            elif decoder2x4_match := re.search(decoder2x4, n):
-                i = int(decoder2x4_match[1])
-                raw_decoders2x4[i] = raw_decoders2x4.get(i) or []
-                raw_decoders2x4[i].append(instance)
+            elif decoder5x32_match := re.search(decoder5x32, n):
+                i = int(decoder5x32_match[1])
+                raw_decoders5x32[i] = raw_decoders5x32.get(i) or []
+                raw_decoders5x32[i].append(instance)
 
             elif rfw0_obuf_match1 := re.search(rfw0_obuf1, n):
                 bit = int(rfw0_obuf_match1[1])
-                raw_rfw0_obufs1[bit] = raw_rfw0_obufs1.get(bit) or []
-                raw_rfw0_obufs1[bit].append(instance)
+                raw_rfw0_obufs1[bit] = instance
 
             elif rfw0_obuf_match2 := re.search(rfw0_obuf2, n):
                 bit = int(rfw0_obuf_match2[1])
-                raw_rfw0_obufs2[bit] = raw_rfw0_obufs2.get(bit) or []
-                raw_rfw0_obufs2[bit].append(instance)
+                raw_rfw0_obufs2[bit] = instance
 
             elif rfw0_tie_match := re.search(rfw0_tie, n):
-                i = int(tie_match[1])
-                raw_rfw0_ties[i] = raw_rfw0_ties.get(i) or []
-                raw_rfw0_ties[i].append(instance)
+                i = int(rfw0_tie_match[1])
+                raw_rfw0_ties[i] = instance
 
             elif rfw0_inv1_match := re.search(rfw0_inv1, n):
-                i = int(inv1_match[1])
-                raw_invs1[i] = raw_invs1.get(i) or []
-                raw_invs1[i].append(instance)
+                i = int(rfw0_inv1_match[1])
+                raw_rfw0_invs1[i] = instance
 
             elif rfw0_inv2_match := re.search(rfw0_inv2, n):
-                i = int(inv2_match[1])
-                raw_invs2[i] = raw_invs2.get(i) or []
-                raw_invs2[i].append(instance)
+                i = int(rfw0_inv2_match[1])
+                raw_rfw0_invs2[i] = instance
 
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.words = grouped_sorted({k: Word(v) for k, v in raw_words.item()})
-        self.decoders2x4 = grouped_sorted({k: Decoder2x4(v) for k, v in raw_decoders2x4.items()})
-        self.decoders3x8 = grouped_sorted({k: Decoder3x8(v) for k, v in raw_decoders3x8.items()})
+        self.words = grouped_sorted({k: Word(v) for k, v in raw_words.items()})
+        self.decoders5x32 = grouped_sorted({k: Decoder5x32(v) for k, v in raw_decoders5x32.items()})
 
         self.rfw0_ties = grouped_sorted(raw_rfw0_ties)
         self.rfw0_invs1 = grouped_sorted(raw_rfw0_invs1)
@@ -259,29 +259,47 @@ class DFFRF(Placeable): # 32 words
         self.rfw0_obufs2 = grouped_sorted(raw_rfw0_obufs2)
 
     def place(self, row_list, start_row=0):
+        #           5x32 decoders placement          |
+        #                                            |
+        #                                            |
+        #                        D0                  V
+        #  {    ====================================    }
+        # 32 D2 ==================================== D1 32
+        #  {    ====================================    }
 
+        # D2 placement
         current_row = start_row
-        r = row_list[current_row]
+        # self.decoders5x32[2].place(row_list, current_row)
 
+        thisrow = self.decoders5x32[2].place(row_list, start_row, flip=True)
+        r = row_list[start_row]
+        # RFWORD0 placement
         for i in range(32):
             if i % 8 == 0: # range(4)
-                r.place(self.rfw0_invs1[i])
+                r.place(self.rfw0_invs1[i//8])
             r.place(self.rfw0_obufs1[i])
 
             if i % 4 == 0: # range(8)
-                r.place(self.rfw0_ties[i])
+                r.place(self.rfw0_ties[i//4])
 
             if i % 8 == 0: # range(4)
-                r.place(self.rfw0_invs2[i])
+                r.place(self.rfw0_invs2[i//8])
             r.place(self.rfw0_obufs2[i])
 
         current_row += 1
+        # D1 placement
 
-        r = row_list[current_row]
         for aword in self.words:
-            r.place(aword)
+            aword.place(row_list, current_row)
+            current_row += 1
 
-        return current_row + 1
+        highest_row = current_row
+        current_row = self.decoders5x32[0].place(row_list, start_row)
+        current_row = self.decoders5x32[1].place(row_list, start_row)
+        Row.fill_rows(row_list, start_row, current_row)
+        # D0 placement
+
+        return highest_row
 
     def word_count(self):
         return 32
@@ -290,78 +308,55 @@ class Decoder5x32(Placeable):
     def __init__(self, instances):
         self.enbuf = None
 
-        raw_abufs = {}
-        raw_and_gates = {}
 
-        self.abufs = []
-        self.and_gates = []
+        decoder2x4 = r"DEC(\d+)\.D"
+        decoder3x8 = r"DEC(\d+)\.D(\d+)"
 
-        dec3x8 = r"\bDEC(\d+)\b"
-        dec4x2_comps = r"\bDEC\b"
+        raw_decoders3x8 = {} # multiple decoders so multiple entries ordered by 1st match
+        self.decoder2x4 = [] # one decoder so array
 
         for instance in instances:
             n = instance.getName()
 
-            if dec3x8_match := re.search(dec3x8, n):
-                i = int(dec3x8_match[1])
-                dec3x8[i].append(instance)
-            elif dec4x2_comps_match := re.search(dec4x2_comps, n):
-                i = int(dec4x2_comps_match[1])
-                dec4x2_comps.append(instance)
+            if decoder3x8_match := re.search(decoder3x8, n):
+                i = int(decoder3x8_match[2])
+                raw_decoders3x8[i] = raw_decoders3x8.get(i) or []
+                raw_decoders3x8[i].append(instance)
+
+            elif decoder2x4_match := re.search(decoder2x4, n):
+                # TODO(ahmednofal): check if these instances
+                # are not ordered so it might not be
+                # the most optimal placement
+                self.decoder2x4.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.dec3x8 = Decoder3x8(dec3x8)
-        self.dec4x2_comps = grouped_sorted(dec4x2_comps)
+        self.decoders3x8 = grouped_sorted({k: Decoder3x8(v) for k, v in raw_decoders3x8.items()})
+        self.decoder2x4 = Decoder2x4(self.decoder2x4)
 
-    def place(self, row_list, start_row=0):
-        """
-        By placing this decoder, you agree that rows[start_row:start_row+7]
-        are at the sole mercy of this function.
-        """
+    def place(self, row_list, start_row=0, flip=False):
+        current_row = start_row
 
-        ands_placeable = self.and_gates
-        buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
+        if flip:
+            thisrow = self.decoder2x4.place(row_list, start_row)
+            for idx in range(len(self.decoders3x8)):
+                self.decoders3x8[idx].place(row_list, idx*8)
+            Row.fill_rows(row_list, start_row, thisrow)
 
-        for i in range(8):
-            r = row_list[start_row + i]
+        else:
+            for idx in range(len(self.decoders3x8)):
+                self.decoders3x8[idx].place(row_list, idx*8)
 
-            r.place(ands_placeable[i])
-            if buf := buffers_placeable[i]:
-                r.place(buf)
-
-        return start_row + 8
+            thisrow = self.decoder2x4.place(row_list, start_row)
+            Row.fill_rows(row_list, start_row, thisrow)
+        return start_row + 32 # 5x32 has 4 3x8 on top of each other and each is 8 rows
 
 class Decoder3x8(Placeable):
     def __init__(self, instances):
-        self.enbuf = None
-
-        raw_abufs = {}
-        raw_and_gates = {}
-
-        self.abufs = []
-        self.and_gates = []
-
-        dand = r"\bAND(\d+)\b"
-        abuf = r"\bABUF\\\[(\d+)\\\]"
-        enbuf = r"\bENBUF\b"
-
-        for instance in instances:
-            n = instance.getName()
-
-            if and_match := re.search(dand, n):
-                i = int(and_match[1])
-                raw_and_gates[i] = instance
-            elif abuf_match := re.search(abuf, n):
-                i = int(abuf_match[1])
-                raw_abufs[i] = instance
-            elif enbuf_match := re.search(enbuf, n):
-                self.enbuf = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-        self.and_gates = grouped_sorted(raw_and_gates)
-        self.abufs = grouped_sorted(raw_abufs)
+        self.andgates = instances
+        if len(instances) < 8:
+            for aninstance in instances:
+                print(aninstance.getName())
 
     def place(self, row_list, start_row=0):
         """
@@ -369,14 +364,20 @@ class Decoder3x8(Placeable):
         are at the sole mercy of this function.
         """
 
-        ands_placeable = self.and_gates
-        buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
-
-        for i in range(8):
+        for i in range(8): # range is 8 because 3x8 has 8 and gates put on on top of each other
             r = row_list[start_row + i]
-
-            r.place(ands_placeable[i])
-            if buf := buffers_placeable[i]:
-                r.place(buf)
+            if i < len(self.andgates):
+                r.place(self.andgates[i])
 
         return start_row + 8
+
+class Decoder2x4(Placeable):
+    def __init__(self, instances):
+        self.andgates = instances
+
+    def place(self, row_list, start_row=0):
+        for i in range(4): # range is 8 because 3x8 has 8 and gates put on on top of each other
+            r = row_list[start_row + i]
+            r.place(self.andgates[i])
+
+        return start_row + 4

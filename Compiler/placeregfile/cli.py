@@ -37,7 +37,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, HigherLevelPlaceable, Placeable
+from .data import DFFRF
 from .row import Row
 
 import os
@@ -117,29 +117,13 @@ class Placer:
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
-        includes = {32:r"\bBANK_B(\d+)\b",
-                    128: r"\bBANK128_B(\d+)\b",
-                    512: r"\bBANK512_B(\d+)\b"}
-
         # TODO: E X P A N D
         if word_count == 32:
-            self.hierarchy = Block(self.instances)
-        # if word_count == 8:
-        #     self.hierarchy = Slice(self.instances)
-        # elif word_count == 32:
-        #     self.hierarchy = Block(self.instances)
-        # elif word_count == 128:
-        #     self.hierarchy = \
-        #     HigherLevelPlaceable(includes[32], self.instances)
-        # elif word_count == 512:
-        #     self.hierarchy = \
-        #     HigherLevelPlaceable(includes[128], self.instances)
-        # elif word_count == 2048:
-        #     self.hierarchy = \
-        #     HigherLevelPlaceable(includes[512], self.instances)
+            self.hierarchy = DFFRF(self.instances)
 
     def represent(self, file):
-        self.hierarchy.represent(file=file)
+        # self.hierarchy.represent(file=file)
+        pass
 
     def place(self):
         eprint("Starting placement…")
@@ -189,29 +173,29 @@ def check_readable(file):
 @click.option('-o', '--output', required=True)
 @click.option('-l', '--lef', required=True)
 @click.option('-t', '--tech-lef', "tlef", required=True)
-@click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, def_file):
-    m = re.match(r"(\d+)x(\d+)", size)
-    if m is None:
-        eprint("Invalid RAM size '%s'." % size)
-        exit(64)
-    words = int(m[1])
-    word_length = int(m[2])
-    if words % 8 != 0 or words == 0:
-        eprint("Word count must be a non-zero multiple of 8.")
-        exit(64)
-    if word_length % 8 != 0 or words == 0:
-        eprint("Word length must be a non-zero multiple of 8.")
-        exit(64)
+def cli(output, lef, tlef, represent, write_dimensions, unplace_fills, def_file):
+    print ("---------------------------------- starting register file placement ----------------------------------")
+    # m = re.match(r"(\d+)x(\d+)", size)
+    # if m is None:
+    #     eprint("Invalid RAM size '%s'." % size)
+    #     exit(64)
+    # words = int(m[1])
+    # word_length = int(m[2])
+    # if words % 8 != 0 or words == 0:
+    #     eprint("Word count must be a non-zero multiple of 8.")
+    #     exit(64)
+    # if word_length % 8 != 0 or words == 0:
+    #     eprint("Word length must be a non-zero multiple of 8.")
+    #     exit(64)
 
     for input in [lef, tlef, def_file]:
         check_readable(input)
 
-    placer = Placer(lef, tlef, def_file, words, word_length)
+    placer = Placer(lef, tlef, def_file, 32, 32)
 
     if represent is not None:
         with open(represent, 'w') as f:
