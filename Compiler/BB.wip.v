@@ -79,17 +79,15 @@ endmodule
 module MUX2x1 #(parameter   SIZE=32)
 (
     input   wire [SIZE-1:0]     A0, A1, A2, A3,
-    input   wire [1:0]          S,
+    input   wire           S,
     output  wire [SIZE-1:0]     X
 );
-    wire [SIZE-1:0] SEL0;
-    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL0), .A(S[0]));
-    //sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S[1]));
-
+    wire [SIZE-1:0] SEL;
+    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL), .A(S[0]));
     generate
         genvar i;
         for(i=0; i<SIZE; i=i+1) begin : M
-            sky130_fd_sc_hd__mux2_1 MUX[7:0] (.A0(A0[(i+1)*8-1:i*8]), .A1(A1[(i+1)*8-1:i*8]), .S(SEL0[i]), .X(X[(i+1)*8-1:i*8]) );
+            sky130_fd_sc_hd__mux2_1 MUX[7:0] (.A0(A0[(i+1)*8-1:i*8]), .A1(A1[(i+1)*8-1:i*8]), .S(SEL[i]), .X(X[(i+1)*8-1:i*8]) );
         end
     endgenerate
 endmodule
