@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import eprint, d2a
+from .util import d2a, Bunch
 from .row import Row
 
 from opendbpy import dbInst
@@ -27,37 +27,48 @@ import sys
 import yaml
 import math
 from functools import partial
+from typing import List, Dict, Union, TextIO, Optional
 # --
-REGEX_DICT = yaml.safe_load(open(os.path.join(os.path.dirname(__file__), "rx_list.yml")))
-def override_regex_dict(override_dict):
+RegExp = str
+
+RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
+    open(os.path.join(os.path.dirname(__file__), "rx.yml"))
+)
+def override_regex_dict(override_dict: Dict[str, RegExp]):
+    global RegexDictionary
     for key, value in override_dict.items():
         class_name, regex = key.split(".")
-        REGEX_DICT[class_name][regex] = value
+        RegexDictionary[class_name][regex] = value
+
+Representable = Union[Instance, 'Placeable',  List['Representable']]
 
 class Placeable(object):
-    experimental_mode = False
-
-    def place(self, row_list, current_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         raise Exception("Method unimplemented.")
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         raise Exception("Method unimplemented.")
 
     def word_count(self):
         raise Exception("Method unimplemented.")
 
-    @property
-    def regexes(self):
+    def regexes(self) -> Bunch:
         """
         Returns a dictionary of regexes for this class accessible with the dot
         notation.
         """
-        class Bunch:
-            __init__ = lambda self, **kw: setattr(self, '__dict__', kw)
-        return Bunch(**REGEX_DICT[self.__class__.__name__])
+        return Bunch(RegexDictionary[self.__class__.__name__])
 
     @staticmethod
-    def represent_instance(name, instance, tab_level, file=sys.stderr):
+    def represent_instance(
+        name: str,
+        instance: Instance,
+        tab_level: int,
+        file: TextIO = sys.stderr
+    ):
+        """
+        Writes textual representation of an instance to `file`.
+        """
         if name != "":
             name += " "
         str_instance = "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
@@ -66,7 +77,19 @@ class Placeable(object):
     ri = represent_instance
 
     @staticmethod
-    def represent_array(name, array, tab_level, file=sys.stderr, header=None):
+    def represent_array(
+        name: str,
+        array: List[Representable],
+        tab_level: int,
+        file: TextIO = sys.stderr,
+        header: Optional[str] = None
+    ):
+        """
+        Writes textual representation of a list of 'representables' to `file`.
+
+        A representable is an Instance, a Placeable or a list of representables.
+        It's a recursive type definition.
+        """
         if name != "":
             print("%s%s" % ("".join(["  "] * tab_level), name), file=file)
         tab_level += 1
@@ -92,21 +115,21 @@ class DataError(Exception):
 P = Placeable
 
 class Bit(Placeable):
-    def __init__(self, instances):
+    def __init__(self, instances: List[Instance]):
         self.store = None
+        self.obufs = None
         
-        raw_obufs = {}
+        raw_obufs: Dict[int, Instance] = {}
 
-        r = self.regexes
-
+        r = self.regexes()
         for instance in instances:
             n = instance.getName()
 
             if ff_match := re.search(r.ff, n):
                 self.store = instance
             elif obuf_match := re.search(r.obuf, n):
-                address = int(obuf_match[1] or "0")
-                raw_obufs[address] = instance
+                port = int(obuf_match[1] or "0")
+                raw_obufs[port] = instance
             elif latch_match := re.search(r.latch, n):
                 self.store = instance
             else:
@@ -114,13 +137,13 @@ class Bit(Placeable):
 
         self.obufs = d2a(raw_obufs)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ri("Storage Element", self.store, tab_level, file)
         P.ra("Output Buffers", self.obufs, tab_level, file)
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
         r.place(self.store)
@@ -130,14 +153,17 @@ class Bit(Placeable):
         return start_row
 
 class Byte(Placeable):
-    def __init__(self, instances):
-        self.clockgate = None
-        self.cgand = None
-        self.clkinv = None
-        raw_bits = {}
-        raw_selinvs = {}
+    def __init__(self, instances: List[Instance]):
+        self.clockgate: Instance = None
+        self.cgand: Instance = None
+        self.clkinv: Instance = None
+        self.bits: List[Bit] = None
+        self.selinvs: List[Instance] = None
+        
+        raw_bits: Dict[int, List[Instance]] = {}
+        raw_selinvs: Dict[int, Instance] = {}
 
-        r = self.regexes
+        r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
@@ -151,8 +177,8 @@ class Byte(Placeable):
             elif cgand_match := re.search(r.cgand, n):
                 self.cgand = instance
             elif selinv_match := re.search(r.selinv, n):
-                address = int(selinv_match[1] or "0")
-                raw_selinvs[address] = instance
+                port = int(selinv_match[1] or "0")
+                raw_selinvs[port] = instance
             elif clkinv_match := re.search(r.clkinv, n):
                 self.clkinv = instance
             else:
@@ -161,7 +187,7 @@ class Byte(Placeable):
         self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
         self.selinvs = d2a(raw_selinvs)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ri("Clock Gate", self.clockgate, tab_level, file)
@@ -172,7 +198,7 @@ class Byte(Placeable):
 
         P.ra("Bits", self.bits, tab_level, file, header="Bit")
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
         for bit in self.bits:
@@ -188,12 +214,15 @@ class Byte(Placeable):
         return start_row
 
 class Word(Placeable):
-    def __init__(self, instances):
-        self.clkbuf = None
-        raw_selbufs = {}
-        raw_bytes = {}
+    def __init__(self, instances: List[Instance]):
+        self.clkbuf: Instance = None
+        self.bytes: List[Byte] = None
+        self.selbufs: List[Instance] = None
 
-        r = self.regexes
+        raw_selbufs: Dict[int, Instance] = {}
+        raw_bytes: Dict[int, List[Instance]] = {}
+
+        r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
@@ -203,8 +232,8 @@ class Word(Placeable):
                 raw_bytes[i] = raw_bytes.get(i) or []
                 raw_bytes[i].append(instance)
             elif sb_match := re.search(r.selbuf, n):
-                address = int(sb_match[1] or "0")
-                raw_selbufs[address] = instance
+                port = int(sb_match[1] or "0")
+                raw_selbufs[port] = instance
             elif cb_match := re.search(r.clkbuf, n):
                 self.clkbuf = instance
             else:
@@ -213,14 +242,14 @@ class Word(Placeable):
         self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
         self.selbufs = d2a(raw_selbufs)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ri("Clock Buffer", self.clkbuf, tab_level, file)
         P.ra("Selection Line Buffers", self.selbufs, tab_level, file)
         P.ra("Bytes", self.bytes, tab_level, file, header="Byte")
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
         for byte in self.bytes:
@@ -236,16 +265,15 @@ class Word(Placeable):
         return 1
 
 class Decoder3x8(Placeable):
-    def __init__(self, instances):
-        self.enbuf = None
+    def __init__(self, instances: List[Instance]):
+        self.enbuf: Instance = None
+        self.and_gates: List[Instance] = None
+        self.abufs: List[Instance] = None
 
-        raw_abufs = {}
-        raw_and_gates = {}
+        raw_abufs: Dict[int, Instance] = {}
+        raw_and_gates: Dict[int, Instance] = {}
 
-        self.abufs = []
-        self.and_gates = []
-
-        r = self.regexes
+        r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
@@ -264,14 +292,14 @@ class Decoder3x8(Placeable):
         self.and_gates = d2a(raw_and_gates)
         self.abufs = d2a(raw_abufs)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ri("Enable Buffer", self.enbuf, tab_level, file)
         P.ra("AND Gates", self.and_gates, tab_level, file)
         P.ra("Addreess Buffers", self.abufs, tab_level, file)
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         """
         By placing this decoder, you agree that rows[start_row:start_row+7]
         are at the sole mercy of this function.
@@ -290,15 +318,16 @@ class Decoder3x8(Placeable):
         return start_row + 8
 
 class Slice(Placeable): # A slice is defined as 8 words.
-    def __init__(self, instances):
-        raw_words = {}
-        self.webufs = []
-        self.clkbuf = None
+    def __init__(self, instances: List[Instance]):
+        self.webufs: List[Instance] = []
+        self.clkbuf: Instance = None
+        self.decoders: List[Decoder3x8] = None
+        self.words: List[Word] = None
 
-        r = self.regexes
+        raw_words: Dict[int, List[Instance]] = {}
+        raw_decoders: Dict[int, List[Instance]] = {} # One per port.
 
-        raw_decoders = {}
-
+        r = self.regexes()
         for instance in instances:
             n = instance.getName()
 
@@ -307,11 +336,11 @@ class Slice(Placeable): # A slice is defined as 8 words.
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
             elif d_match := re.search(r.decoder, n):
-                address = int(d_match[1] or "0")
-                raw_decoders[address] = raw_decoders.get(address) or []
-                raw_decoders[address].append(instance)
+                port = int(d_match[1] or "0")
+                raw_decoders[port] = raw_decoders.get(port) or []
+                raw_decoders[port].append(instance)
             elif wb_match := re.search(r.webuf, n):
-                self.webufs.append(instance)
+                self.webufs.append(instance) # Shouldn't this have the indices involved in some aspect?
             elif cb_match := re.search(r.clkbuf, n):
                 self.clkbuf = instance
             else:
@@ -324,14 +353,14 @@ class Slice(Placeable): # A slice is defined as 8 words.
         if word_count != 8:
             raise DataError("Slice has (%i/8) words." % word_count)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ra("Decoders", self.decoders, tab_level, file, header="Decoder")
         P.ra("Write Enable Buffers", self.webufs, tab_level, file)
         P.ra("Words", self.words, tab_level, file, header="Word")
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         """
         Decoders for odd addressing ports are placed on the left,
         and for even addressing ports are placed on the right.
@@ -404,28 +433,41 @@ class Slice(Placeable): # A slice is defined as 8 words.
         return 8
 
 class Block(Placeable): # A block is defined as 4 slices (32 words)
-    def __init__(self, instances):
-        self.clkbuf = None
-        self.enbuf = None
+    def __init__(self, instances: List[Instance]):
+        self.clkbuf: Instance = None
+        self.dibufs: List[Instance] = None
+        self.webufs: List[Instance] = None
 
-        raw_enbufs = {}
+        self.slices: List[Slice]  = None
 
-        raw_slices = {}
-        raw_decoder_ands = {}
+        # These sets of buffers are duplicated once per read port,
+        # so the first access always picks the port.
+        self.decoder_ands: List[List[Instance]] = None
+        self.enbufs: List[Instance] = None
+        self.dobufs: List[List[Instance]] = None
+        self.abufs: List[List[Instance]] = None
+        self.fbufenbufs: List[List[Instance]] = None
+        ## Floatbufs are grouped further: there are a couple of floatbufs per tie cell.
+        self.ties: List[List[Instance]] = None
+        self.floatbufs: List[List[List[Instance]]] = None 
 
-        raw_dibufs = {}
-        raw_dobufs = {}
+        raw_enbufs: Dict[int, Instance] = {}
 
-        raw_webufs = {}
+        raw_slices: Dict[int, List[Instance]] = {}
+        raw_decoder_ands: Dict[int, Dict[int, Instance]] = {}
 
-        raw_abufs = {}
+        raw_dibufs: Dict[int, Instance] = {}
+        raw_dobufs: Dict[int, Dict[int, Instance]] = {}
 
-        raw_ties = {}
-        raw_fbufenbufs = {}
-        raw_floatbufs = {}
+        raw_webufs: Dict[int, Instance] = {}
 
-        r = self.regexes
+        raw_abufs: Dict[int, Dict[int, Instance]] = {}
 
+        raw_ties: Dict[int, Dict[int, Instance]] = {}
+        raw_fbufenbufs: Dict[int, Dict[int, Instance]] = {}
+        raw_floatbufs: Dict[int, Dict[int, Dict[int, Instance]]] = {}
+
+        r = self.regexes()
         for instance in instances:
             n = instance.getName()
 
@@ -434,10 +476,10 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
                 raw_slices[i] = raw_slices.get(i) or []
                 raw_slices[i].append(instance)
             elif decoder_and_match := re.search(r.decoder_and, n):
-                address = int(decoder_and_match[1] or "0")
+                port = int(decoder_and_match[1] or "0")
                 i = int(decoder_and_match[2])
-                raw_decoder_ands[address] = raw_decoder_ands.get(address) or {}
-                raw_decoder_ands[address][i] = instance
+                raw_decoder_ands[port] = raw_decoder_ands.get(port) or {}
+                raw_decoder_ands[port][i] = instance
             elif dibuf_match := re.search(r.dibuf, n):
                 i = int(dibuf_match[1])
                 raw_dibufs[i] = instance
@@ -447,33 +489,33 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
             elif clkbuf_match := re.search(r.clkbuf, n):
                 self.clkbuf = instance
             elif abuf_match := re.search(r.abuf, n):
-                address = int(abuf_match[1] or "0")
+                port = int(abuf_match[1] or "0")
                 i = int(abuf_match[2])
-                raw_abufs[address] = raw_abufs.get(address) or {}
-                raw_abufs[address][i] = instance
+                raw_abufs[port] = raw_abufs.get(port) or {}
+                raw_abufs[port][i] = instance
             elif enbuf_match := re.search(r.enbuf, n):
-                address = int(enbuf_match[1] or "0")
-                raw_enbufs[address] = instance
+                port = int(enbuf_match[1] or "0")
+                raw_enbufs[port] = instance
             elif tie_match := re.search(r.tie, n):
-                address = int(tie_match[1] or "0")
+                port = int(tie_match[1] or "0")
                 i = int(tie_match[2])
-                raw_ties[address] = raw_ties.get(address) or {}
-                raw_ties[address][i] = instance
+                raw_ties[port] = raw_ties.get(port) or {}
+                raw_ties[port][i] = instance
             elif fbufenbuf_match := re.search(r.fbufenbuf, n):
-                address = int(fbufenbuf_match[1] or "0")
+                port = int(fbufenbuf_match[1] or "0")
                 i = int(fbufenbuf_match[2])
-                raw_fbufenbufs[address] = raw_fbufenbufs.get(address) or {}
-                raw_fbufenbufs[address][i] = instance
+                raw_fbufenbufs[port] = raw_fbufenbufs.get(port) or {}
+                raw_fbufenbufs[port][i] = instance
             elif floatbuf_match := re.search(r.floatbuf, n):
-                byte, address, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[3]))
-                raw_floatbufs[address] = raw_floatbufs.get(address) or {}
-                raw_floatbufs[address][byte] = raw_floatbufs[address].get(byte) or {}
-                raw_floatbufs[address][byte][bit] = instance
+                byte, port, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[3]))
+                raw_floatbufs[port] = raw_floatbufs.get(port) or {}
+                raw_floatbufs[port][byte] = raw_floatbufs[port].get(byte) or {}
+                raw_floatbufs[port][byte][bit] = instance
             elif dobuf_match := re.search(r.dobuf, n):
-                address = int(dobuf_match[1] or "0")
+                port = int(dobuf_match[1] or "0")
                 i = int(dobuf_match[2])
-                raw_dobufs[address] = raw_dobufs.get(address) or {}
-                raw_dobufs[address][i] = instance
+                raw_dobufs[port] = raw_dobufs.get(port) or {}
+                raw_dobufs[port][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
@@ -493,7 +535,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         self.ties = d2a({k: d2a(v) for k, v in raw_ties.items()})
         self.floatbufs = d2a({k: d2a({k: d2a(v2) for k, v2 in v.items()}) for k, v in raw_floatbufs.items()})
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         def ra(n, a, **kwargs):
@@ -512,7 +554,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         ra("Float Buffers", self.floatbufs, header="Address")
         ra("Slices", self.slices, header="Slice")
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         # Prologue. Split vertical elements into left and right columns
         addresses = len(self.abufs)
         common = [self.clkbuf] + self.webufs
@@ -567,17 +609,17 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         for slice in self.slices:
             current_row = slice.place(row_list, current_row)
 
-        for i, address in enumerate(self.ties):
+        for i, port in enumerate(self.ties):
             r = row_list[current_row]
-            for j, tie in enumerate(address):
+            for j, tie in enumerate(port):
                 r.place(tie)
                 for floatbuf in self.floatbufs[i][j]:
                     r.place(floatbuf)
             current_row += 1
 
-        for address in self.dobufs:
+        for port in self.dobufs:
             r = row_list[current_row]
-            for dobuf in address:
+            for dobuf in port:
                 r.place(dobuf)
             current_row += 1
 
@@ -605,13 +647,19 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
     def word_count(self):
         return 32
 
-class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs must be == the number of bytes
-    def __init__(self, instances):
-        raw_selbufs = {}
-        raw_muxes = {}
+class Mux(Placeable):
+    """
+    Constraint: The number of selection buffers is necessarily == the number of bytes.
+    """
+    def __init__(self, instances: List[Instance]):
+        # First access is the byte
+        self.selbufs: List[List[Instance]] = None
+        self.muxes: List[List[Instance]] = None
 
-        r = self.regexes
+        raw_selbufs: Dict[int, Dict[int, Instance]] = {}
+        raw_muxes: Dict[int, Dict[int, Instance]] = {}
 
+        r = self.regexes()
         for instance in instances:
             n = instance.getName()
             if selbuf_match := re.search(r.selbuf, n):
@@ -628,13 +676,13 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
         self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
         self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         P.ra("Selection Buffers", self.selbufs, tab_level, file, header="Byte")
         P.ra("Logic Elements", self.muxes, tab_level, file, header="Byte")
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
         for selbuf_lines, mux_bits in zip(self.selbufs, self.muxes):
@@ -647,23 +695,27 @@ class Mux(Placeable): # Pretty generic, only constraint is the number of selbufs
 
 
 class HigherLevelPlaceable(Placeable):
-    def __init__(self, inner_re, instances):
-        # TODO: Generalize beyond Block
-        self.clkbuf = None
-        self.enbuf = None
-        raw_blocks = {}
-        raw_decoder_ands = {}
+    # TODO: Dual ported higher level placeables.
+    def __init__(self, inner_re: RegExp, instances: List[Instance]):
+        self.clkbuf: Instance = None
+        self.enbuf: Instance = None
+        self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
+        self.dibufs: List[Instance] = None
+        self.webufs: List[Instance] = None
+        self.abufs: List[Instance] = None
+        self.domux: Mux = None
 
-        raw_dibufs = {}
-        raw_webufs = {}
-        raw_abufs = {}
+        raw_blocks: Dict[int, List[Instance]] = {}
+        raw_decoder_ands: Dict[int, Instance] = {}
 
-        raw_domux = []
+        raw_dibufs: Dict[int, Instance] = {}
+        raw_webufs: Dict[int, Instance] = {}
+        raw_abufs: Dict[int, Instance] = {}
 
+        raw_domux: List[Instance] = []
 
         r_block = inner_re
-        r = self.regexes
-
+        r = self.regexes()
         for instance in instances:
             n = instance.getName()
             if block_match := re.search(r_block, n):
@@ -699,7 +751,7 @@ class HigherLevelPlaceable(Placeable):
         self.abufs = d2a(raw_abufs)
         self.domux = Mux(raw_domux)
 
-    def represent(self, tab_level=-1, file=sys.stderr):
+    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
 
         def ra(n, a, **kwargs):
@@ -727,7 +779,7 @@ class HigherLevelPlaceable(Placeable):
 
         self.domux.represent(tab_level, file)
 
-    def place(self, row_list, start_row=0):
+    def place(self, row_list: List[Row], start_row: int = 0):
 
         def symmetrically_placeable(obj):
             symm_placement_wc = 128
@@ -785,7 +837,8 @@ class HigherLevelPlaceable(Placeable):
     def word_count(self):
         return len(self.blocks) * (self.blocks[0].word_count())
 
-constructor = {r"\bBANK_B(\d+)\b":Block,
-                r"\bBANK128_B(\d+)\b":partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b"),
-                r"\bBANK512_B(\d+)\b":partial(HigherLevelPlaceable,
-                    r"\bBANK128_B(\d+)\b")}
+constructor = {
+    r"\bBANK_B(\d+)\b": Block,
+    r"\bBANK128_B(\d+)\b": partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b"),
+    r"\bBANK512_B(\d+)\b": partial(HigherLevelPlaceable, r"\bBANK128_B(\d+)\b")
+}

@@ -41,7 +41,7 @@ jobs:
     strategy:
         matrix:
           count: ["8", "32"]
-          width: ["8", "32"] # 64 temporarily removed (crashes)
+          width: ["8", "16", "32"] # 64 temporarily removed (crashes)
           variant: ["DEFAULT", "1RW1R"]
     steps:
       - name: Checkout code
