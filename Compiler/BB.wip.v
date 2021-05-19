@@ -671,7 +671,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX2x1 DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[9]), .X(Do) );
 
 endmodule
 
@@ -713,6 +713,6 @@ module RAM2048 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX4x1 DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[10:9]), .X(Do) );
 
 endmodule
