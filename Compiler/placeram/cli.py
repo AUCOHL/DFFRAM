@@ -109,7 +109,6 @@ class Placer:
                     128: r"\bBANK128_B(\d+)\b",
                     512: r"\bBANK512_B(\d+)\b"}
 
-        # TODO: E X P A N D
         if word_count == 1:
             self.hierarchy = Word(self.instances)
         elif word_count == 8:
@@ -132,7 +131,6 @@ class Placer:
     def place(self):
         eprint("Starting placement…")
         last_row = self.hierarchy.place(self.rows)
-        print(last_row)
 
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
@@ -168,7 +166,6 @@ class Placer:
             return True
         except Exception:
             return False
-        return written_bytes
 
 def check_readable(file):
     with open(file, 'r') as f:

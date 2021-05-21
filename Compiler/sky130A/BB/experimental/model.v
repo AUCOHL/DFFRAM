@@ -172,7 +172,7 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
   
 endmodule
 
-module WORD #( parameter    USE_LATCH=1,
+module WORD #( parameter    USE_LATCH=0,
                             WSIZE=1 ) (
     input   wire                CLK,    // FO: 1
     input   wire [WSIZE-1:0]     WE,     // FO: 1
