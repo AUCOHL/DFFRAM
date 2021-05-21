@@ -217,7 +217,7 @@ def verify_placement(build_folder, in_file):
     openlane("openroad", "%s/verify.tcl" % build_folder)
 
 last_image = None
-def create_image(build_folder, in_file):
+def create_image(build_folder, in_file, width=256,height=256):
     global last_image
     if not os.getenv("PRFLOW_SKIP_IMAGE") == "1":
         print("--- Create Image ---")
@@ -227,6 +227,8 @@ def create_image(build_folder, in_file):
             "-rd", "input_layout=%s" % in_file,
             "-rd", "extra_lefs=%s" % "./sky130A/support/sky130_fd_sc_hd.merged.lef",
             "-rd", "tech_file=%s" % "./sky130A/support/sky130A.lyt",
+            "-rd", "width=%s" % (width),
+            "-rd", "height=%s" % (height),
             "-rm", "./scripts/klayout/scrot_layout.py"
         )
         last_image = in_file + ".png"
@@ -494,18 +496,17 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
     word_width = int(m[2])
     word_width_bytes = word_width / 8
 
-    if words not in config["counts"] or word_width not in config["widths"]:
-        print("Size %s not supported by %s." % (size, building_blocks))
-        exit(64)
+    if os.getenv("FORCE_ACCEPT_SIZE") is None:
+        if words not in config["counts"] or word_width not in config["widths"]:
+            print("Size %s not supported by %s." % (size, building_blocks))
+            exit(64)
 
-    if variant not in config["variants"]:
-        print("Variant %s is unsupported by %s." % (variant, building_blocks))
-        exit(64)
+        if variant not in config["variants"]:
+            print("Variant %s is unsupported by %s." % (variant, building_blocks))
+            exit(64)
 
     wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
-    design = "RAM%i" % words
-    if variant is not None:
-        design += "_" + variant
+    design = os.getenv("FORCE_DESIGN_NAME") or "RAM%i" % words + (("_%s" % variant) if variant is not None else "")
     build_folder = "./build/%s_SIZE%i" % (design, word_width)
 
     ensure_dir(build_folder)
@@ -554,7 +555,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
         placeram(final_floorplan, no_pins_placement, size, building_blocks)
         place_pins(no_pins_placement, final_placement)
         verify_placement(build_folder, final_placement)
-        create_image(build_folder, final_placement)
+        create_image(build_folder, final_placement, width, height)
 
     steps = [
         (

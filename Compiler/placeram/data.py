@@ -259,7 +259,7 @@ class Word(Placeable):
         for selbuf in self.selbufs:
             r.place(selbuf)
 
-        return start_row
+        return start_row + 1
 
     def word_count(self):
         return 1
@@ -389,8 +389,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         # Act 2. Place Horizontal Elements
         current_row = start_row
         for word in self.words:
-            word.place(row_list, current_row)
-            current_row += 1
+            current_row = word.place(row_list, current_row)
 
         Row.fill_rows(row_list, start_row, current_row)
 
