@@ -37,7 +37,7 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import override_regex_dict, Block, Slice, HigherLevelPlaceable, Placeable
+from .data import override_regex_dict, Block, Slice, Word, HigherLevelPlaceable, Placeable
 from .row import Row
 
 import os
@@ -110,7 +110,9 @@ class Placer:
                     512: r"\bBANK512_B(\d+)\b"}
 
         # TODO: E X P A N D
-        if word_count == 8:
+        if word_count == 1:
+            self.hierarchy = Word(self.instances)
+        elif word_count == 8:
             self.hierarchy = Slice(self.instances)
         elif word_count == 32:
             self.hierarchy = Block(self.instances)
@@ -130,6 +132,7 @@ class Placer:
     def place(self):
         eprint("Starting placement…")
         last_row = self.hierarchy.place(self.rows)
+        print(last_row)
 
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
@@ -200,11 +203,9 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, bui
     words = int(m[1])
     word_length = int(m[2])
     if words % 8 != 0 or words == 0:
-        eprint("Word count must be a non-zero multiple of 8.")
-        exit(64)
+        eprint("WARNING: Word count must be a non-zero multiple of 8. Results may be unexpected.")
     if word_length % 8 != 0 or words == 0:
-        eprint("Word length must be a non-zero multiple of 8.")
-        exit(64)
+        eprint("WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected.")
 
     for input in [lef, tlef, def_file]:
         check_readable(input)

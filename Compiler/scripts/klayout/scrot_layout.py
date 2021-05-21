@@ -18,10 +18,11 @@
 import pya
 import re
 import os
+import math
 
-WIDTH = 2048
-HEIGHT = 2048
 
+WIDTH = 2048 # math.ceil(float(width) * 10)
+HEIGHT = 2048 # math.ceil(float(height) * 10)
 app = pya.Application.instance()
 
 try:
