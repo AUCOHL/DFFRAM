@@ -51,19 +51,19 @@ module DEC3x8 (
     sky130_fd_sc_hd__and4_2     AND7 ( .X(SEL[7])  , .A(A_buf[0]), .B(A_buf[1]), .C(A_buf[2])  , .D(EN_buf) ); // 111
 endmodule
 
-module MUX4x1 #(parameter   SIZE=32)
+module MUX4x1 #(parameter   WIDTH=32)
 (
-    input   wire [SIZE-1:0]     A0, A1, A2, A3,
+    input   wire [WIDTH-1:0]     A0, A1, A2, A3,
     input   wire [1:0]          S,
-    output  wire [SIZE-1:0]     X
+    output  wire [WIDTH-1:0]     X
 );
+    localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL0, SEL1;
     sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL0), .A(S[0]));
     sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S[1]));
-
     generate
         genvar i;
-        for(i=0; i<SIZE/8; i=i+1) begin : M
+        for(i=0; i<SIZE; i=i+1) begin : M
             sky130_fd_sc_hd__mux4_1 MUX[7:0] (
                     .A0(A0[(i+1)*8-1:i*8]), 
                     .A1(A1[(i+1)*8-1:i*8]), 
@@ -76,14 +76,15 @@ module MUX4x1 #(parameter   SIZE=32)
     endgenerate
 endmodule
 
-module MUX2x1 #(parameter   SIZE=32)
+module MUX2x1 #(parameter   WIDTH=32)
 (
-    input   wire [SIZE-1:0]     A0, A1, A2, A3,
+    input   wire [WIDTH-1:0]     A0, A1, A2, A3,
     input   wire           S,
-    output  wire [SIZE-1:0]     X
+    output  wire [WIDTH-1:0]     X
 );
+    localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL;
-    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL), .A(S[0]));
+    sky130_fd_sc_hd__clkbuf_2 SELBUF[SIZE-1:0] (.X(SEL), .A(S));
     generate
         genvar i;
         for(i=0; i<SIZE; i=i+1) begin : M
@@ -471,7 +472,7 @@ module RAM128 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.SIZE(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[6:5]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[6:5]), .X(Do) );
 
 endmodule
 
@@ -523,8 +524,8 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
      endgenerate
 
     // Output MUXs    
-    MUX4x1 #(.SIZE(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
-    MUX4x1 #(.SIZE(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do_1pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do_1pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
     
 
 endmodule
@@ -556,7 +557,7 @@ module RAM256 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.SIZE(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[7]), .X(Do) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[7]), .X(Do) );
 
 endmodule
 
@@ -593,8 +594,8 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.SIZE(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
-    MUX2x1 #(.SIZE(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) );
 
 
 endmodule
@@ -625,7 +626,7 @@ module RAM512 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.SIZE(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[8:7]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[8:7]), .X(Do) );
 
 endmodule
 
@@ -671,7 +672,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.SIZE(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
 
 endmodule
 
@@ -713,6 +714,6 @@ module RAM2048 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.SIZE(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
 
 endmodule
