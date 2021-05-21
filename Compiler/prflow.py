@@ -219,7 +219,7 @@ def verify_placement(build_folder, in_file):
 last_image = None
 def create_image(build_folder, in_file, width=256,height=256):
     global last_image
-    if not os.getenv("PRFLOW_SKIP_IMAGE") == "1":
+    if not os.getenv("CREATE_IMAGE") is not None:
         print("--- Create Image ---")
         openlane(
             "bash",
