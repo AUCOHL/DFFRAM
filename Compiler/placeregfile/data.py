@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import eprint, grouped_sorted
+from .util import eprint, d2a
 from .row import Row
 
 from opendbpy import dbInst
@@ -75,38 +75,6 @@ class DataError(Exception):
 
 P = Placeable
 
-# REMOVED
-# class Bit(Placeable):
-#     def __init__(self, instances):
-#         self.store = None
-#         self.obuf1 = None
-#         self.obuf2 = None
-
-#         latch = r"\bLATCH\b"
-#         ff = r"\bFF\b"
-#         obuf1 = r"\bOBUF1\b"
-#         obuf2 = r"\bOBUF2\b"
-
-#         for instance in instances:
-#             n = instance.getName()
-
-#             if 1:
-#                 pass
-#             # TODO(ahmednofal): might be useful so left it
-#             elif latch_match := re.search(latch, n):
-#                 self.store = instance
-#             else:
-#                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-#     def place(self, row_list, start_row=0):
-#         r = row_list[start_row]
-
-#         r.place(self.obuf1)
-#         r.place(self.store)
-#         r.place(self.obuf2)
-
-#         return start_row
-
 class Word(Placeable):
     def __init__(self, instances):
         self.clkgateand = None
@@ -159,17 +127,18 @@ class Word(Placeable):
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.clkgates = grouped_sorted(raw_clkgates)
-        self.invs1 = grouped_sorted(raw_invs1)
-        self.invs2 = grouped_sorted(raw_invs2)
-        self.ffs = grouped_sorted(raw_ffs)
-        self.obufs1 = grouped_sorted(raw_obufs1)
-        self.obufs2 = grouped_sorted(raw_obufs2)
+        self.clkgates = d2a(raw_clkgates)
+        self.invs1 = d2a(raw_invs1)
+        self.invs2 = d2a(raw_invs2)
+        self.ffs = d2a(raw_ffs)
+        self.obufs1 = d2a(raw_obufs1)
+        self.obufs2 = d2a(raw_obufs2)
 
     def place(self, row_list, start_row=0):
         r = row_list[start_row]
         word_width = 32
         for i in range(word_width): # 32
+            # TODO: Use middle placement
             # to make the clkgateand an equal distance from all
             # gates that need its output
 
@@ -248,23 +217,23 @@ class DFFRF(Placeable): # 32 words
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.words = grouped_sorted({k: Word(v) for k, v in raw_words.items()})
-        self.decoders5x32 = grouped_sorted({k: Decoder5x32(v) for k, v in raw_decoders5x32.items()})
+        self.words = d2a({k: Word(v) for k, v in raw_words.items()})
+        self.decoders5x32 = d2a({k: Decoder5x32(v) for k, v in raw_decoders5x32.items()})
 
-        self.rfw0_ties = grouped_sorted(raw_rfw0_ties)
-        self.rfw0_invs1 = grouped_sorted(raw_rfw0_invs1)
-        self.rfw0_invs2 = grouped_sorted(raw_rfw0_invs2)
-        self.rfw0_obufs1 = grouped_sorted(raw_rfw0_obufs1)
-        self.rfw0_obufs2 = grouped_sorted(raw_rfw0_obufs2)
+        self.rfw0_ties = d2a(raw_rfw0_ties)
+        self.rfw0_invs1 = d2a(raw_rfw0_invs1)
+        self.rfw0_invs2 = d2a(raw_rfw0_invs2)
+        self.rfw0_obufs1 = d2a(raw_rfw0_obufs1)
+        self.rfw0_obufs2 = d2a(raw_rfw0_obufs2)
 
     def place(self, row_list, start_row=0):
-        #           5x32 decoders placement          |
-        #                                            |
-        #                                            |
-        #                        D0                  V
-        #  {    ====================================    }
-        # 32 D2 ==================================== D1 32
-        #  {    ====================================    }
+        #    |      5x32 decoders placement          |  |
+        #    |                                       |  |
+        #    |                                       |  |
+        #    V                                       V  V
+        #  {    ====================================       }
+        # 32    ====================================      32
+        #  { D2 ==================================== D0 D1 }
 
         # D2 placement
         current_row = start_row
@@ -273,6 +242,8 @@ class DFFRF(Placeable): # 32 words
         thisrow = self.decoders5x32[2].place(row_list, start_row, flip=True)
         r = row_list[start_row]
         # RFWORD0 placement
+        # Should center this row
+
         for i in range(32):
             if i % 8 == 0: # range(4)
                 r.place(self.rfw0_invs1[i//8])
@@ -327,7 +298,7 @@ class Decoder5x32(Placeable):
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-        self.decoders3x8 = grouped_sorted({k: Decoder3x8(v) for k, v in raw_decoders3x8.items()})
+        self.decoders3x8 = d2a({k: Decoder3x8(v) for k, v in raw_decoders3x8.items()})
         self.decoder2x4 = Decoder2x4(self.decoder2x4)
 
     def place(self, row_list, start_row=0, flip=False):

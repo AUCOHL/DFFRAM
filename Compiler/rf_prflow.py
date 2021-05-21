@@ -523,8 +523,8 @@ def flow(frm, to, only, skip):
         floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeregfile(final_floorplan, no_pins_placement)
         place_pins(no_pins_placement, final_placement)
-        # verify_placement(build_folder, final_placement)
-        # create_image(build_folder, final_placement)
+        verify_placement(build_folder, final_placement)
+        create_image(build_folder, final_placement)
 
     steps = [
         (
@@ -537,19 +537,6 @@ def flow(frm, to, only, skip):
             )
         ),
         ("sta_1", lambda: sta(build_folder, design, netlist)),
-
-    #
-        # (
-        #     "floorplan",
-        #     lambda: floorplan(build_folder,
-        #         design,
-        #         wmargin,
-        #         hmargin,
-        #         width,
-        #         height,
-        #         netlist,
-        #         initial_floorplan)
-        # ),
         ("placement", lambda: placement(width, height)),
         (
             "pdngen",
