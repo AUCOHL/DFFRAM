@@ -36,9 +36,9 @@ except ImportError:
     print("You need to install click: python3 -m pip install click")
     exit(78)
 
-from .util import eprint
+from libplacement.util import eprint
 from .data import DFFRF
-from .row import Row
+from libplacement.row import Row
 
 import os
 import re

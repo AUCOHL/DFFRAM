@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
+
 class Row(object):
     sw = None
     sh = None
@@ -89,8 +89,28 @@ class Row(object):
         return returnable
 
     @staticmethod
+    def fill_row(rows, row_idx, start_location, end_location):
+        r = rows[row_idx]
+        current_x = start_location
+        while current_x < end_location:
+            empty_space = end_location - current_x
+            fill_sizes_idx = 0
+            while fill_sizes_idx < len(Row.supported_fill_sizes) and Row.supported_fill_sizes[fill_sizes_idx] > empty_space//Row.sw:
+                fill_sizes_idx += 1
+
+            if empty_space // Row.sw < Row.supported_fill_sizes[-1]:
+                break
+            fill_cell = Row.create_fill(
+                    "fill_%i_%i" % (row_idx, r.fill_counter),
+                    Row.supported_fill_sizes[fill_sizes_idx])
+            r.fill_counter += 1
+            r.place(fill_cell, ignore_tap=True)
+            current_x = r.x
+
+    @staticmethod
     def fill_rows(rows, from_index, to_index): # [from_index,to_index)
         """
+        Fills from the last location that has a cell
         -- Before this function --
 
         [A][B][C][D]
@@ -123,14 +143,14 @@ class Row(object):
             return fills
 
         max_sw = -1
-        for i in range(from_index, to_index):
-            r = rows[i]
+        for row_idx in range(from_index, to_index):
+            r = rows[row_idx]
             width = r.x
             width_sites = int(width / Row.sw)
             max_sw = max(max_sw, width_sites)
 
-        for i in range(from_index, to_index):
-            r = rows[i]
+        for row_idx in range(from_index, to_index):
+            r = rows[row_idx]
             width = r.x
             width_sites = int(width / Row.sw)
 
@@ -141,6 +161,6 @@ class Row(object):
             fills = pack(empty, Row.supported_fill_sizes)
 
             for fill in fills:
-                fill_cell = Row.create_fill("fill_%i_%i" % (i, r.fill_counter), fill)
+                fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1

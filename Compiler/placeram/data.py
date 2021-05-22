@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import eprint, d2a
-from .row import Row
+from libplacement.row import Row
+from libplacement.util import eprint, d2a
 
 from opendbpy import dbInst
 Instance = dbInst

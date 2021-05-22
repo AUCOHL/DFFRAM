@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import eprint, d2a
-from .row import Row
+from libplacement.row import Row
+from libplacement.util import eprint, d2a
 
 from opendbpy import dbInst
 Instance = dbInst
@@ -231,41 +231,89 @@ class DFFRF(Placeable): # 32 words
         #    |                                       |  |
         #    |                                       |  |
         #    V                                       V  V
-        #  {    ====================================       }
-        # 32    ====================================      32
-        #  { D2 ==================================== D0 D1 }
+        #  { _ ====================================  ____   }
+        # 32 _ ====================================  ____  32
+        #  { D2 ==================================== D0 D1  }
 
         # D2 placement
-        current_row = start_row
-        # self.decoders5x32[2].place(row_list, current_row)
+        def width_rfw0():
+            tot_width = 0
 
-        thisrow = self.decoders5x32[2].place(row_list, start_row, flip=True)
-        r = row_list[start_row]
-        # RFWORD0 placement
-        # Should center this row
+            for aninv in [*self.rfw0_invs1, *self.rfw0_invs2]:
+                tot_width += aninv.getMaster().getWidth()
+            for atie in self.rfw0_ties:
+                tot_width += atie.getMaster().getWidth()
+            for anobuf in [*self.rfw0_obufs1,*self.rfw0_obufs2] :
+                tot_width += anobuf.getMaster().getWidth()
 
-        for i in range(32):
-            if i % 8 == 0: # range(4)
-                r.place(self.rfw0_invs1[i//8])
-                r.place(self.rfw0_invs2[i//8])
-            if i % 4 == 0: # range(8)
-                r.place(self.rfw0_ties[i//4])
-            r.place(self.rfw0_obufs1[i])
-            r.place(self.rfw0_obufs2[i])
+            return tot_width
 
-        current_row += 1
+        def rfw0_placement_start(row_list, start_row,
+                                x_start, x_current,
+                                x_end):
+            design_width = x_end - x_start
+            return x_current + ((design_width - width_rfw0()) // 2)
 
+        def place_rfw0(row, start_loc):
+            # RFWORD0 placement
+            # Should center this row
+            # get width of the design and then put equal
+            # distance around this row both on left and right
+
+            start_row = 0
+            row.x = start_loc
+
+            for i in range(32):
+                if i % 8 == 0: # range(4)
+                    row.place(self.rfw0_invs1[i//8])
+                    row.place(self.rfw0_invs2[i//8])
+                if i % 4 == 0: # range(8)
+                    row.place(self.rfw0_ties[i//4])
+                row.place(self.rfw0_obufs1[i])
+                row.place(self.rfw0_obufs2[i])
+            return row.x
+
+
+        self.decoders5x32[2].place(row_list, start_row, (32-4)//2, flip=True)
+        row0_empty_space_1_start = row_list[start_row].x
+        words_start_x = row0_empty_space_1_start
+
+        current_row = start_row + 1
         for aword in self.words:
             aword.place(row_list, current_row)
             current_row += 1
 
         highest_row = current_row
-        # D0 placement
-        current_row = self.decoders5x32[0].place(row_list, start_row)
-        # D1 placement
-        current_row = self.decoders5x32[1].place(row_list, start_row)
-        Row.fill_rows(row_list, start_row, current_row)
+        words_end_x = row_list[1].x
+        row0_empty_space_2_end = words_end_x
 
+        # D0 placement
+        self.decoders5x32[0].place(row_list, start_row, 4)
+        # D1 placement
+        self.decoders5x32[1].place(row_list, start_row, 20)
+
+        row0_empty_space_1_end = rfw0_placement_start(row_list, 0,
+                                    words_start_x,
+                                    row_list[0].x,
+                                    words_end_x)
+        Row.fill_row(row_list,
+                0,
+                row0_empty_space_1_start,
+                row0_empty_space_1_end)
+
+        row0 = row_list[0]
+        rfw0_placement_end = place_rfw0(row0,
+                                        row0_empty_space_1_end)
+        row0_empty_space_2_start = rfw0_placement_end
+
+
+        Row.fill_row(row_list,
+                0,
+                row0_empty_space_2_start,
+                row0_empty_space_2_end)
+
+        # Fill all empty spaces on edges
+        Row.fill_rows(row_list, start_row, highest_row)
         return highest_row
 
     def word_count(self):
@@ -301,29 +349,26 @@ class Decoder5x32(Placeable):
         self.decoders3x8 = d2a({k: Decoder3x8(v) for k, v in raw_decoders3x8.items()})
         self.decoder2x4 = Decoder2x4(self.decoder2x4)
 
-    def place(self, row_list, start_row=0, flip=False):
+    def place(self, row_list, start_row=0, decoder2x4_start_row=0, flip=False):
         current_row = start_row
 
         if flip:
-            thisrow = self.decoder2x4.place(row_list, start_row)
+            current_row = self.decoder2x4.place(row_list, decoder2x4_start_row)
             for idx in range(len(self.decoders3x8)):
                 self.decoders3x8[idx].place(row_list, idx*8)
-            Row.fill_rows(row_list, start_row, thisrow)
+            # Row.fill_rows(row_list, start_row, current_row)
 
         else:
             for idx in range(len(self.decoders3x8)):
                 self.decoders3x8[idx].place(row_list, idx*8)
 
-            thisrow = self.decoder2x4.place(row_list, start_row)
-            Row.fill_rows(row_list, start_row, thisrow)
+            current_row = self.decoder2x4.place(row_list, decoder2x4_start_row)
+            # Row.fill_rows(row_list, start_row, current_row)
         return start_row + 32 # 5x32 has 4 3x8 on top of each other and each is 8 rows
 
 class Decoder3x8(Placeable):
     def __init__(self, instances):
         self.andgates = instances
-        if len(instances) < 8:
-            for aninstance in instances:
-                print(aninstance.getName())
 
     def place(self, row_list, start_row=0):
         """
