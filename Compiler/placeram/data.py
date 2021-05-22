@@ -15,101 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import d2a, Bunch
+from .util import d2a
 from .row import Row
+from .placeable import Placeable, DataError, RegExp
 
-from opendbpy import dbInst
-Instance = dbInst
+from opendbpy import dbInst as Instance
 
-import os
 import re
 import sys
-import yaml
 import math
 from functools import partial
-from typing import List, Dict, Union, TextIO, Optional
-# --
-RegExp = str
+from typing import List, Dict, Union, TextIO
 
-RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
-    open(os.path.join(os.path.dirname(__file__), "rx.yml"))
-)
-def override_regex_dict(override_dict: Dict[str, RegExp]):
-    global RegexDictionary
-    for key, value in override_dict.items():
-        class_name, regex = key.split(".")
-        RegexDictionary[class_name][regex] = value
-
-Representable = Union[Instance, 'Placeable',  List['Representable']]
-
-class Placeable(object):
-    def place(self, row_list: List[Row], start_row: int = 0):
-        raise Exception("Method unimplemented.")
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        raise Exception("Method unimplemented.")
-
-    def word_count(self):
-        raise Exception("Method unimplemented.")
-
-    def regexes(self) -> Bunch:
-        """
-        Returns a dictionary of regexes for this class accessible with the dot
-        notation.
-        """
-        return Bunch(RegexDictionary[self.__class__.__name__])
-
-    @staticmethod
-    def represent_instance(
-        name: str,
-        instance: Instance,
-        tab_level: int,
-        file: TextIO = sys.stderr
-    ):
-        """
-        Writes textual representation of an instance to `file`.
-        """
-        if name != "":
-            name += " "
-        str_instance = "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
-        print("%s%s%s" % ("".join(["  "] * tab_level), name, str_instance), file=file)
-
-    ri = represent_instance
-
-    @staticmethod
-    def represent_array(
-        name: str,
-        array: List[Representable],
-        tab_level: int,
-        file: TextIO = sys.stderr,
-        header: Optional[str] = None
-    ):
-        """
-        Writes textual representation of a list of 'representables' to `file`.
-
-        A representable is an Instance, a Placeable or a list of representables.
-        It's a recursive type definition.
-        """
-        if name != "":
-            print("%s%s" % ("".join(["  "] * tab_level), name), file=file)
-        tab_level += 1
-        for i, instance in enumerate(array):
-            if header is not None:
-                print("%s%s %i" % ("".join(["  "] * tab_level), header, i), file=file)
-
-            if isinstance(instance, list):
-                Placeable.represent_array("", instance, tab_level, file)
-            elif isinstance(instance, Placeable):
-                instance.represent(tab_level, file)
-            else:
-                Placeable.represent_instance("", instance, tab_level, file)
-
-        tab_level -= 1
-
-    ra = represent_array
-
-class DataError(Exception):
-    pass
 # --
 
 P = Placeable
@@ -378,7 +295,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             right = not right
 
         final_rows = []
-        
+
         # Act 1. Place Left Vertical Elements
         current_row = start_row
         for decoder in vertical_left:
@@ -399,7 +316,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
             place_clkbuf_alone = True
         else:
             last_column.append(self.clkbuf)
-        
+
         while len(last_column) < 8:
             last_column.append(None)
 
@@ -414,7 +331,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         Row.fill_rows(row_list, start_row, current_row)
 
         final_rows.append(current_row)
-        
+
         # Act 3. Place Right Vertical Elements
         current_row = start_row
         for decoder in vertical_right:
@@ -423,7 +340,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         Row.fill_rows(row_list, start_row, current_row)
         final_rows.append(current_row)
 
-        # Epilogue 
+        # Epilogue
         max_row = max(*final_rows)
         Row.fill_rows(row_list, start_row, max_row)
         return max_row
@@ -590,9 +507,9 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
                 r = row_list[current_row]
                 r.place(el)
                 current_row += 1
-        
+
         Row.fill_rows(row_list, start_row, current_row)
-        
+
         final_rows.append(current_row)
 
         # Act 2. Place Horizontal Elements
@@ -628,7 +545,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
 
         # Act 3. Place Right Vertical Elements
         current_row = start_row
-        
+
         for column in vertical_right:
             current_row = start_row
             for el in column:
@@ -638,7 +555,7 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
 
         final_rows.append(current_row)
 
-        # Epilogue 
+        # Epilogue
         max_row = max(*final_rows)
         Row.fill_rows(row_list, start_row, max_row)
         return max_row
@@ -794,7 +711,7 @@ class HigherLevelPlaceable(Placeable):
 
         # all of the big designs include 4 instances
         # of the smaller block they are constituted of
-        # so they can all be 1:1 if they are 4x4
+        # so they can all be 1:1 if they are 2x2
         # the smallest 1:1 is the 128 word block
         # it is placed all on top of each other
         partition_cap = int(math.sqrt(len(self.blocks)))

@@ -1,6 +1,7 @@
 lib: sky130_fd_sc_hd
 widths: [32]
 counts: [8, 32, 128, 512, 2048]
+design_name_template: "RAM{count}"
 variants:
   - null
 rx_overrides:
