@@ -368,7 +368,23 @@ class Decoder5x32(Placeable):
 
 class Decoder3x8(Placeable):
     def __init__(self, instances):
-        self.andgates = instances
+        self.andgates = None
+
+        andgate = r"AND(\d+)"
+
+        raw_andgates = {} # multiple decoders so multiple entries ordered by 1st match
+
+        for instance in instances:
+            n = instance.getName()
+
+            if andgate_match := re.search(andgate, n):
+                i = int(andgate_match[1])
+                raw_andgates[i] = raw_andgates.get(i) or []
+                raw_andgates[i] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
+        self.andgates = d2a(raw_andgates)
 
     def place(self, row_list, start_row=0):
         """
@@ -385,7 +401,23 @@ class Decoder3x8(Placeable):
 
 class Decoder2x4(Placeable):
     def __init__(self, instances):
-        self.andgates = instances
+        self.andgates = None
+
+        andgate = r"AND(\d+)"
+
+        raw_andgates = {} # multiple decoders so multiple entries ordered by 1st match
+
+        for instance in instances:
+            n = instance.getName()
+
+            if andgate_match := re.search(andgate, n):
+                i = int(andgate_match[1])
+                raw_andgates[i] = raw_andgates.get(i) or []
+                raw_andgates[i] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
+        self.andgates = d2a(raw_andgates)
 
     def place(self, row_list, start_row=0):
         for i in range(4): # range is 8 because 3x8 has 8 and gates put on on top of each other
