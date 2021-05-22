@@ -37,8 +37,10 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import override_regex_dict, Block, Slice, Word, HigherLevelPlaceable, Placeable
+from .placeable import override_regex_dict
+from .data import Block, Slice, Word, HigherLevelPlaceable
 from .row import Row
+from .reg_data import DFFRF
 
 import os
 import re
@@ -52,10 +54,7 @@ class Placer:
     DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
-    SUPPORTED_WORD_COUNTS = [8, 32, 128, 512, 2048]
-    SUPPORTED_WORD_WIDTHS = [8, 16, 24, 32, 40, 48, 56, 64] # Only 8, 32 and 64 will be tested with CI.
-
-    def __init__(self, lef, tech_lef, df, word_count, word_width):
+    def __init__(self, lef, tech_lef, df, word_count, word_width, regFile=False):
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -105,25 +104,29 @@ class Placer:
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
-        includes = {32:r"\bBANK_B(\d+)\b",
-                    128: r"\bBANK128_B(\d+)\b",
-                    512: r"\bBANK512_B(\d+)\b"}
 
-        if word_count == 1:
-            self.hierarchy = Word(self.instances)
-        elif word_count == 8:
-            self.hierarchy = Slice(self.instances)
-        elif word_count == 32:
-            self.hierarchy = Block(self.instances)
-        elif word_count == 128:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[32], self.instances)
-        elif word_count == 512:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[128], self.instances)
-        elif word_count == 2048:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[512], self.instances)
+        if regFile:
+            self.hierarchy = DFFRF(self.instances)
+        else:
+            includes = {32:r"\bBANK_B(\d+)\b",
+                        128: r"\bBANK128_B(\d+)\b",
+                        512: r"\bBANK512_B(\d+)\b"}
+
+            if word_count == 1:
+                self.hierarchy = Word(self.instances)
+            elif word_count == 8:
+                self.hierarchy = Slice(self.instances)
+            elif word_count == 32:
+                self.hierarchy = Block(self.instances)
+            elif word_count == 128:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[32], self.instances)
+            elif word_count == 512:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[128], self.instances)
+            elif word_count == 2048:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[512], self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)
@@ -193,6 +196,8 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, bui
     config = yaml.safe_load(open(config_file))
     override_regex_dict(config.get("rx_overrides") or {})
 
+    register_file = config.get("register_file") or False
+
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -207,7 +212,7 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, bui
     for input in [lef, tlef, def_file]:
         check_readable(input)
 
-    placer = Placer(lef, tlef, def_file, words, word_length)
+    placer = Placer(lef, tlef, def_file, words, word_length, register_file)
 
     if represent is not None:
         with open(represent, 'w') as f:

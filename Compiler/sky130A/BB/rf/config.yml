@@ -1,5 +1,7 @@
 lib: sky130_fd_sc_hd
 counts: [32]
 widths: [32]
+design_name_template: "DFFRF{variant}"
+register_file: true
 variants:
   - 2R1W

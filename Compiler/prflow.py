@@ -129,7 +129,7 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
 
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
-    
+
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
         f.write("""
         read_liberty ./sky130A/support/sky130_fd_sc_hd__tt_025C_1v80.lib
@@ -180,14 +180,16 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     with open(out_file, 'w') as f:
         f.write(altered_str)
 
+pin_order_file = "./pin_order.cfg"
 def place_pins(in_file, out_file):
+    global pin_order_file
     print("--- Pin Placement ---")
     openlane(
         "python3",
         "/openLANE_flow/scripts/io_place.py",
         "--input-lef", "./sky130A/support/sky130_fd_sc_hd.merged.lef",
         "--input-def", in_file,
-        "--config", "./pin_order.cfg",
+        "--config", pin_order_file,
         "--hor-layer", "4",
         "--ver-layer", "3",
         "--ver-width-mult", "2",
@@ -197,7 +199,6 @@ def place_pins(in_file, out_file):
         "--length", "2",
         "-o", out_file
     )
-
 
 def verify_placement(build_folder, in_file):
     print("--- Verify ---")
@@ -471,7 +472,7 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-b", "--building-blocks", default="sky130A:legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 def flow(frm, to, only, skip, size, building_blocks, variant):
-    global bb_used
+    global bb_used, pin_order_file
 
     if variant == "DEFAULT":
         variant = None
@@ -486,12 +487,16 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
     bb_used = os.path.join(bb_dir, "model.v")
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
+
+    optional_pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
+    if os.path.exists(optional_pin_order_file):
+        pin_order_file = optional_pin_order_file
     
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         print("Invalid RAM size '%s'." % size)
         exit(64)
-    
+
     words = int(m[1])
     word_width = int(m[2])
     word_width_bytes = word_width / 8
@@ -506,7 +511,14 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
             exit(64)
 
     wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
-    design = os.getenv("FORCE_DESIGN_NAME") or "RAM%i" % words + (("_%s" % variant) if variant is not None else "")
+    variant_string = (("_%s" % variant) if variant is not None else "")
+    design_name_template = config["design_name_template"]
+    design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
+        "count": words,
+        "width": word_width,
+        "width_bytes": word_width_bytes,
+        "variant": variant_string 
+    })
     build_folder = "./build/%s_SIZE%i" % (design, word_width)
 
     ensure_dir(build_folder)
@@ -661,7 +673,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
     elapsed = time.time() - start
 
     print("Done in %.2fs." % elapsed)
-    
+
     if last_image is not None and sys.platform == "darwin":
         subprocess.run([
             "open",
