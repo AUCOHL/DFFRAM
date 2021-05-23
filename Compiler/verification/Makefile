@@ -8,6 +8,10 @@ PATTERN = tb_RAM32x32
 
 all:  ${PATTERN:=.vcd}
 
+# lint: %.v
+# 	iverilog -s -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
+# 	$<
+
 help:
 	@echo  ' you can call this make file like : make PATTERN=tb_RAM<WORDNUM>x32 '
 	@echo  ' where WORDNUM is 8, 32, 128, 512, default is 32, running it without'
