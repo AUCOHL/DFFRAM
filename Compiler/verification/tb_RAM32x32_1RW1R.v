@@ -1,23 +1,6 @@
-# Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
-#
-# This file is part of the DFFRAM Memory Compiler.
-# See https://github.com/Cloud-V/DFFRAM for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
-changeable_sub = """
 /*
-    An auto generated testbench to verify RAM{word_num}x{word_size}
+    An auto generated testbench to verify RAM32x32
     Authors:Mohamed Shalan (mshalan@aucegypt.edu)
             Ahmed Nofal (nofal.o.ahmed@gmail.com)
 */
@@ -28,20 +11,20 @@ changeable_sub = """
 
 `define     USE_LATCH   1
 
-`define     SIZE        {word_size}/8
+`define     SIZE        32/8
 //`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
 //`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
 
 `include "hd_primitives.v"
 `include "hd_functional.v"
 
-`include "{filename}"
+`include "/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/experimental/model.v"
 // `include "BB.v"
 
-module tb_RAM{word_num}x{word_size}_1RW1R;
+module tb_RAM32x32_1RW1R;
 
     localparam SIZE = `SIZE;
-    localparam A_W = {addr_width}+2;
+    localparam A_W = 5+2;
     localparam M_SZ = 2**A_W;
 
     reg                   CLK;
@@ -57,7 +40,7 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     reg  [7:0]      RANDOM_BYTE;
     event           done;
 
-    RAM{word_num}_1RW1R #(.USE_LATCH(`USE_LATCH), .WSIZE(`SIZE)) SRAM (
+    RAM32_1RW1R #(.USE_LATCH(`USE_LATCH), .WSIZE(`SIZE)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN0(EN0),
@@ -70,13 +53,12 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     );
 
     initial begin
-        $dumpfile("tb_RAM{word_num}x{word_size}_1RW1R.vcd");
-        $dumpvars(0, tb_RAM{word_num}x{word_size}_1RW1R);
+        $dumpfile("tb_RAM32x32_1RW1R.vcd");
+        $dumpvars(0, tb_RAM32x32_1RW1R);
         @(done) $finish;
     end
 
-"""
-constant_sub="""
+
     always #10 CLK = !CLK;
 
     integer i;
@@ -130,7 +112,7 @@ constant_sub="""
         // Word Write then Read
         Phase = 1;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 0, starting Phase 1");
+        $display("\nFinished Phase 0, starting Phase 1");
 `endif
         for(i=0; i<M_SZ; i=i+4) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
@@ -142,7 +124,7 @@ constant_sub="""
         // HWord Write then Read
         Phase = 2;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 1, starting Phase 2");
+        $display("\nFinished Phase 1, starting Phase 2");
 `endif
         for(i=0; i<M_SZ; i=i+2) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
@@ -153,7 +135,7 @@ constant_sub="""
         // Byte Write then Read
         Phase = 3;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 2, starting Phase 3");
+        $display("\nFinished Phase 2, starting Phase 3");
 `endif
         for(i=0; i<M_SZ; i=i+1) begin
             ADDR = (($urandom%M_SZ));
@@ -168,7 +150,7 @@ constant_sub="""
 ************************************************************/
         Phase = 4;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 3, starting Phase 4");
+        $display("\nFinished Phase 3, starting Phase 4");
 `endif
         for(i=0; i<M_SZ; i=i+4) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
@@ -179,7 +161,7 @@ constant_sub="""
         // HWord Write then Read
         Phase = 5;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 4, starting Phase 5");
+        $display("\nFinished Phase 4, starting Phase 5");
 `endif
         for(i=0; i<M_SZ; i=i+2) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
@@ -190,14 +172,14 @@ constant_sub="""
         // Byte Write then Read
         Phase = 6;
 `ifdef  VERBOSE_1
-        $display("\\nFinished Phase 5, starting Phase 6");
+        $display("\nFinished Phase 5, starting Phase 6");
 `endif
         for(i=0; i<M_SZ; i=i+1) begin
             ADDR = (($urandom%M_SZ));
             mem_write_byte($urandom%255, ADDR);
             mem_read_word_0(ADDR & 'hFFFF_FFFC );
         end
-        $display ("\\n>> Test Passed! <<\\n");
+        $display ("\n>> Test Passed! <<\n");
         -> done;
     end
 
@@ -291,7 +273,7 @@ constant_sub="""
 
     task check0; begin
         if(RAM_DATA0 !== Do0) begin
-            $display("\\n>>Test Failed! <<\\t(Phase: %0d, Iteration: %0d", Phase, i);
+            $display("\n>>Test Failed! <<\t(Phase: %0d, Iteration: %0d", Phase, i);
             $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A0, Do0, RAM[A0/4]);
             $fatal(1);
         end
@@ -300,11 +282,10 @@ constant_sub="""
 
     task check1; begin
         if(RAM_DATA1 !== Do1) begin
-            $display("\\n>>Test Failed! <<\\t(Phase: %0d, Iteration: %0d", Phase, i);
+            $display("\n>>Test Failed! <<\t(Phase: %0d, Iteration: %0d", Phase, i);
             $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A1, Do1, RAM[A1/4]);
             $fatal(1);
         end
     end
     endtask
 endmodule
-"""
