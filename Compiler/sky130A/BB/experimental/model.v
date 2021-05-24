@@ -17,6 +17,9 @@
     limitations under the License.
 */
 
+// Add 1x2 binary decoder
+`default_nettype none
+
 module DEC2x4 (
     input           EN,
     input   [1:0]   A,
@@ -172,7 +175,7 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
   
 endmodule
 
-module WORD #( parameter    USE_LATCH=1,
+module WORD #( parameter    USE_LATCH=0,
                             WSIZE=1 ) (
     input   wire                CLK,    // FO: 1
     input   wire [WSIZE-1:0]     WE,     // FO: 1
@@ -453,7 +456,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     wire [(WSIZE*8-1):0]     Di_buf;
     wire [3:0]              SEL;
 
-    wire [(WSIZE*8-1):0]    Do_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
                             
     // Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
@@ -501,17 +504,17 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
     wire [3:0]              SEL0;
     wire [3:0]              SEL1;
 
-    wire [(WSIZE*8-1):0]    Do0_pre[WSIZE-1:0]; 
-    wire [(WSIZE*8-1):0]    Do1_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do0_pre[3:0]; 
+    wire [(WSIZE*8-1):0]    Do1_pre[3:0]; 
                             
     // Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
     sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN_buf),  .A(EN0));
-    sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]           (.X(A_buf),   .A(A0));
-    sky130_fd_sc_hd__clkbuf_2   ENB1UF               (.X(EN_buf),  .A(EN1));
-    sky130_fd_sc_hd__clkbuf_2   A1BUF[6:0]           (.X(A_buf),   .A(A1));
+    sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN0_buf),  .A(EN0));
+    sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]           (.X(A0_buf),   .A(A0));
+    sky130_fd_sc_hd__clkbuf_2   ENB1UF               (.X(EN1_buf),  .A(EN1));
+    sky130_fd_sc_hd__clkbuf_2   A1BUF[6:0]           (.X(A1_buf),   .A(A1));
 
     DEC2x4 DEC0 (.EN(EN0_buf), .A(A0_buf[6:5]), .SEL(SEL0));
     DEC2x4 DEC1 (.EN(EN1_buf), .A(A1_buf[6:5]), .SEL(SEL1));
@@ -525,7 +528,7 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
 
     // Output MUXs    
     MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do_1pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
     
 
 endmodule
@@ -543,7 +546,7 @@ module RAM256 #(parameter   USE_LATCH=1,
 );
 
     wire [1:0]             SEL;
-    wire [(WSIZE*8-1):0]    Do_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do_pre[1:0]; 
 
     // 1x2 DEC
     sky130_fd_sc_hd__inv_2 DEC (.Y(SEL[0]), .A(A[7]));
@@ -577,8 +580,8 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
 );
 
     wire [1:0]              SEL0, SEL1;
-    wire [(WSIZE*8-1):0]     Do0_pre[WSIZE-1:0],
-                            Do1_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]     Do0_pre[1:0],
+                            Do1_pre[1:0]; 
     // 1x2 DEC
     sky130_fd_sc_hd__inv_2 DEC0 (.Y(SEL0[0]), .A(A0[7]));
     sky130_fd_sc_hd__inv_2 DEC1 (.Y(SEL1[0]), .A(A1[7]));
@@ -589,7 +592,7 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE(WE), .Di(Di), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A(A[6:0]) );        
+            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE(WE), .Di(Di), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
         end
      endgenerate
 
@@ -614,7 +617,7 @@ module RAM512 #(parameter   USE_LATCH=1,
 );
 
     wire [3:0]             SEL;
-    wire [(WSIZE*8-1):0]    Do_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
 
     DEC2x4 DEC (.EN(EN), .A(A[8:7]), .SEL(SEL));
 
@@ -626,7 +629,7 @@ module RAM512 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[8:7]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A[8:7]), .X(Do) );
 
 endmodule
 
@@ -650,7 +653,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
     wire [(WSIZE*8-1):0]     Di_buf;
     wire [1:0]              SEL;
 
-    wire [(WSIZE*8-1):0]    Do_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do_pre[1:0]; 
                             
     // Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
@@ -672,7 +675,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A_buf[9]), .X(Do) );
 
 endmodule
 
@@ -695,14 +698,14 @@ module RAM2048 #(parameter  USE_LATCH=1,
     wire [(WSIZE*8-1):0]     Di_buf;
     wire [3:0]              SEL;
 
-    wire [(WSIZE*8-1):0]    Do_pre[WSIZE-1:0]; 
+    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
                             
     // Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
     sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
     sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf),  .A(EN));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[6:0]           (.X(A_buf),   .A(A));
+    sky130_fd_sc_hd__clkbuf_2   ABUF[10:0]           (.X(A_buf),   .A(A));
 
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[10:9]), .SEL(SEL));
 
@@ -714,6 +717,6 @@ module RAM2048 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[8:0]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[10:9]), .X(Do) );
 
 endmodule
