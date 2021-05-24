@@ -20,6 +20,16 @@
 // Add 1x2 binary decoder
 `default_nettype none
 
+module DEC1x2 (
+    input         EN,
+    input          A,
+    output [1:0]   SEL
+);
+    sky130_fd_sc_hd__and2b_2 AND0 ( .X(SEL[0]), .A_N(A), .B(EN) );
+    sky130_fd_sc_hd__and2_2 AND1 ( .X(SEL[1]), .A(A) , .B(EN) );
+
+endmodule
+
 module DEC2x4 (
     input           EN,
     input   [1:0]   A,
@@ -549,8 +559,7 @@ module RAM256 #(parameter   USE_LATCH=1,
     wire [(WSIZE*8-1):0]    Do_pre[1:0]; 
 
     // 1x2 DEC
-    sky130_fd_sc_hd__inv_2 DEC (.Y(SEL[0]), .A(A[7]));
-    assign SEL[1] = A[7];
+    DEC1x2 DEC (.EN(EN), .A(A[7]), .SEL(SEL));
 
     generate
         genvar i;
@@ -663,9 +672,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
     sky130_fd_sc_hd__clkbuf_2   ABUF[9:0]           (.X(A_buf),   .A(A));
 
     // 1x2 DEC
-    sky130_fd_sc_hd__inv_2 DEC (.Y(SEL[0]), .A(A[9]));
-    assign SEL[1] = A[9];
-    //DEC2x4 DEC (.EN(EN_buf), .A(A_buf[10:9]), .SEL(SEL));
+    DEC1x2 DEC (.EN(EN_buf), .A(A[9]), .SEL(SEL));
 
      generate
         genvar i;
