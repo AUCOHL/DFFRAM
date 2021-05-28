@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -16,17 +17,12 @@
 # limitations under the License.
 
 try:
-    import opendbpy as odb
-except ImportError:
-    print(
-    """
-    You need to install opendb (Ahmed Ghazy's fork):
-    https://github.com/ax3ghazy/opendb
-    Build normally then go to ./build/src/swig/python and run:
-
-    python3 setup.py install
-
-    (On macOS rename the .dylib to .so first)
+    import opendb as odb
+except:
+    print("""
+    placeram needs to be inside OpenROAD:
+    
+    openroad -python -m placeram [args]
     """)
     exit(78)
 
@@ -34,6 +30,12 @@ try:
     import click
 except ImportError:
     print("You need to install click: python3 -m pip install click")
+    exit(78)
+
+try:
+    import yaml
+except ImportError:
+    print("You need to install pyyaml: python3 -m pip install pyyank")
     exit(78)
 
 from .util import eprint
@@ -44,7 +46,6 @@ from .reg_data import DFFRF
 
 import os
 import re
-import yaml
 import traceback
 
 class Placer:

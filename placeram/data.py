@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -15,21 +16,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import d2a
+from .util import d2a, sarv
 from .row import Row
 from .placeable import Placeable, DataError, RegExp
 
-from opendbpy import dbInst as Instance
+from opendb import dbInst as Instance
 
 import re
 import sys
 import math
+from types import SimpleNamespace as NS
 from functools import partial
 from typing import List, Dict, Union, TextIO
 
 # --
 
 P = Placeable
+
 
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
@@ -38,16 +41,17 @@ class Bit(Placeable):
         
         raw_obufs: Dict[int, Instance] = {}
 
+        m = NS()
         r = self.regexes()
         for instance in instances:
             n = instance.getName()
 
-            if ff_match := re.search(r.ff, n):
+            if sarv(m, "ff_match", re.search(r.ff, n)):
                 self.store = instance
-            elif obuf_match := re.search(r.obuf, n):
-                port = int(obuf_match[1] or "0")
+            elif sarv(m, "obuf_match", re.search(r.obuf, n)):
+                port = int(m.obuf_match[1] or "0")
                 raw_obufs[port] = instance
-            elif latch_match := re.search(r.latch, n):
+            elif sarv(m, "latch_match", re.search(r.latch, n)):
                 self.store = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -80,23 +84,24 @@ class Byte(Placeable):
         raw_bits: Dict[int, List[Instance]] = {}
         raw_selinvs: Dict[int, Instance] = {}
 
+        m = NS()
         r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
 
-            if bit_match := re.search(r.bit, n):
-                i = int(bit_match[1])
+            if sarv(m, "bit_match", re.search(r.bit, n)):
+                i = int(m.bit_match[1])
                 raw_bits[i] = raw_bits.get(i) or []
                 raw_bits[i].append(instance)
-            elif cg_match := re.search(r.cg, n):
+            elif sarv(m, "cg_match", re.search(r.cg, n)):
                 self.clockgate = instance
-            elif cgand_match := re.search(r.cgand, n):
+            elif sarv(m, "cgand_match", re.search(r.cgand, n)):
                 self.cgand = instance
-            elif selinv_match := re.search(r.selinv, n):
-                port = int(selinv_match[1] or "0")
+            elif sarv(m, "selinv_match", re.search(r.selinv, n)):
+                port = int(m.selinv_match[1] or "0")
                 raw_selinvs[port] = instance
-            elif clkinv_match := re.search(r.clkinv, n):
+            elif sarv(m, "clkinv_match", re.search(r.clkinv, n)):
                 self.clkinv = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -139,19 +144,20 @@ class Word(Placeable):
         raw_selbufs: Dict[int, Instance] = {}
         raw_bytes: Dict[int, List[Instance]] = {}
 
+        m = NS()
         r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
 
-            if byte_match := re.search(r.byte, n):
-                i = int(byte_match[1])
+            if sarv(m, "byte_match", re.search(r.byte, n)):
+                i = int(m.byte_match[1])
                 raw_bytes[i] = raw_bytes.get(i) or []
                 raw_bytes[i].append(instance)
-            elif sb_match := re.search(r.selbuf, n):
-                port = int(sb_match[1] or "0")
+            elif sarv(m, "sb_match", re.search(r.selbuf, n)):
+                port = int(m.sb_match[1] or "0")
                 raw_selbufs[port] = instance
-            elif cb_match := re.search(r.clkbuf, n):
+            elif sarv(m, "cb_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -190,18 +196,19 @@ class Decoder3x8(Placeable):
         raw_abufs: Dict[int, Instance] = {}
         raw_and_gates: Dict[int, Instance] = {}
 
+        m = NS()
         r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
 
-            if and_match := re.search(r.dand, n):
-                i = int(and_match[1])
+            if sarv(m, "and_match", re.search(r.dand, n)):
+                i = int(m.and_match[1])
                 raw_and_gates[i] = instance
-            elif abuf_match := re.search(r.abuf, n):
-                i = int(abuf_match[1])
+            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
+                i = int(m.abuf_match[1])
                 raw_abufs[i] = instance
-            elif enbuf_match := re.search(r.enbuf, n):
+            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
                 self.enbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -229,7 +236,8 @@ class Decoder3x8(Placeable):
             r = row_list[start_row + i]
 
             r.place(ands_placeable[i])
-            if buf := buffers_placeable[i]:
+            buf = buffers_placeable[i]
+            if buf is not None:
                 r.place(buf)
 
         return start_row + 8
@@ -244,21 +252,23 @@ class Slice(Placeable): # A slice is defined as 8 words.
         raw_words: Dict[int, List[Instance]] = {}
         raw_decoders: Dict[int, List[Instance]] = {} # One per port.
 
+        m = NS()
         r = self.regexes()
+
         for instance in instances:
             n = instance.getName()
 
-            if word_match := re.search(r.word, n):
-                i = int(word_match[1])
+            if sarv(m, "word_match", re.search(r.word, n)):
+                i = int(m.word_match[1])
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
-            elif d_match := re.search(r.decoder, n):
-                port = int(d_match[1] or "0")
+            elif sarv(m, "d_match", re.search(r.decoder, n)):
+                port = int(m.d_match[1] or "0")
                 raw_decoders[port] = raw_decoders.get(port) or []
                 raw_decoders[port].append(instance)
-            elif wb_match := re.search(r.webuf, n):
+            elif sarv(m, "wb_match", re.search(r.webuf, n)):
                 self.webufs.append(instance) # Shouldn't this have the indices involved in some aspect?
-            elif cb_match := re.search(r.clkbuf, n):
+            elif sarv(m, "cb_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -383,53 +393,54 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         raw_fbufenbufs: Dict[int, Dict[int, Instance]] = {}
         raw_floatbufs: Dict[int, Dict[int, Dict[int, Instance]]] = {}
 
+        m = NS()
         r = self.regexes()
         for instance in instances:
             n = instance.getName()
 
-            if slice_match := re.search(r.slice, n):
-                i = int(slice_match[1])
+            if sarv(m, "slice_match", re.search(r.slice, n)):
+                i = int(m.slice_match[1])
                 raw_slices[i] = raw_slices.get(i) or []
                 raw_slices[i].append(instance)
-            elif decoder_and_match := re.search(r.decoder_and, n):
-                port = int(decoder_and_match[1] or "0")
-                i = int(decoder_and_match[2])
+            elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
+                port = int(m.decoder_and_match[1] or "0")
+                i = int(m.decoder_and_match[2])
                 raw_decoder_ands[port] = raw_decoder_ands.get(port) or {}
                 raw_decoder_ands[port][i] = instance
-            elif dibuf_match := re.search(r.dibuf, n):
-                i = int(dibuf_match[1])
+            elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
+                i = int(m.dibuf_match[1])
                 raw_dibufs[i] = instance
-            elif webuf_match := re.search(r.webuf, n):
-                i = int(webuf_match[1])
+            elif sarv(m, "webuf_match", re.search(r.webuf, n)):
+                i = int(m.webuf_match[1])
                 raw_webufs[i] = instance
-            elif clkbuf_match := re.search(r.clkbuf, n):
+            elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
-            elif abuf_match := re.search(r.abuf, n):
-                port = int(abuf_match[1] or "0")
-                i = int(abuf_match[2])
+            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
+                port = int(m.abuf_match[1] or "0")
+                i = int(m.abuf_match[2])
                 raw_abufs[port] = raw_abufs.get(port) or {}
                 raw_abufs[port][i] = instance
-            elif enbuf_match := re.search(r.enbuf, n):
-                port = int(enbuf_match[1] or "0")
+            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
+                port = int(m.enbuf_match[1] or "0")
                 raw_enbufs[port] = instance
-            elif tie_match := re.search(r.tie, n):
-                port = int(tie_match[1] or "0")
-                i = int(tie_match[2])
+            elif sarv(m, "tie_match", re.search(r.tie, n)):
+                port = int(m.tie_match[1] or "0")
+                i = int(m.tie_match[2])
                 raw_ties[port] = raw_ties.get(port) or {}
                 raw_ties[port][i] = instance
-            elif fbufenbuf_match := re.search(r.fbufenbuf, n):
-                port = int(fbufenbuf_match[1] or "0")
-                i = int(fbufenbuf_match[2])
+            elif sarv(m, "fbufenbuf_match", re.search(r.fbufenbuf, n)):
+                port = int(m.fbufenbuf_match[1] or "0")
+                i = int(m.fbufenbuf_match[2])
                 raw_fbufenbufs[port] = raw_fbufenbufs.get(port) or {}
                 raw_fbufenbufs[port][i] = instance
-            elif floatbuf_match := re.search(r.floatbuf, n):
-                byte, port, bit = (int(floatbuf_match[1]), int(floatbuf_match[2] or "0"), int(floatbuf_match[3]))
+            elif sarv(m, "floatbuf_match", re.search(r.floatbuf, n)):
+                byte, port, bit = (int(m.floatbuf_match[1]), int(m.floatbuf_match[2] or "0"), int(m.floatbuf_match[3]))
                 raw_floatbufs[port] = raw_floatbufs.get(port) or {}
                 raw_floatbufs[port][byte] = raw_floatbufs[port].get(byte) or {}
                 raw_floatbufs[port][byte][bit] = instance
-            elif dobuf_match := re.search(r.dobuf, n):
-                port = int(dobuf_match[1] or "0")
-                i = int(dobuf_match[2])
+            elif sarv(m, "dobuf_match", re.search(r.dobuf, n)):
+                port = int(m.dobuf_match[1] or "0")
+                i = int(m.dobuf_match[2])
                 raw_dobufs[port] = raw_dobufs.get(port) or {}
                 raw_dobufs[port][i] = instance
             else:
@@ -579,15 +590,16 @@ class Mux(Placeable):
         raw_selbufs: Dict[int, Dict[int, Instance]] = {}
         raw_muxes: Dict[int, Dict[int, Instance]] = {}
 
+        m = NS()
         r = self.regexes()
         for instance in instances:
             n = instance.getName()
-            if selbuf_match := re.search(r.selbuf, n):
-                line, byte = (int(selbuf_match[1] or "0"), int(selbuf_match[2]))
+            if sarv(m, "selbuf_match", re.search(r.selbuf, n)):
+                line, byte = (int(m.selbuf_match[1] or "0"), int(m.selbuf_match[2]))
                 raw_selbufs[byte] = raw_selbufs.get(byte) or {}
                 raw_selbufs[byte][line] = instance
-            elif mux_match := re.search(r.mux, n):
-                byte, bit = (int(mux_match[1]), int(mux_match[2]))
+            elif sarv(m, "mux_match", re.search(r.mux, n)):
+                byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
                 raw_muxes[byte] = raw_muxes.get(byte) or {}
                 raw_muxes[byte][bit] = instance
             else:
@@ -635,30 +647,33 @@ class HigherLevelPlaceable(Placeable):
         raw_domux: List[Instance] = []
 
         r_block = inner_re
+
+        m = NS()
         r = self.regexes()
+
         for instance in instances:
             n = instance.getName()
-            if block_match := re.search(r_block, n):
-                i = int(block_match[1])
+            if sarv(m, "block_match", re.search(r_block, n)):
+                i = int(m.block_match[1])
                 raw_blocks[i] = raw_blocks.get(i) or []
                 raw_blocks[i].append(instance)
-            elif decoder_and_match := re.search(r.decoder_and, n):
-                i = int(decoder_and_match[1])
+            elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
+                i = int(m.decoder_and_match[1])
                 raw_decoder_ands[i] = instance
-            elif dibuf_match := re.search(r.dibuf, n):
-                i = int(dibuf_match[1])
+            elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
+                i = int(m.dibuf_match[1])
                 raw_dibufs[i] = instance
-            elif webuf_match := re.search(r.webuf, n):
-                i = int(webuf_match[1])
+            elif sarv(m, "webuf_match", re.search(r.webuf, n)):
+                i = int(m.webuf_match[1])
                 raw_webufs[i] = instance
-            elif clkbuf_match := re.search(r.clkbuf, n):
+            elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
-            elif abuf_match := re.search(r.abuf, n):
-                i = int(abuf_match[1])
+            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
+                i = int(m.abuf_match[1])
                 raw_abufs[i] = instance
-            elif enbuf_match := re.search(r.enbuf, n):
+            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
                 self.enbuf = instance
-            elif domux_match := re.search(r.domux, n):
+            elif sarv(m, "domux_match", re.search(r.domux, n)):
                 raw_domux.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))

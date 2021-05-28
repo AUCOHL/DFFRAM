@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -130,7 +131,9 @@ def run_docker(image, args):
         "-v", "%s:/mnt/dffram" % rp("."),
         "-w", "/mnt/dffram",
         "-e", "PDK_ROOT=%s" % (pdk_root),
-        "-e", "PDKPATH=%s/sky130A" % (pdk_root)
+        "-e", "PDKPATH=%s/sky130A" % (pdk_root),
+        "-e", "LC_ALL=en_US.UTF-8",
+        "-e", "LANG=en_US.UTF-8"
     ] + [image] + args, check=True)
 
 def openlane(*args_tuple):
@@ -253,7 +256,7 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     unaltered = out_file + ".ref"
 
     run_docker("cloudv/dffram-env", [
-        "python3", "-m", "placeram",
+        "-python", "-m", "placeram",
         "--output", unaltered,
         "--lef", "%s/sky130_fd_sc_hd.lef" % pdk_lef_dir,
         "--tech-lef", "%s/sky130_fd_sc_hd.tlef" % pdk_tlef_dir,

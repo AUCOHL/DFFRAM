@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -16,13 +17,14 @@
 # limitations under the License.
 
 from .row import Row
-from .util import d2a
+from .util import d2a, sarv
 from .placeable import Placeable, DataError
 
-from opendbpy import dbInst
+from opendb import dbInst
 Instance = dbInst
 
 import re
+from types import SimpleNamespace as NS
 
 P = Placeable
 
@@ -45,34 +47,36 @@ class Word(Placeable):
         raw_invs1 = {}
         raw_invs2 = {}
 
+        m = NS()
         for instance in instances:
+
             n = instance.getName()
 
-            if clkgate_match := re.search(clkgate, n):
-                i = int(clkgate_match[1])
+            if sarv(m, "clkgate_match", re.search(clkgate, n)):
+                i = int(m.clkgate_match[1])
                 raw_clkgates[i] = instance
 
-            elif inv1_match := re.search(inv1, n):
-                i = int(inv1_match[1])
+            elif sarv(m, "inv1_match", re.search(inv1, n)):
+                i = int(m.inv1_match[1])
                 raw_invs1[i] = instance
 
-            elif inv2_match := re.search(inv2, n):
-                i = int(inv2_match[1])
+            elif sarv(m, "inv2_match", re.search(inv2, n)):
+                i = int(m.inv2_match[1])
                 raw_invs2[i] = instance
 
-            elif bit_ff_match := re.search(bit_ff, n):
-                i = int(bit_ff_match[1])
+            elif sarv(m, "bit_ff_match", re.search(bit_ff, n)):
+                i = int(m.bit_ff_match[1])
                 raw_ffs[i] = instance
 
-            elif bit_obuf1_match := re.search(bit_obuf1, n):
-                i = int(bit_obuf1_match[1])
+            elif sarv(m, "bit_obuf1_match", re.search(bit_obuf1, n)):
+                i = int(m.bit_obuf1_match[1])
                 raw_obufs1[i] = instance
 
-            elif bit_obuf2_match := re.search(bit_obuf2, n):
-                i = int(bit_obuf2_match[1])
+            elif sarv(m, "bit_obuf2_match", re.search(bit_obuf2, n)):
+                i = int(m.bit_obuf2_match[1])
                 raw_obufs2[i] = instance
 
-            elif clkgateand_match := re.search(clkgateand, n):
+            elif sarv(m, "clkgateand_match", re.search(clkgateand, n)):
                 self.clkgateand = instance
 
             else:
@@ -132,37 +136,39 @@ class DFFRF(Placeable): # 32 words
         rfw0_obuf1 = r"\bRFW0\.BIT\\\[(\d+)\\\]\.OBUF1\b"
         rfw0_obuf2 = r"\bRFW0\.BIT\\\[(\d+)\\\]\.OBUF2\b"
 
+        m = NS()
         for instance in instances:
+
             n = instance.getName()
 
-            if word_match := re.search(word, n):
-                i = int(word_match[1])
+            if sarv(m, "word_match", re.search(word, n)):
+                i = int(m.word_match[1])
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
 
-            elif decoder5x32_match := re.search(decoder5x32, n):
-                i = int(decoder5x32_match[1])
+            elif sarv(m, "decoder5x32_match", re.search(decoder5x32, n)):
+                i = int(m.decoder5x32_match[1])
                 raw_decoders5x32[i] = raw_decoders5x32.get(i) or []
                 raw_decoders5x32[i].append(instance)
 
-            elif rfw0_obuf_match1 := re.search(rfw0_obuf1, n):
-                bit = int(rfw0_obuf_match1[1])
+            elif sarv(m, "rfw0_obuf_match1", re.search(rfw0_obuf1, n)):
+                bit = int(m.rfw0_obuf_match1[1])
                 raw_rfw0_obufs1[bit] = instance
 
-            elif rfw0_obuf_match2 := re.search(rfw0_obuf2, n):
-                bit = int(rfw0_obuf_match2[1])
+            elif sarv(m, "rfw0_obuf_match2", re.search(rfw0_obuf2, n)):
+                bit = int(m.rfw0_obuf_match2[1])
                 raw_rfw0_obufs2[bit] = instance
 
-            elif rfw0_tie_match := re.search(rfw0_tie, n):
-                i = int(rfw0_tie_match[1])
+            elif sarv(m, "rfw0_tie_match", re.search(rfw0_tie, n)):
+                i = int(m.rfw0_tie_match[1])
                 raw_rfw0_ties[i] = instance
 
-            elif rfw0_inv1_match := re.search(rfw0_inv1, n):
-                i = int(rfw0_inv1_match[1])
+            elif sarv(m, "rfw0_inv1_match", re.search(rfw0_inv1, n)):
+                i = int(m.rfw0_inv1_match[1])
                 raw_rfw0_invs1[i] = instance
 
-            elif rfw0_inv2_match := re.search(rfw0_inv2, n):
-                i = int(rfw0_inv2_match[1])
+            elif sarv(m, "rfw0_inv2_match", re.search(rfw0_inv2, n)):
+                i = int(m.rfw0_inv2_match[1])
                 raw_rfw0_invs2[i] = instance
 
             else:
@@ -281,15 +287,17 @@ class Decoder5x32(Placeable):
         raw_decoders3x8 = {} # multiple decoders so multiple entries ordered by 1st match
         self.decoder2x4 = [] # one decoder so array
 
+        m = NS()
         for instance in instances:
+
             n = instance.getName()
 
-            if decoder3x8_match := re.search(decoder3x8, n):
-                i = int(decoder3x8_match[2])
+            if sarv(m, "decoder3x8_match", re.search(decoder3x8, n)):
+                i = int(m.decoder3x8_match[2])
                 raw_decoders3x8[i] = raw_decoders3x8.get(i) or []
                 raw_decoders3x8[i].append(instance)
 
-            elif decoder2x4_match := re.search(decoder2x4, n):
+            elif sarv(m, "decoder2x4_match", re.search(decoder2x4, n)):
                 # TODO(ahmednofal): check if these instances
                 # are not ordered so it might not be
                 # the most optimal placement
@@ -325,11 +333,13 @@ class Decoder3x8(Placeable):
 
         raw_andgates = {} # multiple decoders so multiple entries ordered by 1st match
 
+        m = NS()
         for instance in instances:
+
             n = instance.getName()
 
-            if andgate_match := re.search(andgate, n):
-                i = int(andgate_match[1])
+            if sarv(m, "andgate_match", re.search(andgate, n)):
+                i = int(m.andgate_match[1])
                 raw_andgates[i] = raw_andgates.get(i) or []
                 raw_andgates[i] = instance
             else:
@@ -358,11 +368,13 @@ class Decoder2x4(Placeable):
 
         raw_andgates = {} # multiple decoders so multiple entries ordered by 1st match
 
+        m = NS()
         for instance in instances:
+
             n = instance.getName()
 
-            if andgate_match := re.search(andgate, n):
-                i = int(andgate_match[1])
+            if sarv(m, "andgate_match", re.search(andgate, n)):
+                i = int(m.andgate_match[1])
                 raw_andgates[i] = raw_andgates.get(i) or []
                 raw_andgates[i] = instance
             else:

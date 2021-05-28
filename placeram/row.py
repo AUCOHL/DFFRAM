@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -15,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
  
-from opendbpy import dbRow, dbInst, dbSite
+from opendb import dbRow, dbInst, dbSite
 from typing import List, Callable
 
 class Row(object):
