@@ -1,16 +1,15 @@
 
 PDK_PATH?=../../pdk
-RTL_PATH=..
+RTL_PATH=../sky130A/BB/experimental/model.v
 
 .SUFFIXES:
+
+.PRECIOUS: %.v %.vvp
 
 PATTERN = tb_RAM32x32
 
 all:  ${PATTERN:=.vcd}
 
-# lint: %.v
-# 	iverilog -s -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
-# 	$<
 
 help:
 	@echo  ' you can call this make file like : make PATTERN=tb_RAM<WORDNUM>x32 '
@@ -24,13 +23,22 @@ help:
 	vvp $<
 
 %.vvp: %.v
-	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) -I $(RTL_PATH) \
+	# iverilog -s $(TOP) -o $@ -DFUNCTIONAL -I $(PDK_PATH)
+	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) \
+	$< 
+
+lint: %.v
+	iverilog  -s $(TOP) -Wall -DUNIT_DELAY="#1" -DFUNCTIONAL -I $(PDK_PATH) \
 	$<
 
 %.v:
-	python3 gen_tb.py ${PATTERN}
+	@echo ' Creating tb verilog from template ...'
+	$(eval TOP := $(shell python3 gen_tb.py ${PATTERN}))
+	@echo ' Done'
+
+
 
 clean:
-	rm -f *.vvp *.vcd *.out
+	rm -f *.vvp *.vcd *.out *.v *.log
 
 .PHONY: clean all
