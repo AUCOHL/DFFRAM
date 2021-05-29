@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import d2a
+from .util import d2a 
 from .row import Row
 from .placeable import Placeable, DataError, RegExp
 
@@ -473,11 +473,12 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
     def place(self, row_list: List[Row], start_row: int = 0):
         # Prologue. Split vertical elements into left and right columns
         addresses = len(self.abufs)
-        common = [self.clkbuf] + self.webufs
+        common = [self.clkbuf] + self.webufs # Should be spread across right columns
         chunks = []
-        per_chunk = math.ceil(len(common) / addresses)
+        chunk_count = math.ceil(addresses / 2) 
+        per_chunk = math.ceil(len(common) / chunk_count)
+    
         i = 0
-
         while i < len(common):
             chunks.append(common[i: i + per_chunk])
             i += per_chunk
@@ -486,14 +487,16 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         vertical_right = []
         right = True
 
-        for i in range(0, len(self.abufs)):
+        for i in range(0, addresses):
             target = vertical_right if right else vertical_left
             target.append([
                 self.enbufs[i],
                 *self.abufs[i],
                 *self.decoder_ands[i],
                 *self.fbufenbufs[i]
-            ] + chunks[i])
+            ])
+            if right:
+                target += chunks[i // 2]
             right = not right
 
         final_rows = []
