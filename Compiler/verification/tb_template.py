@@ -49,7 +49,6 @@ module tb_RAM{word_num}x{word_size};
     reg  [(SIZE*8-1):0]     Di;
     wire  [(SIZE*8-1):0]     Do;
     reg  [A_W-1:0]          A, ADDR;
-    reg  [3:0]              HEX_DIG;
     reg  [7:0]              Phase;
     reg  [7:0]      RANDOM_BYTE;
 
@@ -91,14 +90,6 @@ constant_sub="""
         end
     end
     endgenerate
-    // always @(posedge CLK)
-    //     if(EN) begin
-    //         RAM_DATA <= RAM[A/4];
-    //         if(WE[0]) RAM[A/4][ 7: 0] <= Di[7:0];
-    //         if(WE[1]) RAM[A/4][15:8] <= Di[15:8];
-    //         if(WE[2]) RAM[A/4][23:16] <= Di[23:16];
-    //         if(WE[3]) RAM[A/4][31:24] <= Di[31:24];
-    //     end
 
     initial begin
         CLK = 0;
@@ -207,7 +198,7 @@ constant_sub="""
     task check; begin
         if(RAM_DATA !== Do) begin
             $display("\\n>>Test Failed! <<\\t(Pahse: %0d, Iteration: %0d", Phase, i);
-            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/4]);
+            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A, Do, RAM[A/SIZE]);
             $fatal(1);
         end
     end

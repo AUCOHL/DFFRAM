@@ -41,7 +41,7 @@ changeable_sub = """
 module tb_RAM{word_num}x{word_size}_1RW1R;
 
     localparam SIZE = `SIZE;
-    localparam A_W = {addr_width}+2;
+    localparam A_W = {addr_width}+$clog2(SIZE);
     localparam M_SZ = 2**A_W;
 
     reg                   CLK;
@@ -52,7 +52,6 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     wire [(SIZE*8-1):0]   Do0;
     wire [(SIZE*8-1):0]   Do1;
     reg  [A_W-1:0]  A0, A1, ADDR;
-    reg  [3:0]      HEX_DIG;
     reg  [7:0]      Phase;
     reg  [7:0]      RANDOM_BYTE;
     event           done;
@@ -65,8 +64,8 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
         .Di(Di),
         .Do0(Do0),
         .Do1(Do1),
-        .A0(A0[A_W-1:2]),
-        .A1(A1[A_W-1:2])
+        .A0(A0[A_W-1:$clog2(SIZE)]),
+        .A1(A1[A_W-1:$clog2(SIZE)])
     );
 
     initial begin
@@ -91,11 +90,11 @@ constant_sub="""
     for (c=0; c < SIZE; c = c+1) begin: mem_golden_model
         always @(posedge CLK) begin
             if(EN0) begin
-                RAM_DATA0 <= RAM[A0/4];
-                if(WE[c]) RAM[A0/4][8*(c+1)-1:8*c] <= Di[8*(c+1)-1:8*c];
+                RAM_DATA0 <= RAM[A0/SIZE];
+                if(WE[c]) RAM[A0/SIZE][8*(c+1)-1:8*c] <= Di[8*(c+1)-1:8*c];
             end
             if (EN1) begin
-                RAM_DATA1 <= RAM[A1/4];
+                RAM_DATA1 <= RAM[A1/SIZE];
             end
         end
     end
@@ -126,7 +125,7 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 0, starting Phase 1");
 `endif
-        for(i=0; i<M_SZ; i=i+4) begin
+        for(i=0; i<M_SZ; i=i+SIZE) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
             RANDOM_BYTE = $urandom;
             mem_write_word( {SIZE{RANDOM_BYTE}}, ADDR);
@@ -153,7 +152,7 @@ constant_sub="""
         for(i=0; i<M_SZ; i=i+1) begin
             ADDR = (($urandom%M_SZ));
             mem_write_byte($urandom%255, ADDR);
-            mem_read_word_1(ADDR & 'hFFFF_FFFC );
+            mem_read_word_1(ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
 
 /***********************************************************
@@ -236,7 +235,7 @@ constant_sub="""
 `ifdef  VERBOSE_2
         $display("WRITE WORD: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 
@@ -274,7 +273,7 @@ constant_sub="""
         @(posedge CLK);
         A0= addr0;//[9:2];
         A1= addr1;//[9:2];
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
         @(posedge CLK);
         #5;
 `ifdef  VERBOSE_2
@@ -289,7 +288,7 @@ constant_sub="""
     task check0; begin
         if(RAM_DATA0 !== Do0) begin
             $display("\\n>>Test Failed! <<\\t(Phase: %0d, Iteration: %0d", Phase, i);
-            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A0, Do0, RAM[A0/4]);
+            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A0, Do0, RAM[A0/SIZE]);
             $fatal(1);
         end
     end
@@ -298,7 +297,7 @@ constant_sub="""
     task check1; begin
         if(RAM_DATA1 !== Do1) begin
             $display("\\n>>Test Failed! <<\\t(Phase: %0d, Iteration: %0d", Phase, i);
-            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A1, Do1, RAM[A1/4]);
+            $display("Address: 0x%X, READ: 0x%X - Should be: 0x%X", A1, Do1, RAM[A1/SIZE]);
             $fatal(1);
         end
     end
