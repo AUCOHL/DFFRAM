@@ -121,12 +121,6 @@ constant_sub="""
 ************************************************************/
 
         // Fill the memory with a known pattern
-        for(i=0; i<M_SZ; i=i+4) begin
-            HEX_DIG = $urandom%16;
-            mem_write_word({8{HEX_DIG}},i);
-            mem_read_word_1(i);
-        end
-
         // Word Write then Read
         Phase = 1;
 `ifdef  VERBOSE_1
@@ -144,10 +138,11 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 1, starting Phase 2");
 `endif
-        for(i=0; i<M_SZ; i=i+2) begin
+        for(i=0; i<M_SZ; i=i+SIZE/2) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
-            mem_write_hword($urandom&'hFFFF, ADDR );
-            mem_read_word_1( ADDR & 'hFFFF_FFFC );
+            RANDOM_BYTE = $urandom;
+            mem_write_hword( {SIZE/2{RANDOM_BYTE}}, ADDR);
+            mem_read_word_1( ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
 
         // Byte Write then Read
@@ -170,9 +165,10 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 3, starting Phase 4");
 `endif
-        for(i=0; i<M_SZ; i=i+4) begin
+        for(i=0; i<M_SZ; i=i+SIZE) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
-            mem_write_word( $urandom, ADDR);
+            RANDOM_BYTE = $urandom;
+            mem_write_word( {SIZE{RANDOM_BYTE}}, ADDR);
             mem_read_word_0( ADDR );
         end
 
@@ -181,10 +177,11 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 4, starting Phase 5");
 `endif
-        for(i=0; i<M_SZ; i=i+2) begin
+        for(i=0; i<M_SZ; i=i+SIZE/2) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
-            mem_write_hword($urandom&'hFFFF, ADDR );
-            mem_read_word_0( ADDR & 'hFFFF_FFFC );
+            RANDOM_BYTE = $urandom;
+            mem_write_hword( {SIZE/2{RANDOM_BYTE}}, ADDR);
+            mem_read_word_0( ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
 
         // Byte Write then Read
@@ -195,7 +192,7 @@ constant_sub="""
         for(i=0; i<M_SZ; i=i+1) begin
             ADDR = (($urandom%M_SZ));
             mem_write_byte($urandom%255, ADDR);
-            mem_read_word_0(ADDR & 'hFFFF_FFFC );
+            mem_read_word_0(ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
         $display ("\\n>> Test Passed! <<\\n");
         -> done;
@@ -205,27 +202,27 @@ constant_sub="""
     begin
         @(posedge CLK);
         A0 = addr;//[A_WIDTH:2];
-        WE = (1 << addr[1:0]);
-        Di = (byte << (addr[1:0] * 8));
+        WE = (1 << addr[$clog2(SIZE)-1:0]);
+        Di = (byte << (addr[$clog2(SIZE)-1:0] * 8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
         $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", byte, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 
-    task mem_write_hword(input [15:0] hword, input [A_W-1:0] addr);
+    task mem_write_hword(input [SIZE*8-1:0] hword, input [A_W-1:0] addr);
     begin
         @(posedge CLK);
-        A0 = addr;//[A_WIDTH:2];
-        WE = {{2{addr[1]}},{2{~addr[1]}}};
-        Di = (hword << (addr[1] * 16));
+        A0 = addr;//[A_WIDTH:$clog2(SIZE)];
+        WE = {{SIZE/2{addr[$clog2(SIZE)-1]}},{SIZE/2{~addr[$clog2(SIZE)-1]}}};
+        Di = (hword << (addr[$clog2(SIZE)-1] * (SIZE/2)*8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE HALFWORD: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
+        $display("WRITE HWORD: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 

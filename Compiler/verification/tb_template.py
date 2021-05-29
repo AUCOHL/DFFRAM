@@ -110,13 +110,6 @@ constant_sub="""
         mem_write_word({SIZE{8'h90}}, 4);
         mem_read_word(4);
 
-        // Fill the memory with a known pattern
-        for(i=0; i<M_SZ; i=i+4) begin
-            HEX_DIG = $urandom%16;
-            mem_write_word({8{HEX_DIG}},i);
-            mem_read_word(i);
-        end
-
         // Word Write then Read
         Phase = 1;
 `ifdef  VERBOSE_1
