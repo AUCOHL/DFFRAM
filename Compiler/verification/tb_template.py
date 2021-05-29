@@ -27,37 +27,41 @@ changeable_sub = """
 
 `define     USE_LATCH   1
 
+`define     SIZE        {word_size}/8
+
 //`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
 //`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
 
 `include "hd_primitives.v"
 `include "hd_functional.v"
 
-`include "BB.v"
+`include "{filename}"
 
 module tb_RAM{word_num}x{word_size};
 
-    localparam A_W = {addr_width}+2;
+    localparam SIZE = `SIZE;
+    localparam A_W = {addr_width}+$clog2(SIZE);
     localparam M_SZ = 2**A_W;
 
-    reg             CLK;
-    reg  [3:0]      WE;
-    reg             EN;
-    reg  [31:0]     Di;
-    wire [31:0]     Do;
-    reg  [A_W-1:0]  A, ADDR;
-    reg  [3:0]      HEX_DIG;
-    reg  [7:0]      Phase;
+    reg                     CLK;
+    reg  [(SIZE-1):0]       WE;
+    reg                     EN;
+    reg  [(SIZE*8-1):0]     Di;
+    wire  [(SIZE*8-1):0]     Do;
+    reg  [A_W-1:0]          A, ADDR;
+    reg  [3:0]              HEX_DIG;
+    reg  [7:0]              Phase;
+    reg  [7:0]      RANDOM_BYTE;
 
     event           done;
 
-    RAM{word_num}x{word_size} #(.USE_LATCH(`USE_LATCH)) SRAM (
+    RAM{word_num} #(.USE_LATCH(`USE_LATCH), .WSIZE(SIZE)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN(EN),
         .Di(Di),
         .Do(Do),
-        .A(A[A_W-1:2])
+        .A(A[A_W-1:$clog2(SIZE)])
     );
 
     initial begin
@@ -73,17 +77,28 @@ constant_sub="""
     integer i;
 
      /* Memory golden Model */
-    reg [31:0]      RAM[(M_SZ)-1 : 0];
-    reg [31:0]      RAM_DATA;
+    reg [(SIZE*8-1):0]      RAM[(M_SZ)-1 : 0];
+    reg [(SIZE*8-1):0]      RAM_DATA;
 
-    always @(posedge CLK)
-        if(EN) begin
-            RAM_DATA <= RAM[A/4];
-            if(WE[0]) RAM[A/4][ 7: 0] <= Di[7:0];
-            if(WE[1]) RAM[A/4][15:8] <= Di[15:8];
-            if(WE[2]) RAM[A/4][23:16] <= Di[23:16];
-            if(WE[3]) RAM[A/4][31:24] <= Di[31:24];
+    genvar c;
+    generate
+    for (c=0; c < SIZE; c = c+1) begin: mem_golden_model
+        always @(posedge CLK) begin
+            if(EN) begin
+                RAM_DATA <= RAM[A/SIZE];
+                if(WE[c]) RAM[A/SIZE][8*(c+1)-1:8*c] <= Di[8*(c+1)-1:8*c];
+            end
         end
+    end
+    endgenerate
+    // always @(posedge CLK)
+    //     if(EN) begin
+    //         RAM_DATA <= RAM[A/4];
+    //         if(WE[0]) RAM[A/4][ 7: 0] <= Di[7:0];
+    //         if(WE[1]) RAM[A/4][15:8] <= Di[15:8];
+    //         if(WE[2]) RAM[A/4][23:16] <= Di[23:16];
+    //         if(WE[3]) RAM[A/4][31:24] <= Di[31:24];
+    //     end
 
     initial begin
         CLK = 0;
@@ -92,7 +107,7 @@ constant_sub="""
 
         Phase = 0;
         // Perform a single word write then read
-        mem_write_word(32'hA5337090, 4);
+        mem_write_word({SIZE{8'h90}}, 4);
         mem_read_word(4);
 
         // Fill the memory with a known pattern
@@ -107,9 +122,10 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 0, starting Phase 1");
 `endif
-        for(i=0; i<M_SZ; i=i+4) begin
+        for(i=0; i<M_SZ; i=i+SIZE) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFC ;
-            mem_write_word( $urandom, ADDR);
+            RANDOM_BYTE = $urandom;
+            mem_write_word( {SIZE{RANDOM_BYTE}}, ADDR);
             mem_read_word( ADDR );
         end
 
@@ -118,10 +134,11 @@ constant_sub="""
 `ifdef  VERBOSE_1
         $display("\\nFinished Phase 1, starting Phase 2");
 `endif
-        for(i=0; i<M_SZ; i=i+2) begin
+        for(i=0; i<M_SZ; i=i+SIZE/2) begin
             ADDR = (($urandom%M_SZ)) & 'hFFFF_FFFE;
-            mem_write_hword($urandom&'hFFFF, ADDR );
-            mem_read_word( ADDR & 'hFFFF_FFFC );
+            RANDOM_BYTE = $urandom;
+            mem_write_hword( {SIZE/2{RANDOM_BYTE}}, ADDR);
+            mem_read_word( ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
 
         // Byte Write then Read
@@ -132,7 +149,7 @@ constant_sub="""
         for(i=0; i<M_SZ; i=i+1) begin
             ADDR = (($urandom%M_SZ));
             mem_write_byte($urandom%255, ADDR);
-            mem_read_word(ADDR & 'hFFFF_FFFC );
+            mem_read_word(ADDR & {{SIZE-1{8'hFF}}, 8'hFC} );
         end
         $display ("\\n>> Test Passed! <<\\n");
         -> done;
@@ -142,41 +159,41 @@ constant_sub="""
     begin
         @(posedge CLK);
         A = addr;//[A_WIDTH:2];
-        WE = (1 << addr[1:0]);
-        Di = (byte << (addr[1:0] * 8));
+        WE = (1 << addr[$clog2(SIZE)-1:0]);
+        Di = (byte << (addr[$clog2(SIZE)-1:0] * 8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
         $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", byte, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 
-    task mem_write_hword(input [15:0] hword, input [A_W-1:0] addr);
+    task mem_write_hword(input [SIZE*8-1:0] hword, input [A_W-1:0] addr);
     begin
         @(posedge CLK);
-        A = addr;//[A_WIDTH:2];
-        WE = {{2{addr[1]}},{2{~addr[1]}}};
-        Di = (hword << (addr[1] * 16));
+        A = addr;//[A_WIDTH:$clog2(SIZE)];
+        WE = {{SIZE/2{addr[$clog2(SIZE)-1]}},{SIZE/2{~addr[$clog2(SIZE)-1]}}};
+        Di = (hword << (addr[$clog2(SIZE)-1] * (SIZE/2)*8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
+        $display("WRITE HWORD: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 
-    task mem_write_word(input [31:0] word, input [A_W-1:0] addr);
+    task mem_write_word(input [SIZE*8-1:0] word, input [A_W-1:0] addr);
     begin
         @(posedge CLK);
         A = addr;
-        WE = 4'b1111;
+        WE = {SIZE{8'hFF}};
         Di = word;
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di, WE);
+        $display("WRITE WORD: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di, WE);
 `endif
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
     end
     endtask
 
@@ -184,7 +201,7 @@ constant_sub="""
     begin
         @(posedge CLK);
         A = addr;//[9:2];
-        WE = 4'b0;
+        WE = {SIZE{8'h00}};
         @(posedge CLK);
         #5;
 `ifdef  VERBOSE_2

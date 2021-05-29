@@ -26,21 +26,25 @@ import os
 if __name__ == "__main__":
     PATTERN = sys.argv[1]
     word_num = int(re.search('RAM(\d+)x', PATTERN).group(1))
+    model_filename = os.path.realpath("../sky130A/BB/experimental/model.v")
+    variant = RAM_1RW1R_tb
     if "1RW1R" in PATTERN:
-        model_filename = os.path.realpath("../sky130A/BB/experimental/model.v")
         word_size = int(re.search(r"x(\d+)_", PATTERN).group(1))
-        themodule = RAM_1RW1R_tb
         filename = 'tb_RAM{word_num}x{word_size}_1RW1R.v'.format(word_num=word_num,
         word_size=word_size)
+        module = "RAM{word_num}_1RW1R".format(word_num=word_num)
     else:
         word_size = int(re.search(r"x(\d+)$", PATTERN).group(1))
-        themodule = RAM_1RW1R_tb
+        variant = RAM_tb
         filename = 'tb_RAM{word_num}x{word_size}.v'.format(word_num=word_num,
         word_size=word_size)
+        module = "RAM{word_num}".format(word_num=word_num)
+
 
     addr_width = int(math.log2(word_num))
-    tb = themodule.changeable_sub.format(word_num=word_num,
+    tb = variant.changeable_sub.format(word_num=word_num,
             word_size=word_size, addr_width=addr_width, filename=model_filename)
-    tb += themodule.constant_sub
+    tb += variant.constant_sub
     with open(filename, 'w+') as f:
         f.write(tb)
+    print(module)
