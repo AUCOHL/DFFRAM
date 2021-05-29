@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .util import d2a 
+from .util import d2a
 from .row import Row
 from .placeable import Placeable, DataError, RegExp
 
@@ -489,14 +489,15 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
 
         for i in range(0, addresses):
             target = vertical_right if right else vertical_left
-            target.append([
+            column = [
                 self.enbufs[i],
                 *self.abufs[i],
                 *self.decoder_ands[i],
                 *self.fbufenbufs[i]
-            ])
+            ]
             if right:
-                target += chunks[i // 2]
+                column += chunks[i // 2]
+            target.append(column)
             right = not right
 
         final_rows = []
