@@ -35,7 +35,7 @@ changeable_sub = """
 `include "hd_primitives.v"
 `include "hd_functional.v"
 
-`include "BB.wip.v"
+`include "{filename}"
 // `include "BB.v"
 
 module tb_RAM{word_num}x{word_size}_1RW1R;
@@ -57,7 +57,7 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     reg  [7:0]      RANDOM_BYTE;
     event           done;
 
-    RAM{word_num}_1RW1R #(.USE_LATCH(`USE_LATCH), .SIZE(`SIZE)) SRAM (
+    RAM{word_num}_1RW1R #(.USE_LATCH(`USE_LATCH), .WSIZE(`SIZE)) SRAM (
         .CLK(CLK),
         .WE(WE),
         .EN0(EN0),

@@ -15,46 +15,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
  
+from opendbpy import dbRow, dbInst, dbSite
+from typing import List, Callable
+
 class Row(object):
-    sw = None
-    sh = None
+    sw: float = None
+    sh: float = None
 
-    create_tap = None
-    tap_distance = None
+    tap_distance: float = None
+    create_tap: Callable[[str], dbInst] = None
 
-    create_fill = None
+    create_fill: Callable[[str, int], dbInst] = None
 
     # Assumption: A fill of size 1 is always available.
     # If not, there WILL be an out of bounds error.
-    supported_fill_sizes = None
+    supported_fill_sizes: List[int] = None
 
     def __init__(self, ordinal, row_obj):
-        self.ordinal = ordinal
-        self.obj = row_obj
+        self.ordinal: int = ordinal
+        self.obj: dbRow = row_obj
 
-        self.origin = self.obj.getOrigin()
-        [self.x, self.y] = self.obj.getOrigin()
+        self.origin: List[float] = self.obj.getOrigin()
+        self.x: float = self.origin[0]
+        self.y: float = self.origin[1]
 
-        self.xmin = self.obj.getBBox().xMin()
-        self.xmax = self.obj.getBBox().xMax()
+        self.xmin: float = self.obj.getBBox().xMin()
+        self.xmax: float = self.obj.getBBox().xMax()
 
-        self.ymin = self.obj.getBBox().yMin()
-        self.ymax = self.obj.getBBox().yMax()
+        self.ymin: float = self.obj.getBBox().yMin()
+        self.ymax: float = self.obj.getBBox().yMax()
 
         self.orientation = self.obj.getOrient()
 
-        self.cell_counter = 0
-        self.tap_counter = 0
-        self.fill_counter = 0
-        self.since_last_tap = 0 if self.ordinal % 2 == 0 else Row.tap_distance
+        self.cell_counter: int = 0
+        self.tap_counter: int = 0
+        self.fill_counter: int = 0
+        self.since_last_tap: float = 0 if self.ordinal % 2 == 0 else Row.tap_distance
 
     @property
     def width(self):
         return self.x - self.xmin
 
-    def tap(self, width=0):
-        location = self.x
-
+    def tap(self, width: float=0):
         if self.since_last_tap + width > Row.tap_distance:
             self.place(Row.create_tap("tap_%i_%i" % (self.ordinal, self.tap_counter)), ignore_tap=True)
             self.tap_counter += 1
@@ -62,7 +64,7 @@ class Row(object):
         else:
             self.since_last_tap += width
 
-    def place(self, instance, ignore_tap=False):
+    def place(self, instance: dbInst, ignore_tap: bool =False):
         width = instance.getMaster().getWidth()
         if not ignore_tap:
             self.tap(width)
@@ -75,7 +77,7 @@ class Row(object):
         self.cell_counter += 1
 
     @staticmethod
-    def from_odb(rows, regular_site, create_tap, max_tap_distance, create_fill, supported_fill_sizes):
+    def from_odb(rows: List[dbRow], regular_site: dbSite, create_tap: Callable[[str], dbInst], max_tap_distance: float, create_fill: Callable[[str, int], dbInst], supported_fill_sizes: List[int]):
         Row.create_tap = create_tap
         Row.sw, Row.sh = (regular_site.getWidth(), regular_site.getHeight())
         Row.tap_distance = max_tap_distance
@@ -89,8 +91,30 @@ class Row(object):
         return returnable
 
     @staticmethod
-    def fill_rows(rows, from_index, to_index): # [from_index,to_index)
+    def fill_row(rows, row_idx, start_location, end_location):
+        r = rows[row_idx]
+        current_x = start_location
+        while current_x < end_location:
+            empty_space = end_location - current_x
+            fill_sizes_idx = 0
+            while fill_sizes_idx < len(Row.supported_fill_sizes) and Row.supported_fill_sizes[fill_sizes_idx] > empty_space//Row.sw:
+                fill_sizes_idx += 1
+
+            if empty_space // Row.sw < Row.supported_fill_sizes[-1]:
+                break
+            fill_cell = Row.create_fill(
+                    "fill_%i_%i" % (row_idx, r.fill_counter),
+                    Row.supported_fill_sizes[fill_sizes_idx])
+            r.fill_counter += 1
+            r.place(fill_cell, ignore_tap=True)
+            current_x = r.x
+
+    @staticmethod
+    def fill_rows(rows: List['Row'], from_index: int, to_index: int):
         """
+        from inclusive; to exclusive
+        Fills from the last location that has a cell.
+
         -- Before this function --
 
         [A][B][C][D]
@@ -123,24 +147,22 @@ class Row(object):
             return fills
 
         max_sw = -1
-        for i in range(from_index, to_index):
-            r = rows[i]
+        for row_idx in range(from_index, to_index):
+            r = rows[row_idx]
             width = r.x
             width_sites = int(width / Row.sw)
             max_sw = max(max_sw, width_sites)
 
-        for i in range(from_index, to_index):
-            r = rows[i]
+        for row_idx in range(from_index, to_index):
+            r = rows[row_idx]
             width = r.x
             width_sites = int(width / Row.sw)
 
             empty = max_sw - width_sites
 
-            remaining = empty
-
             fills = pack(empty, Row.supported_fill_sizes)
 
             for fill in fills:
-                fill_cell = Row.create_fill("fill_%i_%i" % (i, r.fill_counter), fill)
+                fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1

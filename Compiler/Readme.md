@@ -7,6 +7,7 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 
 * Python 3.8+ with PIP
   * PlaceRAM makes heavy use of `:=` and is unrepentant.
+  * It might be repentant if we need to integrate it into Openlane or something.
 * Opendbpy
   * Installation instructions can be found [here](./docs/md/Using%20Opendbpy.md).
 * PIP package `click`: `pip3 install click`.
@@ -17,12 +18,12 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 
 # Structure
 * `docs/` contains documentation files. (😨)
-* `sky130/` contains support files for sky130_fd_sc_hd, the SCL currently supported by this tool.
-* `placeram/` contains the core Python script.
-* `BB(.wip).v` contain building blocks used by the compiler
-* `prflow.py` is a flow going from building blocks to LVS.
+* `sky130A/` contains PDK-specific files:
+  * `BB/` contains a list of building blocks supported by the compiler.
+  * `assemble_support.sh` assembles a support tarball with a subset of the PDK…
+  * … and `support.tar.xz` is the aforementioned tarball.
+* `placeram/` contains the core Python custom placer.
+* `prflow.py` is the compilation flow going from building blocks to LVS.
 
 # Documentation
-1. [Using placeram as part of the flow](https://github.com/Cloud-V/DFFRAM#using-the-compiler-wip)
-1. [Using Opendbpy](./docs/md/Using%20Opendbpy.md)
-2. [How PlaceRAM Works](./docs/md/How%20PlaceRAM%20Works.md)
+[Table of Contents](./docs/Readme.md)

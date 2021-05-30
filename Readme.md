@@ -3,18 +3,22 @@
 
 Standard Cell Library based Memory Compiler using DFF cells.
 
-The objective of this project is to develop DFF-based RAM and Register File (RegF) compiler that utilizes standard cell libraries following a standard ASIC implementation approach. The compiler generates different views (HDL netlist, HDL functional models, LEF, GDS, Timing, …) for a given configuration set. 
+The objective of this project is to develop a DFF/Latch-based RAM and Register File custom compilation flow that utilizes standard cell libraries following a standard ASIC implementation approach. Different views (HDL netlist, HDL functional models, LEF, GDS, Timing, …) are all generated for a given size configuration.
 
-The layout generated from the compiler will be highly compacted (we target over 95% placement density) as the cells are placed on the floor plan using a custom placer. Moreover, the custom placer ensures that the routing will be relatively simple. The project will consider the creation of a custom router if automatic routing using open-source global and detailed routers does not give good results, though, they are, so far!
+![An abstract diagram of word's placement](./Compiler/docs/img/word_concept.png)
+![The custom placer's placement of the word, after just parsing the Verilog model](./Compiler/docs/img/word_placed.png)
+![Same image, but with cell-level details](./Compiler/docs/img/word_detailed.png)
 
-## Compiler
+The layout generated from the compiler is highly compact (90%+ placement density) as the cells are placed on the floor plan using a custom placer. Moreover, the custom placer ensures that the routing will be relatively simple. The project will consider the creation of a custom router if automatic routing using open-source global and detailed routers do not give good results, though, they are, so far!
+
 A beta version of the compiler is under the `Compiler/` directory. Check [its Readme](./Compiler/Readme.md) for more info. Currently, it can generate the following configurations:
 - 128x32 (512 bytes) single port RAM with byte write enable.
 - 512x32 (2kbytes) single port RAM with byte write enable.
 - 2048x32 (8kbytes) single port RAM with byte write enable.
 
-Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compiler/BB.v) ![Layout](./Compiler/docs/img/8kb_layout.png) 
+You can check out a Compiler-placed and routed RAM2048x32 (8 KiB) module [here](./Compiler/docs/img/8kb_layout.png).
 
+# Data
 <table>
   <tr>
     <th rowspan="2">Size<sup>1</sup></th> 
@@ -72,50 +76,8 @@ Below is the Compiler-placed and routed [RAM2048x32 (8 kbytes) module](./Compile
 
 For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
 
-# Using the Compiler (WIP)
-
-The prflow.py script at least needs the size of the RAM module, implemented in [BB.v](./Compiler/BB.v)
-
-Run this
-```shell
-git clone https://github.com/Cloud-V/DFFRAM 
-cd DFFRAM/Compiler
-./prflow.py -s 8x32 # you can choose from those sizes: 32x32, 128x32, 512x32, 1024x32, 2048x32  
-```
-### Options
-
-```
-./prflow.py    
-    -f , --frm # Start from this step
-    -t , --to # End after this step
-    --only # Only execute this step
-    -s , --size
-    -d , --disable_routing
-
-```
-
-### Steps
-
-1- synthesis : Obtain gate level netlist from the verilog top level module
-
-2- placement : perform custom placement of the RAM module usine placeRAM.py
-
-3- pdngen : Generate power distribution network
-
-4- obs_route : Create Obstruction/Blockage for routing algorithm on metal layer 5
-
-5- routing : Route the design
-
-6- add_pwr_gnd_pins : Add power and ground pins to the verilog gate level netlist obtained from synthesis, needed for lvs
-
-7- write_lef : Write a lef view of the design
-
-8- write_lib : Write a lib view of the design
-
-9- antenna_check : Check for antenna rules violations after routing 
-
-10- lvs : perform Layout Vs Schematic check after routing
-
+# Usage
+Check [Using Prflow](./Compiler/docs/md/Using%20Prflow.md).
 
 # ⚖️ Copyright and Licensing
 Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.

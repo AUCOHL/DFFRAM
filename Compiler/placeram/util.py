@@ -16,11 +16,27 @@
 # limitations under the License.
 
 import sys
+from typing import Dict, List, T
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def d2a(d):
+def d2a(d: Dict[int, T]) -> List[T]:
+    """
+    Dictionary To Array
+    >>> d2a({ 2: "and", 1: "potatoes", 0: "mashed", 3: "gravy"})
+    ['mashed', 'potatoes', 'and', 'gravy']
+    """
     as_list = list(d.items())
     as_list.sort(key=lambda x: x[0])
     return list(map(lambda x: x[1], as_list))
+
+
+class Bunch:
+    """
+    An immutable, dot-notation-accessible dictionary.
+
+    Buildable from an actual dictionary.
+    """
+    def __init__(self, hashmap: Dict):
+        setattr(self, '__dict__', hashmap)

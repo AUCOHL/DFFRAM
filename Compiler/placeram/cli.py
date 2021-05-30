@@ -37,18 +37,15 @@ except ImportError:
     exit(78)
 
 from .util import eprint
-from .data import Block, Slice, HigherLevelPlaceable, Placeable
+from .placeable import override_regex_dict
+from .data import Block, Slice, Word, HigherLevelPlaceable
 from .row import Row
+from .reg_data import DFFRF
 
 import os
 import re
-import sys
-import math
-import pprint
-import argparse
+import yaml
 import traceback
-from pathlib import Path
-from functools import reduce
 
 class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
@@ -57,16 +54,7 @@ class Placer:
     DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
 
-    SUPPORTED_WORD_COUNTS = [8, 32, 128, 512, 2048]
-    SUPPORTED_WORD_WIDTHS = [8, 16, 24, 32, 40, 48, 56, 64] # Only 8, 32 and 64 will be tested with CI.
-
-    def __init__(self, lef, tech_lef, df, word_count, word_width):
-        if word_width not in Placer.SUPPORTED_WORD_WIDTHS:
-            eprint("Only the following word widths are supported so far: %s" % Placer.SUPPORTED_WORD_WIDTHS)
-            exit(64)
-        if word_count not in Placer.SUPPORTED_WORD_COUNTS:
-            eprint("Only the following word counts are supported so far: %s" % Placer.SUPPORTED_WORD_COUNTS)
-            exit(64)
+    def __init__(self, lef, tech_lef, df, word_count, word_width, regFile=False):
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -116,24 +104,29 @@ class Placer:
 
         self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
 
-        includes = {32:r"\bBANK_B(\d+)\b",
-                    128: r"\bBANK128_B(\d+)\b",
-                    512: r"\bBANK512_B(\d+)\b"}
 
-        # TODO: E X P A N D
-        if word_count == 8:
-            self.hierarchy = Slice(self.instances)
-        elif word_count == 32:
-            self.hierarchy = Block(self.instances)
-        elif word_count == 128:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[32], self.instances)
-        elif word_count == 512:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[128], self.instances)
-        elif word_count == 2048:
-            self.hierarchy = \
-            HigherLevelPlaceable(includes[512], self.instances)
+        if regFile:
+            self.hierarchy = DFFRF(self.instances)
+        else:
+            includes = {32:r"\bBANK_B(\d+)\b",
+                        128: r"\bBANK128_B(\d+)\b",
+                        512: r"\bBANK512_B(\d+)\b"}
+
+            if word_count == 1:
+                self.hierarchy = Word(self.instances)
+            elif word_count == 8:
+                self.hierarchy = Slice(self.instances)
+            elif word_count == 32:
+                self.hierarchy = Block(self.instances)
+            elif word_count == 128:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[32], self.instances)
+            elif word_count == 512:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[128], self.instances)
+            elif word_count == 2048:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[512], self.instances)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)
@@ -176,7 +169,6 @@ class Placer:
             return True
         except Exception:
             return False
-        return written_bytes
 
 def check_readable(file):
     with open(file, 'r') as f:
@@ -189,10 +181,23 @@ def check_readable(file):
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
+@click.option('-b', '--building-blocks', default="sky130A:legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
-@click.option('--experimental', is_flag=True, default=False, help="Uses the new regexes for BB.wip.v.")
 @click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, experimental, def_file):
+def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, building_blocks, def_file):
+
+    pdk, blocks = building_blocks.split(":")
+    bb_dir = os.path.join(".", pdk, "BB", blocks)
+    if not os.path.isdir(bb_dir):
+        print("Building blocks %s not found." % building_blocks)
+        exit(66)
+
+    config_file = os.path.join(bb_dir, "config.yml")
+    config = yaml.safe_load(open(config_file))
+    override_regex_dict(config.get("rx_overrides") or {})
+
+    register_file = config.get("register_file") or False
+
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
@@ -200,19 +205,14 @@ def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, exp
     words = int(m[1])
     word_length = int(m[2])
     if words % 8 != 0 or words == 0:
-        eprint("Word count must be a non-zero multiple of 8.")
-        exit(64)
+        eprint("WARNING: Word count must be a non-zero multiple of 8. Results may be unexpected.")
     if word_length % 8 != 0 or words == 0:
-        eprint("Word length must be a non-zero multiple of 8.")
-        exit(64)
+        eprint("WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected.")
 
     for input in [lef, tlef, def_file]:
         check_readable(input)
 
-    if experimental:
-        Placeable.experimental_mode = True
-
-    placer = Placer(lef, tlef, def_file, words, word_length)
+    placer = Placer(lef, tlef, def_file, words, word_length, register_file)
 
     if represent is not None:
         with open(represent, 'w') as f:
