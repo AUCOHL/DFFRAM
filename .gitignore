@@ -19,3 +19,4 @@ RTL/designs/
 RTL/designs/*
 *.rpt
 RTL/designs/*
+tb_RAM*x*.v
