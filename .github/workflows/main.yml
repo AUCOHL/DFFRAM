@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          size: ["8x32", "32x32", "128x32", "512x32"]
+          size: ["8x32", "32x32", "128x32", "256x32", "512x32", "1024x32", "2048x32",
+                "8x32_1RW1R", "32x32_1RW1R", "128x32_1RW1R", "256x32_1RW1R", "512x32_1RW1R",
+                "1024x32_1RW1R", "2048x32_1RW1R"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
