@@ -79,6 +79,31 @@ For more about the Handcrafted models, check the [Handcrafted Readme](./Handcraf
 # Usage
 Check [Using Prflow](./Compiler/docs/md/Using%20Prflow.md).
 
+# DFFRAM Compiler Routed Designs
+A Byte
+![A Byte; placed and routed](./Compiler/docs/img/byte_all_layers.png)
+
+A Word
+![A Word; placed and routed, metal only, no outline](./Compiler/docs/img/word_metal_only_no_outline.png)
+
+8 Words
+![8 Words; placed and routed](./Compiler/docs/img/8_routed_all_layers.png)
+
+32 Words
+![32 Words; placed and routed](./Compiler/docs/img/32_routed_all_layers.png)
+
+128 Words
+![128 Words; placed and routed](./Compiler/docs/img/128_routed_all_layers.png)
+
+512 Words
+![512 Words; placed and routed](./Compiler/docs/img/512_routed_all_layers.png)
+
+1024 Words
+![1024 Words; placed and routed](./Compiler/docs/img/1024_routed_all_layers.png)
+
+2048 Words
+![2048 Words; placed and routed](./Compiler/docs/img/2048_routed_all_layers.png)
+
 # ⚖️ Copyright and Licensing
 Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 
