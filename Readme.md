@@ -107,10 +107,16 @@ The following table compares the areas and bit densities of RAM macros generated
     <td> 2,686.610 x 2,697.330 </td> <td> 9,043 </td>
   </tr>
 </table>
+</font>
 
 
 <sup>1</sup> All support 32-bit word reads and 1, 2, and 4 bytes writes.  
 <sup>2</sup> Values are based on the original layout produced by the compiler. OpenRAM macros are typically wrapped to be useful w/ automated PnR ASIC flows.
+
+For more about the Handcrafted models, check the [Handcrafted Readme](./Handcrafted/docs/Readme.md).
+
+# Usage
+Check [Using Prflow](./Compiler/docs/md/Using%20Prflow.md).
 
 # ⚖️ Copyright and Licensing
 Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
