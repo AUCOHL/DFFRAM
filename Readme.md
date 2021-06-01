@@ -46,7 +46,7 @@ The [`OpenLane/`](./OpenLane) folder will contain good known OpenLane configurat
  
 # Comparisons
 The following table compares the areas and bit densities of RAM macros generated using different means.
-<font size="-1>
+<font size="-1">
 <table>
   <tr>
     <th rowspan="2">Size<sup>1</sup></th> 
