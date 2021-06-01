@@ -25,7 +25,9 @@ def dual_ported_test(word_num, word_size, addr_width, model_filename):
     tb = RAM_tb.RAM_instantiation_1RW1R.format(word_num=word_num,
             word_size=word_size,
             addr_width=addr_width,
-            filename=model_filename)
+            filename=model_filename,
+            pdk_root=os.environ["PDK_ROOT"])
+
     tb += RAM_tb.start_test_common
     tb += RAM_tb.begin_dual_ported_test
     tb += RAM_tb.dual_ported_custom_test
@@ -42,7 +44,8 @@ def single_ported_test(word_num, word_size, addr_width, model_filename):
     tb = RAM_tb.RAM_instantiation.format(word_num=word_num,
             word_size=word_size,
             addr_width=addr_width,
-            filename=model_filename)
+            filename=model_filename,
+            pdk_root=os.environ["PDK_ROOT"])
     tb += RAM_tb.start_test_common
     tb += RAM_tb.begin_single_ported_test
     tb += RAM_tb.single_ported_custom_test

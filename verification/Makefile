@@ -1,6 +1,8 @@
 
-PDK_PATH?=../../pdk
+INCLUDE_PATHS=../sky130A/sky130_fd_sc_hd
 RTL_PATH=../sky130A/BB/ram/model.v
+
+IVL_FLAGS= -DFUNCTIONAL $(addprefix -I ,$(INCLUDE_PATHS))
 
 .SUFFIXES:
 
@@ -10,12 +12,9 @@ PATTERN = tb_RAM32x32
 
 all:  ${PATTERN:=.vcd}
 
-
 help:
-	@echo  ' you can call this make file like : make PATTERN=tb_RAM<WORDNUM>x32 '
-	@echo  ' where WORDNUM is 8, 32, 128, 256, 512, 1024, 2048 .Default is 32, running it without'
-	@echo  ' any arguments : make '
-	@echo  ' is equivalent to make PATTERN=tb_RAM32x32 '
+	@echo  ' Usage: make [PATTERN=tb_RAM<WORDNUM>x32] '
+	@echo  ' WORDNUM is 8, 32, 128, 256, 512, 1024, 2048. (Default: 32)'
 	@echo  '  clean           - Remove generated files'
 	@echo  ''
 
@@ -23,18 +22,16 @@ help:
 	vvp $<
 
 %.vvp: %.v
-	iverilog -o $@ -DFUNCTIONAL -I $(PDK_PATH) \
-	$< 
+	iverilog -o $@ $(IVL_FLAGS) $< 
 
 lint: ${PATTERN}.v
-	./lint.sh $(TOP) $(PDK_PATH) $<
+	iverilog -Wall -s $(PATTERN) -DUNIT_DELAY="#1" $(IVL_FLAGS) $(PATTERN).v 2> lint.rpt
+	@exit $(shell grep -cv timescale lint.rpt)
 
-%.v:
+%.v: gen_tb.py tb_template.py
 	@echo ' Creating verilog tb from template ...'
 	$(eval TOP := $(shell python3 gen_tb.py ${PATTERN}))
 	@echo ' Done'
-
-
 
 clean:
 	rm -f *.vvp *.vcd *.out *.v *.log

@@ -40,7 +40,6 @@ pdk_tlef_dir = ""
 pdk_klayout_dir = ""
 pdk_magic_dir = ""
 pdk_root = ""
-compiler_config_dir = ""
 
 def rp(path):
     return os.path.realpath(path)
@@ -113,7 +112,7 @@ def merge_lefs_into(build_folder, merged_filename="sky130_fd_sc_hd.merged.lef"):
 def prep(build_folder, local_pdk_root):
     global pdk_root, pdk_tech_dir, pdk_ref_dir, pdk_liberty_dir
     global pdk_lef_dir, pdk_tlef_dir
-    global pdk_klayout_dir, compiler_config_dir, pdk_magic_dir
+    global pdk_klayout_dir, pdk_magic_dir
     pdk_root = os.path.abspath(os.path.realpath(local_pdk_root))
     pdk_tech_dir = os.path.join(pdk_root, 'sky130A/libs.tech')
     pdk_ref_dir = os.path.join(pdk_root, 'sky130A/libs.ref')
@@ -122,7 +121,6 @@ def prep(build_folder, local_pdk_root):
     pdk_tlef_dir = os.path.join(pdk_ref_dir, 'sky130_fd_sc_hd/techlef')
     pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
-    compiler_config_dir = os.path.abspath(os.path.realpath('./config'))
     merge_lefs_into(build_folder)
 
 def run_docker(image, args):
@@ -131,10 +129,8 @@ def run_docker(image, args):
         "-v",
         "%s:%s" % (pdk_root, pdk_root),
         "-v",
-        "%s:%s" % (compiler_config_dir, compiler_config_dir),
-        "-v",
-        "%s:/mnt/dffram" % rp(".."),
-        "-w", "/mnt/dffram/Compiler",
+        "%s:/mnt/dffram" % rp("."),
+        "-w", "/mnt/dffram",
     ] + [image] + args, check=True)
 
 def openlane(*args_tuple):
@@ -275,8 +271,8 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     with open(out_file, 'w') as f:
         f.write(altered_str)
 
-pin_order_file = "./pin_order.cfg"
-def place_pins(build_folder, in_file, out_file):
+
+def place_pins(build_folder, in_file, out_file, pin_order_file):
     print("--- Pin Placement ---")
     openlane(
         "python3",
@@ -426,7 +422,7 @@ def route(build_folder, in_file, out_file):
 
     with open("%s/route.tcl" % build_folder, 'w') as f:
         f.write("""
-        source {compiler_config_dir}/openroad/sky130hd.vars
+        source ./sky130A/sky130_fd_sc_hd/openroad.vars
         read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
@@ -438,7 +434,6 @@ def route(build_folder, in_file, out_file):
             -overflow_iterations 100
         tr::detailed_route_cmd {build_folder}/tr.param
         """.format(build_folder,
-            compiler_config_dir=compiler_config_dir,
             pdk_liberty_dir=pdk_liberty_dir,
             in_file=in_file,
             global_route_guide=global_route_guide,
@@ -581,12 +576,12 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-t", "--to", default="lvs", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
-@click.option("-p", "--pdk_root", required=True, help="path to sky130A pdk")
+@click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="path to sky130A pdk")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-b", "--building-blocks", default="sky130A:ram/legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
-    global bb_used, pin_order_file
+    global bb_used
 
     if variant == "DEFAULT":
         variant = None
@@ -603,9 +598,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
 
-    optional_pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
-    if os.path.exists(optional_pin_order_file):
-        pin_order_file = optional_pin_order_file
+    pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
 
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
@@ -677,7 +670,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeram(final_floorplan, no_pins_placement, size, building_blocks)
-        place_pins(build_folder, no_pins_placement, final_placement)
+        place_pins(build_folder, no_pins_placement, final_placement, pin_order_file)
         verify_placement(build_folder, final_placement)
         create_image(build_folder, final_placement, width, height)
 

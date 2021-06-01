@@ -17,11 +17,13 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 * Klayout (to view the final result)
 
 # Structure
-* `docs/` contains documentation files. (😨)
 * `sky130A/` contains PDK-specific files:
   * `BB/` contains a list of building blocks supported by the compiler.
 * `placeram/` contains the core Python custom placer.
 * `prflow.py` is the compilation flow going from building blocks to LVS.
 
-# Documentation
-[Table of Contents](./docs/Readme.md)
+# Table of Contents
+<!-- Note: Yes, ordered lists mandate all of them to be 1. in markdown. -->
+1. [Using Prflow](./md/Using%20Prflow.md)
+1. [Using Opendbpy](./md/Using%20Opendbpy.md)
+1. [How PlaceRAM Works](./md/How%20PlaceRAM%20Works.md)

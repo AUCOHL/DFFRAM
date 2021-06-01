@@ -20,3 +20,8 @@ RTL/designs/*
 *.rpt
 RTL/designs/*
 tb_RAM*x*.v
+build/
+__pycache__
+*.ext
+sky130/support
+sky130A/support

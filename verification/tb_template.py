@@ -1,4 +1,4 @@
- # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+# Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
 # See https://github.com/Cloud-V/DFFRAM for further info.
@@ -18,7 +18,8 @@
 RAM_instantiation = """
 /*
     An auto generated testbench to verify RAM{word_num}x{word_size}
-    Author: Mohamed Shalan (mshalan@aucegypt.edu)
+    Authors: Mohamed Shalan (mshalan@aucegypt.edu)
+             Ahmed Nofal (nofal.o.ahmed@gmail.com)
 */
 `define     VERBOSE_1
 `define     VERBOSE_2
@@ -29,9 +30,9 @@ RAM_instantiation = """
 
 `define     SIZE        {word_size}/8
 
-//`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
-
+//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
+//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+// // Temporary override: IcarusVerilog cannot read these for some reason ^
 `include "hd_primitives.v"
 `include "hd_functional.v"
 
@@ -103,8 +104,8 @@ single_ported_custom_test = """
 RAM_instantiation_1RW1R = """
 /*
     An auto generated testbench to verify RAM{word_num}x{word_size}
-    Authors:Mohamed Shalan (mshalan@aucegypt.edu)
-            Ahmed Nofal (nofal.o.ahmed@gmail.com)
+    Authors: Mohamed Shalan (mshalan@aucegypt.edu)
+             Ahmed Nofal (nofal.o.ahmed@gmail.com)
 */
 `define     VERBOSE_1
 `define     VERBOSE_2
@@ -114,14 +115,13 @@ RAM_instantiation_1RW1R = """
 `define     USE_LATCH   1
 
 `define     SIZE        {word_size}/8
-//`include "libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
-
+//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
+//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
+// // Temporary override: IcarusVerilog cannot read these for some reason ^
 `include "hd_primitives.v"
 `include "hd_functional.v"
 
 `include "{filename}"
-// `include "BB.v"
 
 module tb_RAM{word_num}x{word_size}_1RW1R;
 

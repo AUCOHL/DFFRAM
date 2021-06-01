@@ -10,7 +10,7 @@ python3 -m pip install -r requirements.txt
 The compilation flow at a minimum needs two options: the building blocks and the size.
 
 ```sh
-./prflow.py -b sky130A:ram/legacy -s8x32
+./prflow.py -b sky130A:ram/legacy -s 8x32
 ```
 
 The building block set `platform:name` corresponds to ./Compiler/\<platform\>/BB/\<name\>/model.v. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
