@@ -19,3 +19,8 @@ RTL/designs/
 RTL/designs/*
 *.rpt
 RTL/designs/*
+tb_RAM*x*.v
+build/
+__pycache__
+*.ext
+support/
