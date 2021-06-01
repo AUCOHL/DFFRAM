@@ -54,7 +54,8 @@ The [`OpenLane/`](./OpenLane) folder will contain good known OpenLane configurat
  
 # Comparisons
 The following table compares the areas and bit densities of RAM macros generated using different means.
-<font size="-1">
+
+<sub>
 <table>
   <tr>
     <th rowspan="2">Size<sup>1</sup></th> 
@@ -106,7 +107,7 @@ The following table compares the areas and bit densities of RAM macros generated
     <td> 2,686.610 x 2,697.330 </td> <td> 9,043 </td>
   </tr>
 </table>
-</font>
+</sub>
 
 
 <sup>1</sup> All support 32-bit word reads and 1, 2, and 4 bytes writes.  
