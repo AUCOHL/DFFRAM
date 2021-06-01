@@ -7,7 +7,7 @@ name: CI
 
 jobs:          
   lint:
-    name: Lint on all models
+    name: Lint All Models
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,14 +17,14 @@ jobs:
           sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
-          git clone --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
       - name: Verify
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
+          cd verification
           for SIZE in $(cat ./.github/workflows/sizes.txt); do
             export PATTERN=tb_RAM$SIZE
-            cd verification
             /bin/bash -c "make lint"
           done
   verify_models:
@@ -43,8 +43,8 @@ jobs:
           sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
-          git clone --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
-      - name: Verify All
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+      - name: Run Verification
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Get PDK
         run: |
-          git clone --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
       - name: Run
         env:
           PDK_ROOT: /tmp/pdklite
@@ -82,7 +82,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Get PDK
         run: |
-          git clone --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
       - name: Run
         env:
           PDK_ROOT: /tmp/pdklite
