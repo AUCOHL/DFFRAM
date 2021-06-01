@@ -181,7 +181,7 @@ def check_readable(file):
 @click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format {width}x{height}")
-@click.option('-b', '--building-blocks', default="sky130A:legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option('-b', '--building-blocks', default="sky130A:ram/legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option('--unplace-fills/--no-unplace-fills', default=False, help="Removes placed fill cells to show fill-free placement. Debug option.")
 @click.argument('def_file', required=True, nargs=1)
 def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, building_blocks, def_file):

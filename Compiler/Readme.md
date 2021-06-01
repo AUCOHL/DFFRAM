@@ -20,8 +20,6 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 * `docs/` contains documentation files. (😨)
 * `sky130A/` contains PDK-specific files:
   * `BB/` contains a list of building blocks supported by the compiler.
-  * `assemble_support.sh` assembles a support tarball with a subset of the PDK…
-  * … and `support.tar.xz` is the aforementioned tarball.
 * `placeram/` contains the core Python custom placer.
 * `prflow.py` is the compilation flow going from building blocks to LVS.
 

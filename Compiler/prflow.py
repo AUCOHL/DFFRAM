@@ -32,15 +32,106 @@ import textwrap
 import traceback
 import subprocess
 
+pdk_tech_dir = ""
+pdk_ref_dir = ""
+pdk_liberty_dir = ""
+pdk_lef_dir = ""
+pdk_tlef_dir = ""
+pdk_klayout_dir = ""
+pdk_magic_dir = ""
+pdk_root = ""
+compiler_config_dir = ""
+
 def rp(path):
     return os.path.realpath(path)
 
 def ensure_dir(path):
     return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
+def remove_line_containing(lef_lines, regex):
+    for lef_line in lef_lines:
+        match = re.search(regex, lef_line)
+        if match:
+            lef_lines.remove(lef_line)
+    return lef_lines
+
+def remove_version(lef_lines):
+    return remove_line_containing(lef_lines, r"(.*)VERSION(.*)")
+
+def remove_nowireextensionatpin(lef_lines):
+    return remove_line_containing(lef_lines, r"(.*)NOWIREEXTENSIONATPIN(.*)")
+
+def remove_dividerchar(lef_lines):
+    return remove_line_containing(lef_lines, r"(.*)DIVIDERCHAR(.*)")
+
+def remove_busbitchars(lef_lines):
+    return remove_line_containing(lef_lines, r"(.*)BUSBITCHARS(.*)")
+
+def remove_endlibrary(lef_lines):
+    return remove_line_containing(lef_lines, r"(.*)END( *)LIBRARY(.*)")
+
+def pre_process_merged_lef(lef_lines):
+    pre_processing_steps = [remove_version, remove_nowireextensionatpin,
+                            remove_dividerchar, remove_busbitchars,
+                            remove_endlibrary]
+    for apre_processing_step in pre_processing_steps:
+        lef_lines = apre_processing_step(lef_lines)
+
+    return lef_lines
+
+def merge_lefs_into(build_folder, merged_filename="sky130_fd_sc_hd.merged.lef"):
+    build_folder = os.path.abspath(os.path.realpath(build_folder))
+    # Common header we only need one of
+    header = ["VERSION 5.7 ;\n",
+            "NOWIREEXTENSIONATPIN ON ;\n",
+            "DIVIDERCHAR \"/\" ;\n",
+            "BUSBITCHARS \"[]\" ;\n"]
+    # Common footer we only need one of
+    footer = ["END LIBRARY\n"]
+    merged_lef_lines = []
+    merged_lef_lines += header
+    # tlef
+    with open(os.path.abspath(os.path.join(pdk_tlef_dir, 'sky130_fd_sc_hd.tlef')), 'r') as tlef:
+        merged_lef_lines += tlef.readlines()
+
+    # lef
+
+    # for filename in os.listdir(pdk_lef_dir):
+    #     with open(os.path.abspath(os.path.join(pdk_lef_dir, filename)), 'r') as current_lef:
+    #         merged_lef_lines += current_lef.readlines()
+
+    with open(os.path.abspath(os.path.join(pdk_lef_dir, 'sky130_fd_sc_hd.lef')), 'r') as lef:
+        merged_lef_lines += lef.readlines()
+
+    merged_lef_lines = pre_process_merged_lef(merged_lef_lines)
+
+    # remove all footers and add just one at the end
+    merged_lef_lines = header + merged_lef_lines + footer
+    with open(os.path.join(build_folder, merged_filename), 'w') as merged_lef:
+        merged_lef.write(''.join(merged_lef_lines))
+
+def prep(build_folder, local_pdk_root):
+    global pdk_root, pdk_tech_dir, pdk_ref_dir, pdk_liberty_dir
+    global pdk_lef_dir, pdk_tlef_dir
+    global pdk_klayout_dir, compiler_config_dir, pdk_magic_dir
+    pdk_root = os.path.abspath(os.path.realpath(local_pdk_root))
+    pdk_tech_dir = os.path.join(pdk_root, 'sky130A/libs.tech')
+    pdk_ref_dir = os.path.join(pdk_root, 'sky130A/libs.ref')
+    pdk_liberty_dir = os.path.join(pdk_ref_dir, 'sky130_fd_sc_hd/lib')
+    pdk_lef_dir = os.path.join(pdk_ref_dir, 'sky130_fd_sc_hd/lef')
+    pdk_tlef_dir = os.path.join(pdk_ref_dir, 'sky130_fd_sc_hd/techlef')
+    pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
+    pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
+    compiler_config_dir = os.path.abspath(os.path.realpath('./config'))
+    merge_lefs_into(build_folder)
+
 def run_docker(image, args):
     subprocess.run([
         "docker", "run",
+        "-v",
+        "%s:%s" % (pdk_root, pdk_root),
+        "-v",
+        "%s:%s" % (compiler_config_dir, compiler_config_dir),
         "-v",
         "%s:/mnt/dffram" % rp(".."),
         "-w", "/mnt/dffram/Compiler",
@@ -61,8 +152,8 @@ def sta(build_folder, design, netlist, spef_file=None):
             set ::env(SYNTH_MAX_FANOUT) 5
             set ::env(CLOCK_PORT) "CLK"
             set ::env(CLOCK_PERIOD) "3"
-            set ::env(LIB_FASTEST) ./sky130A/support/sky130_fd_sc_hd__ff_n40C_1v95.lib
-            set ::env(LIB_SLOWEST) ./sky130A/support/sky130_fd_sc_hd__ss_100C_1v60.lib
+            set ::env(LIB_FASTEST) {pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ff_n40C_1v95.lib
+            set ::env(LIB_SLOWEST) {pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ss_100C_1v60.lib
             set ::env(CURRENT_NETLIST) {netlist}
             set ::env(DESIGN_NAME) {design}
             set ::env(BASE_SDC_FILE) /openLANE_flow/scripts/base.sdc
@@ -70,6 +161,7 @@ def sta(build_folder, design, netlist, spef_file=None):
 
         """.format(
             build_folder=build_folder,
+            pdk_ref_dir=pdk_ref_dir,
             design=design,
             netlist=netlist)
         if spef_file:
@@ -113,9 +205,9 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
 
     with open("%s/synth.sh" % build_folder, 'w') as f:
         f.write("""
-        export LIBERTY=./sky130A/support/sky130_fd_sc_hd__tt_025C_1v80.lib
-        yosys %s/synth.tcl
-        """ % build_folder)
+        export LIBERTY={pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+        yosys {build_folder}/synth.tcl
+        """.format(build_folder=build_folder, pdk_ref_dir=pdk_ref_dir))
 
     openlane("bash", "%s/synth.sh" % build_folder)
 
@@ -132,17 +224,20 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
 
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
         f.write("""
-        read_liberty ./sky130A/support/sky130_fd_sc_hd__tt_025C_1v80.lib
-        read_lef ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
+        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_verilog {in_file}
         link_design {design}
         initialize_floorplan\\
             -die_area "0 0 {full_width} {full_height}"\\
             -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
             -site unithd\\
-            -tracks ./sky130A/support/sky130hd.tracks
+            -tracks {pdk_tech_dir}/openlane/sky130_fd_sc_hd/tracks.info
         write_def {out_file}
         """.format(
+            build_folder=build_folder,
+            pdk_tech_dir=pdk_tech_dir,
+            pdk_liberty_dir=pdk_liberty_dir,
             design=design,
             wmargin=wmargin,
             hmargin=hmargin,
@@ -164,8 +259,8 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     run_docker("cloudv/dffram-env", [
         "python3", "-m", "placeram",
         "--output", unaltered,
-        "--lef", "./sky130A/support/sky130_fd_sc_hd.lef",
-        "--tech-lef", "./sky130A/support/sky130_fd_sc_hd.tlef",
+        "--lef", "%s/sky130_fd_sc_hd.lef" % pdk_lef_dir,
+        "--tech-lef", "%s/sky130_fd_sc_hd.tlef" % pdk_tlef_dir,
         "--size", size,
         "--write-dimensions", dimensions,
         "--represent", represent,
@@ -181,13 +276,12 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
         f.write(altered_str)
 
 pin_order_file = "./pin_order.cfg"
-def place_pins(in_file, out_file):
-    global pin_order_file
+def place_pins(build_folder, in_file, out_file):
     print("--- Pin Placement ---")
     openlane(
         "python3",
         "/openLANE_flow/scripts/io_place.py",
-        "--input-lef", "./sky130A/support/sky130_fd_sc_hd.merged.lef",
+        "--input-lef", "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
         "--input-def", in_file,
         "--config", pin_order_file,
         "--hor-layer", "4",
@@ -204,15 +298,19 @@ def verify_placement(build_folder, in_file):
     print("--- Verify ---")
     with open("%s/verify.tcl" % build_folder, 'w') as f:
         f.write("""
-        read_liberty ./sky130A/support/sky130_fd_sc_hd__tt_025C_1v80.lib
-        read_lef ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
+        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
         if [check_placement -verbose] {{
             puts "Placement failed: Check placement returned a nonzero value."
             exit 65
         }}
         puts "Placement successful."
-        """.format(in_file=in_file)
+        """.format(build_folder=build_folder,
+            pdk_liberty_dir=pdk_liberty_dir,
+            in_file=in_file)
+
+
     )
 
     openlane("openroad", "%s/verify.tcl" % build_folder)
@@ -226,8 +324,8 @@ def create_image(build_folder, in_file, width=256,height=256):
             "bash",
             "xvfb-run", "-a", "klayout", "-z",
             "-rd", "input_layout=%s" % in_file,
-            "-rd", "extra_lefs=%s" % "./sky130A/support/sky130_fd_sc_hd.merged.lef",
-            "-rd", "tech_file=%s" % "./sky130A/support/sky130A.lyt",
+            "-rd", "extra_lefs=%s" % "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
+            "-rd", "tech_file=%s" % "%s/sky130A.lyt" % pdk_klayout_dir,
             "-rd", "width=%s" % (width),
             "-rd", "height=%s" % (height),
             "-rm", "./scripts/klayout/scrot_layout.py"
@@ -281,15 +379,16 @@ def pdngen(build_folder, width, height, in_file, out_file):
 
     pdn_tcl = """
 
-        read_lef ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
 
         read_def {in_file}
 
         pdngen {cfg_file} -verbose
 
         write_def {out_file}
-        """.format(cfg_file=pdn_cfg_file,
+        """.format(build_folder=build_folder,
                 in_file=in_file,
+                cfg_file=pdn_cfg_file,
                 out_file=out_file)
 
     with open("%s/pdn.tcl" % build_folder, 'w') as f:
@@ -301,7 +400,7 @@ def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
     openlane(
         "python3",
         "/openLANE_flow/scripts/add_def_obstructions.py",
-        "--lef", "./sky130A/support/sky130_fd_sc_hd.merged.lef",
+        "--lef", "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
         "--input-def", in_file,
         "--obstructions",
         "met{metal_layer} 0 0 {width} {height}".format(metal_layer=metal_layer,
@@ -315,7 +414,7 @@ def route(build_folder, in_file, out_file):
     with open("%s/tr.param" % build_folder, 'w') as f:
         # We use textwrap.dedent because tr.params does not take kindly to whitespace, at all
         f.write(textwrap.dedent("""\
-        lef:./sky130A/support/sky130_fd_sc_hd.merged.lef
+        lef:{build_folder}/sky130_fd_sc_hd.merged.lef
         def:{in_file}
         output:{out_file}
         guide:{global_route_guide}
@@ -327,9 +426,9 @@ def route(build_folder, in_file, out_file):
 
     with open("%s/route.tcl" % build_folder, 'w') as f:
         f.write("""
-        source ./sky130A/support/sky130hd.vars
-        read_liberty ./sky130A/support/sky130_fd_sc_hd__tt_025C_1v80.lib
-        read_lef ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        source {compiler_config_dir}/openroad/sky130hd.vars
+        read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
+        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
         global_route \\
             -guide_file {global_route_guide} \\
@@ -338,7 +437,12 @@ def route(build_folder, in_file, out_file):
             -unidirectional_routing \\
             -overflow_iterations 100
         tr::detailed_route_cmd {build_folder}/tr.param
-        """.format(in_file=in_file, global_route_guide=global_route_guide, build_folder=build_folder))
+        """.format(build_folder,
+            compiler_config_dir=compiler_config_dir,
+            pdk_liberty_dir=pdk_liberty_dir,
+            in_file=in_file,
+            global_route_guide=global_route_guide,
+            build_folder=build_folder))
 
     openlane("openroad", "%s/route.tcl" % build_folder)
 
@@ -346,7 +450,7 @@ def spef_extract(build_folder, def_file, spef_file=None):
     print("--- Extract SPEF ---")
     openlane("python3", "/openLANE_flow/scripts/spef_extractor/main.py",
             "--def_file", def_file,
-            "--lef_file", "./sky130A/support/sky130_fd_sc_hd.merged.lef",
+            "--lef_file", "%s/sky130_fd_sc_hd.merged.lef"%build_folder,
             "--wire_model", "L",
             "--edge_cap_factor", "1")
 
@@ -357,21 +461,21 @@ def add_pwr_gnd_pins(build_folder, original_netlist,
 
     openlane("python3", "/openLANE_flow/scripts/write_powered_def.py",
             "-d", def_file,
-            "-l", "./sky130A/support/sky130_fd_sc_hd.merged.lef",
+            "-l", "%s/sky130_fd_sc_hd.merged.lef"%build_folder,
             "--power-port", "VPWR",
             "--ground-port", "VGND",
             "-o", intermediate_file)
 
     with open("%s/write_pwr_gnd_verilog.tcl" % build_folder, "w") as f:
         f.write("""
-        read_lef ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {def_file}
         read_verilog {netlist}
         puts "Writing the modified nl.v "
         puts "writing file"
         puts {out_file}
         write_verilog -include_pwr_gnd {out_file}
-        """.format(netlist=original_netlist, def_file=intermediate_file,
+        """.format(build_folder=build_folder,netlist=original_netlist, def_file=intermediate_file,
             out_file=out_file1))
 
     openlane("openroad",
@@ -392,11 +496,13 @@ def write_ram_lef(build_folder, design, in_file, out_file):
     with open("%s/write_lef.tcl" % build_folder, "w") as f:
         f.write("""
         puts "Running magic script…"
-        lef read ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        lef read {build_folder}/sky130_fd_sc_hd.merged.lef
         def read {in_file}
         load {design} -dereference
         lef write {out_file}
-        """.format(design=design,
+        """.format(
+            build_folder=build_folder,
+            design=design,
             in_file=in_file,
             out_file=out_file))
 
@@ -404,7 +510,7 @@ def write_ram_lef(build_folder, design, in_file, out_file):
             "-dnull",
             "-noconsole",
             "-rcfile",
-            "./sky130A/support/sky130A.magicrc",
+            "%s/sky130A.magicrc" % pdk_magic_dir,
             "%s/write_lef.tcl" % build_folder)
 
 def write_ram_lib(build_folder, design, netlist, libfile):
@@ -421,7 +527,7 @@ def lvs(build_folder, design, in_1, in_2, report):
     with open("%s/lvs.tcl" % build_folder, "w") as f:
         f.write("""
         puts "Running magic script…"
-        lef read ./sky130A/support/sky130_fd_sc_hd.merged.lef
+        lef read {build_folder}/sky130_fd_sc_hd.merged.lef
         def read {in_1}
         load {design} -dereference
         extract do local
@@ -433,15 +539,20 @@ def lvs(build_folder, design, in_1, in_2, report):
         extract
         ext2spice lvs
         ext2spice
-        """.format(design=design, in_1=in_1))
+        """.format(build_folder=build_folder, design=design, in_1=in_1))
 
     with open("%s/lvs.sh" % build_folder, "w") as f:
         f.write("""
-        magic -rcfile ./sky130A/support/sky130A.magicrc -noconsole -dnull < {build_folder}/lvs.tcl
+        magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < {build_folder}/lvs.tcl
         mv *.ext *.spice {build_folder}
         netgen -batch lvs "{build_folder}/{design}.spice {design}" "{in_2} {design}" -full
         mv comp.out {report}
-        """.format(build_folder=build_folder, design=design, in_1=in_1, in_2=in_2, report=report))
+        """.format(build_folder=build_folder,
+            pdk_magic_dir=pdk_magic_dir,
+            design=design,
+            in_1=in_1,
+            in_2=in_2,
+            report=report))
 
     openlane("bash", "%s/lvs.sh" % build_folder)
 
@@ -451,7 +562,7 @@ def antenna_check(build_folder, def_file, out_file):
     with open("%s/antenna_check.tcl" % build_folder, 'w') as f:
         f.write("""
             set ::env(REPORTS_DIR) {build_folder}
-            set ::env(MERGED_LEF_UNPADDED) ./sky130A/support/sky130_fd_sc_hd.merged.lef
+            set ::env(MERGED_LEF_UNPADDED) {build_folder}/sky130_fd_sc_hd.merged.lef
             set ::env(CURRENT_DEF) {def_file}
             read_lef $::env(MERGED_LEF_UNPADDED)
             read_def -order_wires {def_file}
@@ -463,15 +574,18 @@ def antenna_check(build_folder, def_file, out_file):
     openlane("openroad", "%s/antenna_check.tcl" % build_folder)
     openlane("mv", "%s/antenna.rpt" % build_folder, out_file)
 
+
+
 @click.command()
 @click.option("-f", "--frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="lvs", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
+@click.option("-p", "--pdk_root", required=True, help="path to sky130A pdk")
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-b", "--building-blocks", default="sky130A:legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option("-b", "--building-blocks", default="sky130A:ram/legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
-def flow(frm, to, only, skip, size, building_blocks, variant):
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     global bb_used, pin_order_file
 
     if variant == "DEFAULT":
@@ -481,9 +595,10 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
 
     bb_dir = os.path.join(".", pdk, "BB", blocks)
     if not os.path.isdir(bb_dir):
+        print("Looking for building blocks in :", bb_dir)
         print("Building blocks %s not found." % building_blocks)
         exit(66)
-        
+
     bb_used = os.path.join(bb_dir, "model.v")
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
@@ -491,7 +606,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
     optional_pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
     if os.path.exists(optional_pin_order_file):
         pin_order_file = optional_pin_order_file
-    
+
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         print("Invalid RAM size '%s'." % size)
@@ -517,7 +632,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
         "count": words,
         "width": word_width,
         "width_bytes": word_width_bytes,
-        "variant": variant_string 
+        "variant": variant_string
     })
     build_folder = "./build/%s_SIZE%i" % (design, word_width)
 
@@ -526,10 +641,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
     def i(ext=""):
         return "%s/%s%s" %(build_folder, design, ext)
 
-    if not os.path.isdir("./sky130A/support"):
-        print("Untarring support files…")
-        ensure_dir("./sky130A/support")
-        subprocess.run(["tar", "-xJf", "./sky130A/support.tar.xz", "--strip-components=2", "-C", "./sky130A/support"])
+    prep(build_folder, pdk_root)
 
     start = time.time()
 
@@ -565,7 +677,7 @@ def flow(frm, to, only, skip, size, building_blocks, variant):
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeram(final_floorplan, no_pins_placement, size, building_blocks)
-        place_pins(no_pins_placement, final_placement)
+        place_pins(build_folder, no_pins_placement, final_placement)
         verify_placement(build_folder, final_placement)
         create_image(build_folder, final_placement, width, height)
 
