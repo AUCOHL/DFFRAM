@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Get IcarusVerilog
+        run: |
+          sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
           git clone --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
@@ -45,12 +48,9 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          sudo apt-get install iverilog
-          for SIZE in ${{ matrix.size }}; do
-            export PATTERN=tb_RAM$SIZE
-            cd verification/
-            /bin/bash -c "! make | grep -c FATAL"
-          done
+          export PATTERN=tb_RAM${{ matrix.size }}
+          cd verification/
+          /bin/bash -c "! make | grep -c FATAL"
   test_legacy:
     name: Test (Legacy)
     runs-on: ubuntu-latest
