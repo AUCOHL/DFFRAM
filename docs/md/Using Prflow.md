@@ -1,5 +1,30 @@
+# Dependencies
+* A Unix-like Operating System
+* The Skywater 130nm PDK
+
+## Getting Sky130
+The best way to get it is via [Openlane](https://github.com/The-OpenROAD-Project/OpenLane): you clone that repo then run:
+
+```sh
+export PDK_ROOT=/usr/local/pdk
+make pdk
+```
+
+Another option is to get a pre-built:
+
+```sh
+export PDK_ROOT=$(realpath ~/pdklite)
+git clone --depth 1 https://github.com/olofk/pdklite $PDK_ROOT
+```
+
+I would really recommend adding whichever you exported as `PDK_ROOT` to your shell's profile.
+
+## I don't have `realpath` on macOS!
+`brew install coreutils`
+
 # Basic
 ```sh
+export PDK_ROOT=/usr/local/pdk
 git clone https://github.com/Cloud-V/DFFRAM 
 cd DFFRAM/Compiler
 python3 -m pip install -r requirements.txt
@@ -10,6 +35,7 @@ python3 -m pip install -r requirements.txt
 The compilation flow at a minimum needs two options: the building blocks and the size.
 
 ```sh
+export PDK_ROOT=/usr/local/pdk
 ./prflow.py -b sky130A:ram/legacy -s 8x32
 ```
 
@@ -19,7 +45,7 @@ The bleeding edge building block set is `sky130A:ram`, but the default is `ram/l
 
 ## Options
 For a full list of options, please invoke:
-```
+```sh
 ./prflow.py --help
 ```
 
