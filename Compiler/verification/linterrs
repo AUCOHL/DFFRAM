@@ -1,0 +1,42 @@
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:23: warning: timescale for DEC1x2 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:33: warning: timescale for DEC2x4 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:45: warning: timescale for DEC3x8 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:67: warning: timescale for MUX4x1 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:92: warning: timescale for MUX2x1 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:109: warning: timescale for BYTE inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:146: warning: timescale for BYTE_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:188: warning: timescale for WORD inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:210: warning: timescale for WORD_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:243: warning: timescale for RAM8 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:270: warning: timescale for RAM8_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:311: warning: timescale for RAM32 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:367: warning: timescale for RAM32_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:450: warning: timescale for RAM128 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:492: warning: timescale for RAM128_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:546: warning: timescale for RAM256 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:576: warning: timescale for RAM256_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:616: warning: timescale for RAM512 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:646: warning: timescale for RAM1024 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+/home/nofal/Documents/auc_eda_group/DFFRAM_bak/Compiler/sky130A/BB/ram/model.v:689: warning: timescale for RAM2048 inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.
+tb_RAM32x32_1RW1R.v:24: warning: timescale for tb_RAM32x32_1RW1R inherited from another file.
+../../pdk/hd_functional.v:102391: ...: The inherited timescale is here.

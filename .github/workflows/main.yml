@@ -9,20 +9,17 @@ jobs:
   lint:
     name: Lint on all models
     runs-on: ubuntu-latest
-    strategy:
-        matrix:
-          size: ["8x32", "32x32", "128x32", "256x32", "512x32", "1024x32", "2048x32",
-                "8x32_1RW1R", "32x32_1RW1R", "128x32_1RW1R", "256x32_1RW1R", "512x32_1RW1R",
-                "1024x32_1RW1R", "2048x32_1RW1R"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Verify
         run: |
-          sudo apt-get install iverilog
-          export PATTERN=tb_RAM${{ matrix.size }}
-          cd Compiler/verification/
-          /bin/bash -c "! make lint | grep -c FATAL"
+          for SIZE in $(cat ./.github/workflows/sizes.txt)
+          do
+            export PATTERN=tb_RAM$SIZE
+            cd Compiler/verification/
+            /bin/bash -c "make lint"
+          done
   verify_models:
     name: Verify Models
     runs-on: ubuntu-latest
@@ -37,9 +34,12 @@ jobs:
       - name: Verify
         run: |
           sudo apt-get install iverilog
-          export PATTERN=tb_RAM${{ matrix.size }}
-          cd Compiler/verification/
-          /bin/bash -c "! make | grep -c FATAL"
+          for SIZE in ${{ matrix.size }}
+          do
+            export PATTERN=tb_RAM$SIZE
+            cd Compiler/verification/
+            /bin/bash -c "! make | grep -c FATAL"
+          done
   test_legacy:
     name: Test (Legacy)
     runs-on: ubuntu-latest

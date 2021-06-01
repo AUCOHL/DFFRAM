@@ -1,6 +1,6 @@
 
 PDK_PATH?=../../pdk
-RTL_PATH=../sky130A/BB/experimental/model.v
+RTL_PATH=../sky130A/BB/ram/model.v
 
 .SUFFIXES:
 
