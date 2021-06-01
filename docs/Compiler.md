@@ -17,8 +17,9 @@ You can use Docker to substitute all of these dependencies, but, in case of a na
 * Klayout (to view the final result)
 
 # Structure
-* `sky130A/` contains PDK-specific files:
-  * `BB/` contains a list of building blocks supported by the compiler.
+* `platforms/` contains PDK-specific files:
+  * `<pdk-name>/`
+    * `BB/` contains a hierarchy of building blocks supported by the compiler.
 * `placeram/` contains the core Python custom placer.
 * `prflow.py` is the compilation flow going from building blocks to LVS.
 

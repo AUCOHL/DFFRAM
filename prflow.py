@@ -126,11 +126,11 @@ def prep(build_folder, local_pdk_root):
 def run_docker(image, args):
     subprocess.run([
         "docker", "run",
-        "-v",
-        "%s:%s" % (pdk_root, pdk_root),
-        "-v",
-        "%s:/mnt/dffram" % rp("."),
+        "-v",  "%s:%s" % (pdk_root, pdk_root),
+        "-v", "%s:/mnt/dffram" % rp("."),
         "-w", "/mnt/dffram",
+        "-e", "PDK_ROOT=%s" % (pdk_root),
+        "-e", "PDKPATH=%s/sky130A" % (pdk_root)
     ] + [image] + args, check=True)
 
 def openlane(*args_tuple):
@@ -422,7 +422,7 @@ def route(build_folder, in_file, out_file):
 
     with open("%s/route.tcl" % build_folder, 'w') as f:
         f.write("""
-        source ./sky130A/sky130_fd_sc_hd/openroad.vars
+        source ./platforms/sky130A/sky130_fd_sc_hd/openroad.vars
         read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
@@ -588,7 +588,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
 
     pdk, blocks = building_blocks.split(":")
 
-    bb_dir = os.path.join(".", pdk, "BB", blocks)
+    bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
     if not os.path.isdir(bb_dir):
         print("Looking for building blocks in :", bb_dir)
         print("Building blocks %s not found." % building_blocks)
@@ -777,14 +777,28 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
 
     elapsed = time.time() - start
 
+    if last_image is not None:
+        if sys.platform == "darwin":
+            try:
+                subprocess.run([
+                    "open", "-a", "Preview",
+                    last_image
+                ], check=True)
+                print("Opened last image in Preview.")
+            except:
+                pass
+        if sys.platform == "linux":
+            try:
+                # WSL
+                subprocess.run([
+                    "wslview",
+                    last_image
+                ], check=True)
+                print("Opened last image in Windows.")
+            except:
+                pass
+
     print("Done in %.2fs." % elapsed)
-
-    if last_image is not None and sys.platform == "darwin":
-        subprocess.run([
-            "open",
-            last_image
-        ], check=True)
-
 def main():
     try:
         flow()

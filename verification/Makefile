@@ -1,6 +1,5 @@
-
-INCLUDE_PATHS=../sky130A/sky130_fd_sc_hd
-RTL_PATH=../sky130A/BB/ram/model.v
+INCLUDE_PATHS=../platforms/sky130A/sky130_fd_sc_hd
+RTL_PATH=../platforms/sky130A/BB/ram/model.v
 
 IVL_FLAGS= -DFUNCTIONAL $(addprefix -I ,$(INCLUDE_PATHS))
 
@@ -29,7 +28,7 @@ lint: ${PATTERN}.v
 	@exit $(shell grep -cv timescale lint.rpt)
 
 %.v: gen_tb.py tb_template.py
-	@echo ' Creating verilog tb from template ...'
+	@echo 'Creating verilog tb from template ...'
 	$(eval TOP := $(shell python3 gen_tb.py ${PATTERN}))
 	@echo ' Done'
 

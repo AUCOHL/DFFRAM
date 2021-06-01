@@ -187,7 +187,7 @@ def check_readable(file):
 def cli(output, lef, tlef, size, represent, write_dimensions, unplace_fills, building_blocks, def_file):
 
     pdk, blocks = building_blocks.split(":")
-    bb_dir = os.path.join(".", pdk, "BB", blocks)
+    bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
     if not os.path.isdir(bb_dir):
         print("Building blocks %s not found." % building_blocks)
         exit(66)

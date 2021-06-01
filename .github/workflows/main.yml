@@ -12,12 +12,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Verify
+      - name: Get PDK
         run: |
-          for SIZE in $(cat ./.github/workflows/sizes.txt)
-          do
+          git clone --depth 1 git@github.com:olofk/pdklite /tmp/pdklite
+      - name: Verify
+        env:
+          PDK_ROOT: /tmp/pdklite
+        run: |
+          for SIZE in $(cat ./.github/workflows/sizes.txt); do
             export PATTERN=tb_RAM$SIZE
-            cd Compiler/verification/
+            cd verification
             /bin/bash -c "make lint"
           done
   verify_models:
@@ -31,13 +35,20 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Verify
+      - name: Get IcarusVerilog
+        run: |
+          sudo apt-get install -y iverilog
+      - name: Get PDK
+        run: |
+          git clone --depth 1 git@github.com:olofk/pdklite /tmp/pdklite
+      - name: Verify All
+        env:
+          PDK_ROOT: /tmp/pdklite
         run: |
           sudo apt-get install iverilog
-          for SIZE in ${{ matrix.size }}
-          do
+          for SIZE in ${{ matrix.size }}; do
             export PATTERN=tb_RAM$SIZE
-            cd Compiler/verification/
+            cd verification/
             /bin/bash -c "! make | grep -c FATAL"
           done
   test_legacy:
@@ -50,9 +61,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Run
+      - name: Get PDK
         run: |
-          cd Compiler/
+          git clone --depth 1 git@github.com:olofk/pdklite /tmp/pdklite
+      - name: Run
+        env:
+          PDK_ROOT: /tmp/pdklite
+        run: |
           ./prflow.py -s ${{ matrix.size }}
   test_experimental:
     name: Test (Experimental)
@@ -65,7 +80,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Run
+      - name: Get PDK
         run: |
-          cd Compiler/
-          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:experimental -v ${{ matrix.variant }}
+          git clone --depth 1 git@github.com:olofk/pdklite /tmp/pdklite
+      - name: Run
+        env:
+          PDK_ROOT: /tmp/pdklite
+        run: |
+          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:ram -v ${{ matrix.variant }}
