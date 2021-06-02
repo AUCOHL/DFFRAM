@@ -110,7 +110,6 @@ endmodule
 module RFWORD0 #(parameter RWIDTH=32)
 (
     input   wire                CLK,
-    input   wire                WE,
     input   wire                SEL1, 
     input   wire                SEL2, 
     input   wire                SELW,
@@ -138,7 +137,9 @@ module RFWORD0 #(parameter RWIDTH=32)
 endmodule
 
 
-module DFFRF_2R1W #(parameter RWIDTH=32)
+module DFFRF_2R1W #(parameter   RWIDTH=32,
+                                RCOUNT=32,
+                                R0_ZERO=1 )
 (
 	input   wire    [4:0] 	RA, RB, RW,
 	input   wire    [31:0] 	DW,
@@ -152,12 +153,15 @@ module DFFRF_2R1W #(parameter RWIDTH=32)
 	DEC5x32 DEC1 ( .A(RB), .SEL(sel2) );
 	DEC5x32 DEC2 ( .A(RW), .SEL(selw) );
 	
-	RFWORD0 RFW0 ( .CLK(CLK), .WE(), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB));	
-
 	generate
 		genvar e;
-        for(e=1; e<RWIDTH; e=e+1) begin : REGF 
-			RFWORD RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(DA), .D2(DB), .DW(DW) );	
+        if(R0_ZERO == 1)
+            RFWORD0 RFW0 ( .CLK(CLK), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB));	
+        else
+            RFWORD RFW0 ( .CLK(CLK), .WE(WE), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB), .DW(DW) );
+
+        for(e=1; e<RCOUNT; e=e+1) begin : REGF 
+			RFWORD #(.RWIDTH(RWIDTH)) RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(DA), .D2(DB), .DW(DW) );	
         end
 	endgenerate
 endmodule
