@@ -785,11 +785,11 @@ module RAM2048 #(parameter  USE_LATCH=1,
     wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
                             
     // Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf),  .A(EN));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[10:0]           (.X(A_buf),   .A(A));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0]    (.X(Di_buf),  .A(Di));
+    sky130_fd_sc_hd__clkbuf_4   CLKBUF                  (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]        (.X(WE_buf),  .A(WE));
+    sky130_fd_sc_hd__clkbuf_2   ENBUF                   (.X(EN_buf),  .A(EN));
+    sky130_fd_sc_hd__clkbuf_2   ABUF[10:0]              (.X(A_buf),   .A(A));
 
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[10:9]), .SEL(SEL));
 
