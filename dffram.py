@@ -17,8 +17,9 @@
 # limitations under the License.
 try:
     import click
+    import yaml
 except ImportError:
-    print("You need to install click: python3 -m pip install click")
+    print("You need to install click and pyyaml: python3 -m pip install click pyyaml")
     exit(78)
 
 import os
@@ -26,7 +27,6 @@ import re
 import sys
 import math
 import time
-import yaml
 import pathlib
 import textwrap
 import traceback
