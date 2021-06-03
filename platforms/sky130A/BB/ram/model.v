@@ -108,15 +108,15 @@ endmodule
 
 module BYTE #(  parameter   USE_LATCH=1)( 
     input   wire        CLK,    // FO: 1
-    input   wire        WE,     // FO: 1
-    input   wire        SEL,    // FO: 2
-    input   wire [7:0]  Di,     // FO: 1
-    output  wire [7:0]  Do
+    input   wire        WE0,     // FO: 1
+    input   wire        SEL0,    // FO: 2
+    input   wire [7:0]  Di0,     // FO: 1
+    output  wire [7:0]  Do0
 );
 
-    wire [7:0]  q_wire;
-    wire        we_wire;
-    wire        SEL_B;
+    wire [7:0]  Q_WIRE;
+    wire        WE0_WIRE;
+    wire        SEL0_B;
     wire        GCLK;
     wire        CLK_B;
 
@@ -125,19 +125,19 @@ module BYTE #(  parameter   USE_LATCH=1)(
 
         if(USE_LATCH == 1) begin
             sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
-            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(we_wire) );
+            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(WE0_WIRE) );
         end else
-            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
+            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(WE0_WIRE) );
     
-        sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL_B), .A(SEL));
-        sky130_fd_sc_hd__and2_1 CGAND( .A(SEL), .B(WE), .X(we_wire) );
+        sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL0_B), .A(SEL0));
+        sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
     
         for(i=0; i<8; i=i+1) begin : BIT
             if(USE_LATCH == 0)
-                sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di[i]), .Q(q_wire[i]), .CLK(GCLK) );
+                sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
-                sky130_fd_sc_hd__dlxtp_1 LATCH (.Q(q_wire[i]), .D(Di[i]), .GATE(GCLK) );
-            sky130_fd_sc_hd__ebufn_2 OBUF ( .A(q_wire[i]), .Z(Do[i]), .TE_B(SEL_B) );
+                sky130_fd_sc_hd__dlxtp_1 LATCH (.Q(Q_WIRE[i]), .D(Di0[i]), .GATE(GCLK) );
+            sky130_fd_sc_hd__ebufn_2 OBUF ( .A(Q_WIRE[i]), .Z(Do0[i]), .TE_B(SEL0_B) );
         end
     endgenerate 
   
@@ -145,16 +145,16 @@ endmodule
 
 module BYTE_1RW1R #(  parameter   USE_LATCH=1)( 
     input   wire        CLK,    // FO: 1
-    input   wire        WE,     // FO: 1
+    input   wire        WE0,     // FO: 1
     input   wire        SEL0,   // FO: 2
     input   wire        SEL1,   // FO: 2
-    input   wire [7:0]  Di,     // FO: 1
+    input   wire [7:0]  Di0,     // FO: 1
     output  wire [7:0]  Do0,
     output  wire [7:0]  Do1
 );
 
-    wire [7:0]  q_wire;
-    wire        we_wire;
+    wire [7:0]  Q_WIRE;
+    wire        WE0_WIRE;
     wire        SEL0_B, SEL1_B;
     wire        GCLK;
     wire        CLK_B;
@@ -164,22 +164,22 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
 
         if(USE_LATCH == 1) begin
             sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
-            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(we_wire) );
+            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(WE0_WIRE) );
         end else
-            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
+            sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(WE0_WIRE) );
     
         sky130_fd_sc_hd__inv_1 SEL0INV (.Y(SEL0_B), .A(SEL0));
         sky130_fd_sc_hd__inv_1 SEL1INV (.Y(SEL1_B), .A(SEL1));
-        sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE), .X(we_wire) );
+        sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
     
         for(i=0; i<8; i=i+1) begin : BIT
             if(USE_LATCH == 0)
-                sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di[i]), .Q(q_wire[i]), .CLK(GCLK) );
+                sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
-                sky130_fd_sc_hd__dlxtp_1 LATCH (.Q(q_wire[i]), .D(Di[i]), .GATE(GCLK) );
+                sky130_fd_sc_hd__dlxtp_1 LATCH (.Q(Q_WIRE[i]), .D(Di0[i]), .GATE(GCLK) );
 
-            sky130_fd_sc_hd__ebufn_2 OBUF0 ( .A(q_wire[i]), .Z(Do0[i]), .TE_B(SEL0_B) );
-            sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(q_wire[i]), .Z(Do1[i]), .TE_B(SEL1_B) );
+            sky130_fd_sc_hd__ebufn_2 OBUF0 ( .A(Q_WIRE[i]), .Z(Do0[i]), .TE_B(SEL0_B) );
+            sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(Q_WIRE[i]), .Z(Do1[i]), .TE_B(SEL1_B) );
         end
     endgenerate 
   
@@ -187,21 +187,21 @@ endmodule
 
 module WORD #( parameter    USE_LATCH=0,
                             WSIZE=1 ) (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input   wire                SEL,    // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input   wire                 SEL0,    // FO: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
+    output  wire [(WSIZE*8-1):0] Do0
 );
 
-    wire SEL_buf;
+    wire SEL0_buf;
     wire CLK_buf;
-    sky130_fd_sc_hd__clkbuf_2 SELBUF (.X(SEL_buf), .A(SEL));
+    sky130_fd_sc_hd__clkbuf_2 SELBUF (.X(SEL0_buf), .A(SEL0));
     sky130_fd_sc_hd__clkbuf_1 CLKBUF (.X(CLK_buf), .A(CLK));
     generate
         genvar i;
             for(i=0; i<WSIZE; i=i+1) begin : BYTE
-                BYTE #(.USE_LATCH(USE_LATCH)) B ( .CLK(CLK_buf), .WE(WE[i]), .SEL(SEL_buf), .Di(Di[(i+1)*8-1:i*8]), .Do(Do[(i+1)*8-1:i*8]) );
+                BYTE #(.USE_LATCH(USE_LATCH)) B ( .CLK(CLK_buf), .WE0(WE0[i]), .SEL0(SEL0_buf), .Di0(Di0[(i+1)*8-1:i*8]), .Do0(Do0[(i+1)*8-1:i*8]) );
             end
     endgenerate
     
@@ -210,10 +210,10 @@ endmodule
 module WORD_1RW1R #( parameter  USE_LATCH=1,
                                 WSIZE=1 ) (
     input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
     input   wire                SEL0,    // FO: 1
     input   wire                SEL1,    // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
     output  wire [(WSIZE*8-1):0] Do0,
     output  wire [(WSIZE*8-1):0] Do1
 );
@@ -228,10 +228,10 @@ module WORD_1RW1R #( parameter  USE_LATCH=1,
             for(i=0; i<WSIZE; i=i+1) begin : BYTE
                 BYTE_1RW1R #(.USE_LATCH(USE_LATCH)) B ( 
                     .CLK(CLK_buf), 
-                    .WE(WE[i]), 
+                    .WE0(WE0[i]), 
                     .SEL0(SEL0_buf), 
                     .SEL1(SEL1_buf), 
-                    .Di(Di[(i+1)*8-1:i*8]), 
+                    .Di0(Di0[(i+1)*8-1:i*8]), 
                     .Do0(Do0[(i+1)*8-1:i*8]),
                     .Do1(Do1[(i+1)*8-1:i*8])  
                 );
@@ -243,25 +243,25 @@ endmodule
 module RAM8 #( parameter    USE_LATCH=1,
                             WSIZE=1 ) (
     input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN,     // EN: 1
-    input   wire [2:0]          A,      // A: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,     // EN0: 1
+    input   wire [2:0]           A0,      // A: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
+    output  wire [(WSIZE*8-1):0] Do0
 );
 
-    wire    [7:0]        SEL;
-    wire    [WSIZE-1:0]   WE_buf; 
-    wire                 CLK_buf;
+    wire    [7:0]         SEL0;
+    wire    [WSIZE-1:0]   WE0_buf; 
+    wire                  CLK_buf;
 
-    DEC3x8 DEC (.EN(EN), .A(A), .SEL(SEL));
-    sky130_fd_sc_hd__clkbuf_2 WEBUF[WSIZE-1:0] (.X(WE_buf), .A(WE));
+    DEC3x8 DEC (.EN(EN0), .A(A0), .SEL(SEL0));
+    sky130_fd_sc_hd__clkbuf_2 WEBUF[WSIZE-1:0] (.X(WE0_buf), .A(WE0));
     sky130_fd_sc_hd__clkbuf_2 CLKBUF (.X(CLK_buf), .A(CLK));
 
     generate
         genvar i;
         for (i=0; i< 8; i=i+1) begin : WORD
-            WORD #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) W ( .CLK(CLK_buf), .WE(WE_buf), .SEL(SEL[i]), .Di(Di), .Do(Do) );
+            WORD #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) W ( .CLK(CLK_buf), .WE0(WE0_buf), .SEL0(SEL0[i]), .Di0(Di0), .Do0(Do0) );
         end
     endgenerate
 
@@ -269,25 +269,25 @@ endmodule
 
 module RAM8_1RW1R #( parameter     USE_LATCH=1,
                                     WSIZE=1 ) (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN0,     // EN: 1
-    input                       EN1,
-    input   wire [2:0]          A0,     // A: 1
-    input   wire [2:0]          A1,     // A: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,     // EN0: 1
+    input                        EN1,
+    input   wire [2:0]           A0,     // A: 1
+    input   wire [2:0]           A1,     // A: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
     output  wire [(WSIZE*8-1):0] Do0,
     output  wire [(WSIZE*8-1):0] Do1
 );
 
-    wire    [7:0]          SEL0, SEL1;
-    wire    [WSIZE-1:0]     WE_buf; 
-    wire                   CLK_buf;
+    wire    [7:0]           SEL0, SEL1;
+    wire    [WSIZE-1:0]     WE0_buf; 
+    wire                    CLK_buf;
 
     DEC3x8 DEC0 (.EN(EN0), .A(A0), .SEL(SEL0));
     DEC3x8 DEC1 (.EN(EN1), .A(A1), .SEL(SEL1));
     
-    sky130_fd_sc_hd__clkbuf_2 WEBUF[(WSIZE-1):0]   (.X(WE_buf), .A(WE));
+    sky130_fd_sc_hd__clkbuf_2 WEBUF[(WSIZE-1):0]   (.X(WE0_buf), .A(WE0));
     sky130_fd_sc_hd__clkbuf_2 CLKBUF (.X(CLK_buf), .A(CLK));
 
     generate
@@ -295,10 +295,10 @@ module RAM8_1RW1R #( parameter     USE_LATCH=1,
         for (i=0; i< 8; i=i+1) begin : WORD
             WORD_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) W ( 
                 .CLK(CLK_buf), 
-                .WE(WE_buf), 
+                .WE0(WE0_buf), 
                 .SEL0(SEL0[i]),
                 .SEL1(SEL1[i]),
-                .Di(Di), 
+                .Di0(Di0), 
                 .Do0(Do0),
                 .Do1(Do1) 
             );
@@ -311,90 +311,90 @@ endmodule
 module RAM32 #( parameter   USE_LATCH=1,
                             WSIZE=1 ) 
 (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN,     // FO: 1
-    input   wire [4:0]          A,      // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,     // FO: 1
+    input   wire [4:0]           A0,      // FO: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
+    output  wire [(WSIZE*8-1):0] Do0
     
 );
-    wire [3:0]          SEL;
-    wire [4:0]          A_buf;
-    wire                CLK_buf;
-    wire [WSIZE-1:0]     WE_buf;
-    wire                EN_buf;
+    wire [3:0]           SEL;
+    wire [4:0]           A0_buf;
+    wire                 CLK_buf;
+    wire [WSIZE-1:0]     WE0_buf;
+    wire                 EN0_buf;
 
-    wire [(WSIZE*8-1):0] Do_pre;
-    wire [(WSIZE*8-1):0] Di_buf;
+    wire [(WSIZE*8-1):0] Do0_pre;
+    wire [(WSIZE*8-1):0] Di0_buf;
 
     // Buffers
     // Di Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf), .A(Di));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf), .A(Di0));
     // Control signals buffers
     sky130_fd_sc_hd__clkbuf_2   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]   (.X(WE_buf), .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[4:0]           (.X(A_buf), .A(A[4:0]));
-    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf), .A(EN));
+    sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]  (.X(WE0_buf), .A(WE0));
+    sky130_fd_sc_hd__clkbuf_2   ABUF[4:0]           (.X(A0_buf),  .A(A0[4:0]));
+    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN0_buf), .A(EN0));
 
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[4:3]), .SEL(SEL));
 
     generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : SLICE
-            RAM8 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (.CLK(CLK_buf), .WE(WE_buf),.EN(SEL[i]), .Di(Di_buf), .Do(Do_pre), .A(A_buf[2:0]) ); 
+            RAM8 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (.CLK(CLK_buf), .WE(WE0_buf),.EN0(SEL0[i]), .Di0(Di0_buf), .Do0(Do0_pre), .A0(A0_buf[2:0]) ); 
         end
     endgenerate
 
     // Ensure that the Do_pre lines are not floating when EN = 0
     wire [WSIZE-1:0] lo;
     wire [WSIZE-1:0] float_buf_en;
-    sky130_fd_sc_hd__clkbuf_2   FBUFENBUF[WSIZE-1:0] ( .X(float_buf_en), .A(EN) );
+    sky130_fd_sc_hd__clkbuf_2   FBUFENBUF[WSIZE-1:0] ( .X(float_buf_en), .A(EN0) );
     sky130_fd_sc_hd__conb_1     TIE[WSIZE-1:0] (.LO(lo), .HI());
 
     // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
     // Provides default values for floating lines (lo)
     generate
         for (i=0; i< WSIZE; i=i+1) begin : BYTE
-            sky130_fd_sc_hd__ebufn_2 FLOATBUF[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
+            sky130_fd_sc_hd__ebufn_2 FLOATBUF[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do0_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
         end
     endgenerate
     
-    sky130_fd_sc_hd__dfxtp_1 Do_FF[WSIZE*8-1:0] ( .D(Do_pre), .Q(Do), .CLK(CLK) );
+    sky130_fd_sc_hd__dfxtp_1 Do_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
 
 endmodule
 
 module RAM32_1RW1R #( parameter     USE_LATCH=1,
                                     WSIZE=1 ) 
 (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN0,    // FO: 1
-    input                       EN1,
-    input   wire [4:0]          A0,     // FO: 1
-    input   wire [4:0]          A1,
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,    // FO: 1
+    input                        EN1,
+    input   wire [4:0]           A0,     // FO: 1
+    input   wire [4:0]           A1,
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
     output  wire [(WSIZE*8-1):0] Do0,
     output  wire [(WSIZE*8-1):0] Do1
     
 );
-    wire [3:0]          SEL0, SEL1;
-    wire [4:0]          A0_buf, A1_buf;
-    wire                CLK_buf;
-    wire [WSIZE-1:0]     WE_buf;
-    wire                EN0_buf, EN1_buf;
+    wire [3:0]           SEL0, SEL1;
+    wire [4:0]           A0_buf, A1_buf;
+    wire                 CLK_buf;
+    wire [WSIZE-1:0]     WE0_buf;
+    wire                 EN0_buf, EN1_buf;
 
     wire [(WSIZE*8-1):0] Do0_pre, Do1_pre;
-    wire [(WSIZE*8-1):0] Di_buf;
+    wire [(WSIZE*8-1):0] Di0_buf;
 
     // Buffers
     // Di Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf), .A(Di));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf), .A(Di0));
     // Control signals buffers
-    sky130_fd_sc_hd__clkbuf_2   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]   (.X(WE_buf), .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   A0BUF[4:0]           (.X(A0_buf), .A(A0));
-    sky130_fd_sc_hd__clkbuf_2   A1BUF[4:0]           (.X(A1_buf), .A(A1));
+    sky130_fd_sc_hd__clkbuf_2   CLKBUF               (.X(CLK_buf),  .A(CLK));
+    sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]   (.X(WE0_buf), .A(WE0));
+    sky130_fd_sc_hd__clkbuf_2   A0BUF[4:0]           (.X(A0_buf),  .A(A0));
+    sky130_fd_sc_hd__clkbuf_2   A1BUF[4:0]           (.X(A1_buf),  .A(A1));
     sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN0_buf), .A(EN0));
     sky130_fd_sc_hd__clkbuf_2   EN1BUF               (.X(EN1_buf), .A(EN1));
 
@@ -407,10 +407,10 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
         for (i=0; i< 4; i=i+1) begin : SLICE
             RAM8_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (
                 .CLK(CLK_buf), 
-                .WE(WE_buf),
+                .WE0(WE0_buf),
                 .EN0(SEL0[i]), 
                 .EN1(SEL1[i]), 
-                .Di(Di_buf), 
+                .Di0(Di0_buf), 
                 .Do0(Do0_pre), 
                 .Do1(Do1_pre), 
                 .A0(A0_buf[2:0]),
@@ -450,77 +450,77 @@ endmodule
 module RAM128 #(parameter   USE_LATCH=1,
                             WSIZE=1 ) 
 (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN,     // FO: 1
-    input   wire [6:0]          A,      // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,     // FO: 1
+    input   wire [6:0]           A0,      // FO: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
+    output  wire [(WSIZE*8-1):0] Do0
     
 );
 
-    wire                    CLK_buf;
-    wire [WSIZE-1:0]         WE_buf;
-    wire                    EN_buf;
-    wire [6:0]              A_buf;
-    wire [(WSIZE*8-1):0]     Di_buf;
-    wire [3:0]              SEL;
+    wire                     CLK_buf;
+    wire [WSIZE-1:0]         WE0_buf;
+    wire                     EN0_buf;
+    wire [6:0]               A0_buf;
+    wire [(WSIZE*8-1):0]     Di0_buf;
+    wire [3:0]               SEL0;
 
-    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
+    wire [(WSIZE*8-1):0]     Do0_pre[3:0]; 
                             
     // Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf),  .A(EN));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[6:0]           (.X(A_buf),   .A(A));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
+    sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
+    sky130_fd_sc_hd__clkbuf_2   ENBUF                (.X(EN0_buf),  .A(EN0));
+    sky130_fd_sc_hd__clkbuf_2   ABUF[6:0]            (.X(A0_buf),   .A(A0));
 
-    DEC2x4 DEC (.EN(EN_buf), .A(A_buf[6:5]), .SEL(SEL));
+    DEC2x4 DEC (.EN(EN0_buf), .A(A0_buf[6:5]), .SEL(SEL0));
 
      generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : BLOCK
-            RAM32 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN(SEL[i]), .WE(WE_buf), .Di(Di_buf), .Do(Do_pre[i]), .A(A_buf[4:0]) );        
+            RAM32 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[4:0]) );        
         end
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[6:5]), .X(Do) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
 
 endmodule
 
 module RAM128_1RW1R #( parameter    USE_LATCH=1,
                                     WSIZE=1 ) 
 (
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN0,    // FO: 1
-    input                       EN1,
-    input   wire [6:0]          A0,     // FO: 1
-    input   wire [6:0]          A1,
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
+    input   wire                 CLK,    // FO: 1
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,    // FO: 1
+    input                        EN1,
+    input   wire [6:0]           A0,     // FO: 1
+    input   wire [6:0]           A1,
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
     output  wire [(WSIZE*8-1):0] Do0,
     output  wire [(WSIZE*8-1):0] Do1
     
 );
 
-    wire                    CLK_buf;
-    wire [WSIZE-1:0]         WE_buf;
-    wire                    EN0_buf;
-    wire                    EN1_buf;
-    wire [6:0]              A0_buf;
-    wire [6:0]              A1_buf;
-    wire [(WSIZE*8-1):0]     Di_buf;
-    wire [3:0]              SEL0;
-    wire [3:0]              SEL1;
+    wire                     CLK_buf;
+    wire [WSIZE-1:0]         WE0_buf;
+    wire                     EN0_buf;
+    wire                     EN1_buf;
+    wire [6:0]               A0_buf;
+    wire [6:0]               A1_buf;
+    wire [(WSIZE*8-1):0]     Di0_buf;
+    wire [3:0]               SEL0;
+    wire [3:0]               SEL1;
 
     wire [(WSIZE*8-1):0]    Do0_pre[3:0]; 
     wire [(WSIZE*8-1):0]    Do1_pre[3:0]; 
                             
     // Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
+    sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN0_buf),  .A(EN0));
     sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]           (.X(A0_buf),   .A(A0));
     sky130_fd_sc_hd__clkbuf_2   ENB1UF               (.X(EN1_buf),  .A(EN1));
@@ -532,7 +532,7 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
      generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : BLOCK
-            RAM32_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE(WE_buf), .Di(Di_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[4:0]), .A1(A1_buf[4:0]) );        
+            RAM32_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[4:0]), .A1(A1_buf[4:0]) );        
         end
      endgenerate
 
@@ -543,187 +543,197 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
 
 endmodule
 
-module RAM256 #(parameter   USE_LATCH=1,
-                            WSIZE=1 ) 
-(
-    input   wire                CLK,    // FO: 2
-    input   wire [WSIZE-1:0]     WE,     // FO: 2
-    input                       EN,     // FO: 2
-    input   wire [7:0]          A,      // FO: 5
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 2
-    output  wire [(WSIZE*8-1):0] Do
+/* module RAM256 #(parameter   USE_LATCH=1, */
+/*                             WSIZE=1 ) */ 
+/* ( */
+/*     input   wire                CLK,    // FO: 2 */
+/*     input   wire [WSIZE-1:0]     WE0,     // FO: 2 */
+/*     input                        EN0,     // FO: 2 */
+/*     input   wire [7:0]           A0,      // FO: 5 */
+/*     input   wire [(WSIZE*8-1):0] Di0,     // FO: 2 */
+/*     output  wire [(WSIZE*8-1):0] Do0 */
 
-);
+/* ); */
 
-    wire [1:0]             SEL;
-    wire [(WSIZE*8-1):0]    Do_pre[1:0]; 
+/*     wire [1:0]             SEL0; */
+/*     wire [(WSIZE*8-1):0]    Do0_pre[1:0]; */ 
 
-    // 1x2 DEC
-    DEC1x2 DEC (.EN(EN), .A(A[7]), .SEL(SEL));
+/*     // 1x2 DEC */
+/*     DEC1x2 DEC (.EN(EN), .A(A0[7]), .SEL(SEL0)); */
 
-    generate
-        genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN(SEL[i]), .WE(WE), .Di(Di), .Do(Do_pre[i]), .A(A[6:0]) );        
-        end
-     endgenerate
+/*     generate */
+/*         genvar i; */
+/*         for (i=0; i< 2; i=i+1) begin : BLOCK */
+/*             RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .A0(A0[6:0]) ); */        
+/*         end */
+/*      endgenerate */
 
-    // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A[7]), .X(Do) );
+/*     // Output MUX */    
+/*     MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) ); */
 
-endmodule
+/* endmodule */
 
-module RAM256_1RW1R #(parameter USE_LATCH=1,
-                                WSIZE=1 ) 
-(
-    input   wire                CLK,    // FO: 2
-    input   wire [WSIZE-1:0]     WE,     // FO: 2
-    input                       EN0,    // FO: 2
-    input                       EN1,
-    input   wire [7:0]          A0,     // FO: 5
-    input   wire [7:0]          A1,
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 2
-    output  wire [(WSIZE*8-1):0] Do0,
-    output  wire [(WSIZE*8-1):0] Do1
+/* module RAM256_1RW1R #(parameter USE_LATCH=1, */
+/*                                 WSIZE=1 ) */ 
+/* ( */
+/*     input   wire                 CLK,    // FO: 2 */
+/*     input   wire [WSIZE-1:0]     WE0,     // FO: 2 */
+/*     input                        EN0,    // FO: 2 */
+/*     input                        EN1, */
+/*     input   wire [7:0]           A0,     // FO: 5 */
+/*     input   wire [7:0]           A1, */
+/*     input   wire [(WSIZE*8-1):0] Di0,     // FO: 2 */
+/*     output  wire [(WSIZE*8-1):0] Do0, */
+/*     output  wire [(WSIZE*8-1):0] Do1 */
     
-);
+/* ); */
 
-    wire [1:0]              SEL0, SEL1;
-    wire [(WSIZE*8-1):0]     Do0_pre[1:0],
-                            Do1_pre[1:0]; 
-    // 1x2 DEC
-    sky130_fd_sc_hd__inv_2 DEC0 (.Y(SEL0[0]), .A(A0[7]));
-    sky130_fd_sc_hd__inv_2 DEC1 (.Y(SEL1[0]), .A(A1[7]));
-    assign SEL0[1] = A0[7];
-    assign SEL1[1] = A1[7];
-
-
-    generate
-        genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE(WE), .Di(Di), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
-        end
-     endgenerate
-
-    // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) );
+/*     wire [1:0]               SEL0, SEL1; */
+/*     wire [(WSIZE*8-1):0]     Do0_pre[1:0], */
+/*                              Do1_pre[1:0]; */ 
+/*     // 1x2 DEC */
+/*     sky130_fd_sc_hd__inv_2 DEC0 (.Y(SEL0[0]), .A(A0[7])); */
+/*     sky130_fd_sc_hd__inv_2 DEC1 (.Y(SEL1[0]), .A(A1[7])); */
+/*     assign SEL0[1] = A0[7]; */
+/*     assign SEL1[1] = A1[7]; */
 
 
-endmodule
+/*     generate */
+/*         genvar i; */
+/*         for (i=0; i< 2; i=i+1) begin : BLOCK */
+/*             RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) ); */        
+/*         end */
+/*      endgenerate */
+
+/*     // Output MUX */    
+/*     MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) ); */
+/*     MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) ); */
 
 
-module RAM512 #(parameter   USE_LATCH=1,
-                            WSIZE=1 ) 
-(
-    input   wire                CLK,    // FO: 4
-    input   wire [WSIZE-1:0]     WE,     // FO: 4
-    input                       EN,     // FO: 4
-    input   wire [8:0]          A,      // FO: 5
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 4
-    output  wire [(WSIZE*8-1):0] Do
+/* endmodule */
+
+
+/* module RAM512 #(parameter   USE_LATCH=1, */
+/*                             WSIZE=1 ) */ 
+/* ( */
+/*     input   wire                 CLK,    // FO: 4 */
+/*     input   wire [WSIZE-1:0]     WE0,     // FO: 4 */
+/*     input                        EN0,     // FO: 4 */
+/*     input   wire [8:0]           A0,      // FO: 5 */
+/*     input   wire [(WSIZE*8-1):0] Di0,     // FO: 4 */
+/*     output  wire [(WSIZE*8-1):0] Do0 */
     
-);
+/* ); */
 
-    wire [3:0]             SEL;
-    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
+/*     wire [3:0]              SEL0; */
+/*     wire [(WSIZE*8-1):0]    Do0_pre[3:0]; */ 
 
-    DEC2x4 DEC (.EN(EN), .A(A[8:7]), .SEL(SEL));
+/*     DEC2x4 DEC (.EN(EN), .A(A0[8:7]), .SEL(SEL0)); */
 
-    generate
-        genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK
-            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN(SEL[i]), .WE(WE), .Di(Di), .Do(Do_pre[i]), .A(A[6:0]) );        
-        end
-     endgenerate
+/*     generate */
+/*         genvar i; */
+/*         for (i=0; i< 4; i=i+1) begin : BLOCK */
+/*             RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), */ 
+/*                 .EN0(SEL0[i]), */ 
+/*                 .WE0(WE0), */ 
+/*                 .Di0(Di0), */ 
+/*                 .Do0(Do0_pre[i]), */ 
+/*                 .A0(A0[6:0]) ); */        
+/*         end */
+/*      endgenerate */
 
-    // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A[8:7]), .X(Do) );
+/*     // Output MUX */    
+/*     MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), */ 
+/*         .A1(Do_pre[1]), */ 
+/*         .A2(Do_pre[2]), */ 
+/*         .A3(Do_pre[3]), */ 
+/*         .S(A0[8:7]), */ 
+/*         .X(Do0) ); */
 
-endmodule
+/* endmodule */
 
 
-module RAM1024 #(parameter  USE_LATCH=1,
-                            WSIZE=1 ) 
-(
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN,     // FO: 1
-    input   wire [9:0]          A,      // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+/* module RAM1024 #(parameter  USE_LATCH=1, */
+/*                             WSIZE=1 ) */ 
+/* ( */
+/*     input   wire                 CLK,    // FO: 1 */
+/*     input   wire [WSIZE-1:0]     WE0,     // FO: 1 */
+/*     input                        EN0,     // FO: 1 */
+/*     input   wire [9:0]           A0,      // FO: 1 */
+/*     input   wire [(WSIZE*8-1):0] Di0,     // FO: 1 */
+/*     output  wire [(WSIZE*8-1):0] Do0 */
     
-);
+/* ); */
 
-    wire                    CLK_buf;
-    wire [WSIZE-1:0]         WE_buf;
-    wire                    EN_buf;
-    wire [9:0]             A_buf;
-    wire [(WSIZE*8-1):0]     Di_buf;
-    wire [1:0]              SEL;
+/*     wire                     CLK_buf; */
+/*     wire [WSIZE-1:0]         WE0_buf; */
+/*     wire                     EN0_buf; */
+/*     wire [9:0]               A0_buf; */
+/*     wire [(WSIZE*8-1):0]     Di0_buf; */
+/*     wire [1:0]               SEL0; */
 
-    wire [(WSIZE*8-1):0]    Do_pre[1:0]; 
+/*     wire [(WSIZE*8-1):0]     Do0_pre[1:0]; */ 
                             
-    // Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf),  .A(EN));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[9:0]           (.X(A_buf),   .A(A));
+/*     // Buffers */
+/*     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0)); */
+/*     sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf),  .A(CLK)); */
+/*     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0)); */
+/*     sky130_fd_sc_hd__clkbuf_2   ENBUF                (.X(EN0_buf),  .A(EN0)); */
+/*     sky130_fd_sc_hd__clkbuf_2   ABUF[9:0]            (.X(A0_buf),   .A(A0)); */
 
-    // 1x2 DEC
-    DEC1x2 DEC (.EN(EN_buf), .A(A[9]), .SEL(SEL));
+/*     // 1x2 DEC */
+/*     DEC1x2 DEC (.EN(EN0_buf), .A(A0[9]), .SEL(SEL0)); */
 
-     generate
-        genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN(SEL[i]), .WE(WE_buf), .Di(Di_buf), .Do(Do_pre[i]), .A(A_buf[8:0]) );        
-        end
-     endgenerate
+/*      generate */
+/*         genvar i; */
+/*         for (i=0; i< 2; i=i+1) begin : BLOCK */
+/*             RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) ); */        
+/*         end */
+/*      endgenerate */
 
-    // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .S(A_buf[9]), .X(Do) );
+/*     // Output MUX */    
+/*     MUX2x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[9]), .X(Do0) ); */
 
-endmodule
+/* endmodule */
 
-module RAM2048 #(parameter  USE_LATCH=1,
-                            WSIZE=1 ) 
-(
-    input   wire                CLK,    // FO: 1
-    input   wire [WSIZE-1:0]     WE,     // FO: 1
-    input                       EN,     // FO: 1
-    input   wire [10:0]          A,      // FO: 1
-    input   wire [(WSIZE*8-1):0] Di,     // FO: 1
-    output  wire [(WSIZE*8-1):0] Do
+/* module RAM2048 #(parameter  USE_LATCH=1, */
+/*                             WSIZE=1 ) */ 
+/* ( */
+/*     input   wire                 CLK,    // FO: 1 */
+/*     input   wire [WSIZE-1:0]     WE0,     // FO: 1 */
+/*     input                        EN0,     // FO: 1 */
+/*     input   wire [10:0]          A0,      // FO: 1 */
+/*     input   wire [(WSIZE*8-1):0] Di0,     // FO: 1 */
+/*     output  wire [(WSIZE*8-1):0] Do0 */
     
-);
+/* ); */
 
-    wire                    CLK_buf;
-    wire [WSIZE-1:0]         WE_buf;
-    wire                    EN_buf;
-    wire [10:0]             A_buf;
-    wire [(WSIZE*8-1):0]     Di_buf;
-    wire [3:0]              SEL;
+/*     wire                     CLK_buf; */
+/*     wire [WSIZE-1:0]         WE0_buf; */
+/*     wire                     EN0_buf; */
+/*     wire [10:0]              A0_buf; */
+/*     wire [(WSIZE*8-1):0]     Di0_buf; */
+/*     wire [3:0]               SEL0; */
 
-    wire [(WSIZE*8-1):0]    Do_pre[3:0]; 
+/*     wire [(WSIZE*8-1):0]     Do0_pre[3:0]; */ 
                             
-    // Buffers
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di_buf),  .A(Di));
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF              (.X(CLK_buf), .A(CLK));
-    sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE_buf),  .A(WE));
-    sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN_buf),  .A(EN));
-    sky130_fd_sc_hd__clkbuf_2   ABUF[10:0]           (.X(A_buf),   .A(A));
+/*     // Buffers */
+/*     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0)); */
+/*     sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK)); */
+/*     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0)); */
+/*     sky130_fd_sc_hd__clkbuf_2   ENBUF                (.X(EN0_buf),  .A(EN0)); */
+/*     sky130_fd_sc_hd__clkbuf_2   ABUF[10:0]           (.X(A0_buf),   .A(A0)); */
 
-    DEC2x4 DEC (.EN(EN_buf), .A(A_buf[10:9]), .SEL(SEL));
+/*     DEC2x4 DEC (.EN(EN0_buf), .A(A0_buf[10:9]), .SEL(SEL0)); */
 
-     generate
-        genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK
-            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN(SEL[i]), .WE(WE_buf), .Di(Di_buf), .Do(Do_pre[i]), .A(A_buf[8:0]) );        
-        end
-     endgenerate
+/*      generate */
+/*         genvar i; */
+/*         for (i=0; i< 4; i=i+1) begin : BLOCK */
+/*             RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) ); */        
+/*         end */
+/*      endgenerate */
 
-    // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do_pre[0]), .A1(Do_pre[1]), .A2(Do_pre[2]), .A3(Do_pre[3]), .S(A_buf[10:9]), .X(Do) );
+/*     // Output MUX */    
+/*     MUX4x1 #(.WIDTH(WSIZE*8)) DoMUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[10:9]), .X(Do0) ); */
 
-endmodule
+/* endmodule */
