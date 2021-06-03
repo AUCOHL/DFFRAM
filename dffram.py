@@ -138,7 +138,7 @@ def run_docker(image, args):
 
 def openlane(*args_tuple):
     args = list(args_tuple)
-    run_docker("efabless/openlane:v0.15", args)
+    run_docker("dffram-env", args)
 
 def sta(build_folder, design, netlist, spef_file=None):
     print("--- Static Timing Analysis ---")
@@ -255,8 +255,8 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     print("--- placeRAM Script ---")
     unaltered = out_file + ".ref"
 
-    run_docker("cloudv/dffram-env", [
-        "-python", "-m", "placeram",
+    openlane(
+        "python3", "-m", "placeram",
         "--output", unaltered,
         "--lef", "%s/sky130_fd_sc_hd.lef" % pdk_lef_dir,
         "--tech-lef", "%s/sky130_fd_sc_hd.tlef" % pdk_tlef_dir,
@@ -265,7 +265,7 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
         "--represent", represent,
         "--building-blocks", building_blocks,
         in_file
-    ])
+    )
 
     unaltered_str = open(unaltered).read()
 
@@ -585,6 +585,10 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     global bb_used
+
+    subprocess.run([
+        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."      
+    ], check=True)
 
     if variant == "DEFAULT":
         variant = None

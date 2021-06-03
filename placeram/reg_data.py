@@ -20,7 +20,7 @@ from .row import Row
 from .util import d2a, sarv
 from .placeable import Placeable, DataError
 
-from opendb import dbInst
+from opendbpy import dbInst
 Instance = dbInst
 
 import re

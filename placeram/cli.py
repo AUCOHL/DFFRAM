@@ -17,7 +17,7 @@
 # limitations under the License.
 
 try:
-    import opendb as odb
+    import opendbpy as odb
 except:
     print("""
     placeram needs to be inside OpenROAD:
