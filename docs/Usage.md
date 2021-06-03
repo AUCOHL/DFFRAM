@@ -11,9 +11,8 @@ DFFRAM is based around two Python modules: `dffram` and `placeram`.
 * The Skywater 130nm PDK
   * See [Getting Sky130](./md/Getting%20Sky130.md)
 * Docker Container
-* Python 3.8+ with PIP
-  * PlaceRAM makes heavy use of `:=` and is unrepentant.
-* PIP packages `click` and `pyyaml`: `python3 -m pip install click pyyaml`
+* Python 3.6+ with PIP
+  * PIP packages `click` and `pyyaml`: `python3 -m pip install click pyyaml`
 
 ## Recommended
 * Klayout (to view the final result)

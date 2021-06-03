@@ -1,3 +1,4 @@
+# -*- coding: utf8 -*-
 # Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
 #
 # This file is part of the DFFRAM Memory Compiler.
@@ -16,7 +17,8 @@
 # limitations under the License.
 
 import sys
-from typing import Dict, List, T
+from types import SimpleNamespace
+from typing import Any, Dict, List, T
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -31,12 +33,11 @@ def d2a(d: Dict[int, T]) -> List[T]:
     as_list.sort(key=lambda x: x[0])
     return list(map(lambda x: x[1], as_list))
 
-
-class Bunch:
+def sarv(obj: SimpleNamespace, name: str, expr: T) -> T:
     """
-    An immutable, dot-notation-accessible dictionary.
+    Set Attribute And Return Value
 
-    Buildable from an actual dictionary.
+    A workaround for := not being available below Python 3.8.
     """
-    def __init__(self, hashmap: Dict):
-        setattr(self, '__dict__', hashmap)
+    setattr(obj, name, expr)
+    return expr

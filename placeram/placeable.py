@@ -3,9 +3,9 @@ import sys
 import yaml
 from opendbpy import dbInst as Instance
 from typing import List, Dict, Union, TextIO, Optional
+from types import SimpleNamespace
 
 from .row import Row
-from .util import Bunch
 
 RegExp = str
 
@@ -31,12 +31,12 @@ class Placeable(object):
     def word_count(self):
         raise Exception("Method unimplemented.")
 
-    def regexes(self) -> Bunch:
+    def regexes(self) -> SimpleNamespace:
         """
         Returns a dictionary of regexes for this class accessible with the dot
         notation.
         """
-        return Bunch(RegexDictionary[self.__class__.__name__])
+        return SimpleNamespace(**RegexDictionary[self.__class__.__name__])
 
     @staticmethod
     def represent_instance(
