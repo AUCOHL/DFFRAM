@@ -2,7 +2,7 @@
 ## RAM Building Blocks
 - Byte
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="./../img/byte.png" alt="drawing" width="500"/> 
+<img src="./../img/byte.png" alt="drawing" width="500"/> 
 
 - Word
 
@@ -14,6 +14,6 @@
 
 - Word32 (32 )words with registered output
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="./../img/ram32.png" alt="drawing" width="500"/> 
+<img src="./../img/ram32.png" alt="drawing" width="500"/> 
 
 ## RF Building Blocks

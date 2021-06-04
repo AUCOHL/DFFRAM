@@ -46,9 +46,9 @@ module tb_RAM{word_num}x{word_size};
     localparam M_SZ = 2**A_W;
 
     reg                     CLK;
-    reg  [(SIZE-1):0]       WE;
-    reg                     ENRW;
-    reg  [(SIZE*8-1):0]     Di;
+    reg  [(SIZE-1):0]       WE0;
+    reg                     EN0;
+    reg  [(SIZE*8-1):0]     Di0;
     wire [(SIZE*8-1):0]     Do0;
     reg  [A_W-1:0]          A0, ADDR;
     reg  [7:0]              Phase;
@@ -58,11 +58,11 @@ module tb_RAM{word_num}x{word_size};
 
     RAM{word_num} #(.USE_LATCH(`USE_LATCH), .WSIZE(SIZE)) SRAM (
         .CLK(CLK),
-        .WE(WE),
-        .EN(ENRW),
-        .Di(Di),
-        .Do(Do0),
-        .A(A0[A_W-1:$clog2(SIZE)])
+        .WE0(WE0),
+        .EN0(EN0),
+        .Di0(Di0),
+        .Do0(Do0),
+        .A0(A0[A_W-1:$clog2(SIZE)])
     );
 
     initial begin
@@ -79,9 +79,9 @@ module tb_RAM{word_num}x{word_size};
     generate
     for (c=0; c < SIZE; c = c+1) begin: mem_golden_model
         always @(posedge CLK) begin
-            if(ENRW) begin
+            if(EN0) begin
                 RAM_DATA_RW <= RAM[A0/SIZE];
-                if(WE[c]) RAM[A0/SIZE][8*(c+1)-1:8*c] <= Di[8*(c+1)-1:8*c];
+                if(WE0[c]) RAM[A0/SIZE][8*(c+1)-1:8*c] <= Di0[8*(c+1)-1:8*c];
             end
         end
     end
@@ -91,8 +91,8 @@ module tb_RAM{word_num}x{word_size};
 begin_single_ported_test = """
     initial begin
         CLK = 0;
-        WE = 0;
-        ENRW = 1;
+        WE0 = 0;
+        EN0 = 1;
 """
 
 single_ported_custom_test = """
@@ -131,10 +131,10 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     localparam M_SZ = 2**A_W;
 
     reg                   CLK;
-    reg  [(SIZE-1):0]       WE;
-    reg                  ENRW;
+    reg  [(SIZE-1):0]       WE0;
+    reg                  EN0;
     reg                  ENR;
-    reg  [(SIZE*8-1):0]   Di;
+    reg  [(SIZE*8-1):0]   Di0;
     wire [(SIZE*8-1):0]   Do0;
     wire [(SIZE*8-1):0]   Do1;
     reg  [A_W-1:0]  A0, A1, ADDR;
@@ -144,10 +144,10 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
 
     RAM{word_num}_1RW1R #(.USE_LATCH(`USE_LATCH), .WSIZE(`SIZE)) SRAM (
         .CLK(CLK),
-        .WE(WE),
-        .EN0(ENRW),
+        .WE0(WE0),
+        .EN0(EN0),
         .EN1(ENR),
-        .Di(Di),
+        .Di0(Di0),
         .Do0(Do0),
         .Do1(Do1),
         .A0(A0[A_W-1:$clog2(SIZE)]),
@@ -169,9 +169,9 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     generate
     for (c=0; c < SIZE; c = c+1) begin: mem_golden_model
         always @(posedge CLK) begin
-            if(ENRW) begin
+            if(EN0) begin
                 RAM_DATA_RW <= RAM[A0/SIZE];
-                if(WE[c]) RAM[A0/SIZE][8*(c+1)-1:8*c] <= Di[8*(c+1)-1:8*c];
+                if(WE0[c]) RAM[A0/SIZE][8*(c+1)-1:8*c] <= Di0[8*(c+1)-1:8*c];
             end
             if (ENR) begin
                 RAM_DATA_R <= RAM[A1/SIZE];
@@ -185,8 +185,8 @@ begin_dual_ported_test = """
 
     initial begin
         CLK = 0;
-        WE = 0;
-        ENRW = 1;
+        WE0 = 0;
+        EN0 = 1;
         ENR = 1;
 
 """
@@ -303,13 +303,13 @@ tasks = """
     begin
         @(posedge CLK);
         A0 = addr;//[A_WIDTH:2];
-        WE = (1 << addr[$clog2(SIZE)-1:0]);
-        Di = (byte << (addr[$clog2(SIZE)-1:0] * 8));
+        WE0 = (1 << addr[$clog2(SIZE)-1:0]);
+        Di0 = (byte << (addr[$clog2(SIZE)-1:0] * 8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", byte, addr, addr, Di, WE);
+        $display("WRITE BYTE: 0x%X to %0X(%0D) (0x%X, %B)", byte, addr, addr, Di0, WE0);
 `endif
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
     end
     endtask
 
@@ -317,13 +317,13 @@ tasks = """
     begin
         @(posedge CLK);
         A0 = addr;//[A_WIDTH:$clog2(SIZE)];
-        WE = {{SIZE/2{addr[$clog2(SIZE)-1]}},{SIZE/2{~addr[$clog2(SIZE)-1]}}};
-        Di = (hword << (addr[$clog2(SIZE)-1] * (SIZE/2)*8));
+        WE0 = {{SIZE/2{addr[$clog2(SIZE)-1]}},{SIZE/2{~addr[$clog2(SIZE)-1]}}};
+        Di0 = (hword << (addr[$clog2(SIZE)-1] * (SIZE/2)*8));
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE HWORD: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di, WE);
+        $display("WRITE HWORD: 0x%X to %0X(%0D) (0x%X, %B)", hword, addr, addr, Di0, WE0);
 `endif
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
     end
     endtask
 
@@ -331,13 +331,13 @@ tasks = """
     begin
         @(posedge CLK);
         A0 = addr;
-        WE = {SIZE{8'hFF}};
-        Di = word;
+        WE0 = {SIZE{8'hFF}};
+        Di0 = word;
         @(posedge CLK);
 `ifdef  VERBOSE_2
-        $display("WRITE WORD: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di, WE);
+        $display("WRITE WORD: 0x%X to %0X(%0D) (0x%X, %B)", word, addr, addr, Di0, WE0);
 `endif
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
     end
     endtask
 
@@ -345,7 +345,7 @@ tasks = """
     begin
         @(posedge CLK);
         A0 = addr;//[9:2];
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
         @(posedge CLK);
         #5;
 `ifdef  VERBOSE_2
@@ -372,7 +372,7 @@ dual_ported_tasks = """
         @(posedge CLK);
         A0= addr0;//[9:2];
         A1= addr1;//[9:2];
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
         @(posedge CLK);
         #5;
 `ifdef  VERBOSE_2
@@ -388,7 +388,7 @@ dual_ported_tasks = """
     begin
         @(posedge CLK);
         A1 = addr;//[9:2];
-        WE = {SIZE{8'h00}};
+        WE0 = {SIZE{8'h00}};
         @(posedge CLK);
         #5;
 `ifdef  VERBOSE_2

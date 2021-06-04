@@ -25,7 +25,7 @@ The Compiler relies on basic building blocks to construct the layout of differen
 The generated layouts by the DFFRAM compilers for RAM32 as well as its building blocks are as follows:
 - BYTE
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="./docs/img/byte_all_layers.png" alt="drawing" width="200"/> 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img src="./docs/img/byte_all_layers.png" alt="drawing" width="200"/> 
 - WORD (32-bit)
 ![A Word; placed and routed, metal only, no outline](./docs/img/word_metal_only_no_outline.png)
 
@@ -119,6 +119,7 @@ The following table compares the areas and bit densities of RAM macros generated
     <td> 2,686.610 x 2,697.330 </td> <td> 9,043 </td>
   </tr>
 </table>
+
 
 
 <sup>1</sup> All support 32-bit word reads and 1, 2, and 4 bytes writes.  
