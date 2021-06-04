@@ -60,7 +60,7 @@ module tb_RAM{word_num}x{word_size};
         .WE0(WE0),
         .EN0(EN0),
         .Di0(Di0),
-        .Do(Do0),
+        .Do0(Do0),
         .A0(A0[A_W-1:$clog2(SIZE)])
     );
 
