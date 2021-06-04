@@ -68,7 +68,7 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          ./prflow.py -s ${{ matrix.size }}
+          ./dffram.py -s ${{ matrix.size }}
   test_experimental:
     name: Test (Experimental)
     runs-on: ubuntu-latest
@@ -87,4 +87,4 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          ./prflow.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:ram -v ${{ matrix.variant }}
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:ram -v ${{ matrix.variant }}
