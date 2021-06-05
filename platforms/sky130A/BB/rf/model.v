@@ -87,14 +87,14 @@ module RFWORD #(parameter RWIDTH=32)
 
     wire [RWIDTH-1:0]   q_wire;
     wire                we_wire;
-    wire [3:0]          SEL1_B, SEL2_B;
-    wire [3:0]          GCLK;
+    wire [(RWIDTH/8)-1:0]          SEL1_B, SEL2_B;
+    wire [(RWIDTH/8)-1:0]          GCLK;
 
-    sky130_fd_sc_hd__inv_4 INV1[3:0] (.Y(SEL1_B), .A(SEL1));
-	sky130_fd_sc_hd__inv_4 INV2[3:0] (.Y(SEL2_B), .A(SEL2));
+    sky130_fd_sc_hd__inv_4 INV1[(RWIDTH/8)-1:0] (.Y(SEL1_B), .A(SEL1));
+	sky130_fd_sc_hd__inv_4 INV2[(RWIDTH/8)-1:0] (.Y(SEL2_B), .A(SEL2));
 
     sky130_fd_sc_hd__and2_1 CGAND ( .A(SELW), .B(WE), .X(we_wire) );
-    sky130_fd_sc_hd__dlclkp_1 CG[3:0] ( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
+    sky130_fd_sc_hd__dlclkp_1 CG[(RWIDTH/8)-1:0] ( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
 
     generate 
         genvar i;
@@ -118,12 +118,12 @@ module RFWORD0 #(parameter RWIDTH=32)
 
     wire [RWIDTH-1:0]           q_wire;
     wire                        we_wire;
-    wire [3:0]                  SEL1_B, SEL2_B;
-    wire [3:0]                  GCLK;
+    wire [(RWIDTH/8)-1:0]                  SEL1_B, SEL2_B;
+    wire [(RWIDTH/8)-1:0]                  GCLK;
 	wire [7:0]	                lo;
 
-    sky130_fd_sc_hd__inv_4 INV1[3:0] (.Y(SEL1_B), .A(SEL1));
-	sky130_fd_sc_hd__inv_4 INV2[3:0] (.Y(SEL2_B), .A(SEL2));
+    sky130_fd_sc_hd__inv_4 INV1[(RWIDTH/8)-1:0] (.Y(SEL1_B), .A(SEL1));
+	sky130_fd_sc_hd__inv_4 INV2[(RWIDTH/8)-1:0] (.Y(SEL2_B), .A(SEL2));
 
 	sky130_fd_sc_hd__conb_1 TIE [7:0] (.LO(lo), .HI());
 
@@ -141,13 +141,13 @@ module DFFRF_2R1W #(parameter   RWIDTH=32,
                                 RCOUNT=32,
                                 R0_ZERO=1 )
 (
-	input   wire    [4:0] 	RA, RB, RW,
-	input   wire    [31:0] 	DW,
-	output  wire    [31:0]	DA, DB,
-	input   wire            CLK,
-	input   wire            WE
+	input   wire    [4:0]                   RA, RB, RW,
+	input   wire    [RWIDTH-1:0]         	DW,
+	output  wire    [RWIDTH-1:0]        	DA, DB,
+	input   wire                            CLK,
+	input   wire                            WE
 );
-	wire [RWIDTH-1:0] sel1, sel2, selw;
+	wire [RCOUNT-1:0] sel1, sel2, selw;
 
 	DEC5x32 DEC0 ( .A(RA), .SEL(sel1) );
 	DEC5x32 DEC1 ( .A(RB), .SEL(sel2) );
@@ -156,9 +156,9 @@ module DFFRF_2R1W #(parameter   RWIDTH=32,
 	generate
 		genvar e;
         if(R0_ZERO == 1)
-            RFWORD0 RFW0 ( .CLK(CLK), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB));	
+            RFWORD0 #(.RWIDTH(RWIDTH)) RFW0 ( .CLK(CLK), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB));	
         else
-            RFWORD RFW0 ( .CLK(CLK), .WE(WE), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB), .DW(DW) );
+            RFWORD #(.RWIDTH(RWIDTH)) RFW0 ( .CLK(CLK), .WE(WE), .SEL1(sel1[0]), .SEL2(sel2[0]), .SELW(selw[0]), .D1(DA), .D2(DB), .DW(DW) );
 
         for(e=1; e<RCOUNT; e=e+1) begin : REGF 
 			RFWORD #(.RWIDTH(RWIDTH)) RFW ( .CLK(CLK), .WE(WE), .SEL1(sel1[e]), .SEL2(sel2[e]), .SELW(selw[e]), .D1(DA), .D2(DB), .DW(DW) );	

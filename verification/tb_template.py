@@ -131,9 +131,9 @@ module tb_RAM{word_num}x{word_size}_1RW1R;
     localparam M_SZ = 2**A_W;
 
     reg                   CLK;
-    reg  [(SIZE-1):0]       WE0;
-    reg                  EN0;
-    reg                  ENR;
+    reg  [(SIZE-1):0]     WE0;
+    reg                   EN0;
+    reg                   ENR;
     reg  [(SIZE*8-1):0]   Di0;
     wire [(SIZE*8-1):0]   Do0;
     wire [(SIZE*8-1):0]   Do1;
