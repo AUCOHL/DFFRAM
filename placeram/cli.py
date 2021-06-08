@@ -50,7 +50,7 @@ import traceback
 
 class Placer:
     TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
-    TAP_DISTANCE_MICRONS = 10
+    TAP_DISTANCE_MICRONS = 15
 
     DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"

@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
+
 from opendbpy import dbRow, dbInst, dbSite
 from typing import List, Callable
 
@@ -62,8 +62,6 @@ class Row(object):
             self.place(Row.create_tap("tap_%i_%i" % (self.ordinal, self.tap_counter)), ignore_tap=True)
             self.tap_counter += 1
             self.since_last_tap = 0
-        else:
-            self.since_last_tap += width
 
     def place(self, instance: dbInst, ignore_tap: bool =False):
         width = instance.getMaster().getWidth()
@@ -73,6 +71,7 @@ class Row(object):
         instance.setOrient(self.orientation)
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
+        self.since_last_tap += width
 
         self.x += width
         self.cell_counter += 1
