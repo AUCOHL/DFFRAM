@@ -519,6 +519,24 @@ def write_ram_lib(build_folder, design, netlist, libfile):
             netlist,
             libfile)
 
+def drc(build_folder, design, routed):
+    print("--- Magic DRC ---")
+    with open("%s/drc.tcl" % build_folder, "w") as f:
+        f.write("""
+            set ::env(MAGIC_DRC_USE_GDS) 0
+            set ::env(TECH_LEF) {pdk_tlef_dir}/sky130_fd_sc_hd.tlef
+            set ::env(magic_report_file_tag) {routed}
+            set ::env(magic_result_file_tag) {routed}
+            set ::env(CURRENT_DEF) {routed}
+            set ::env(DESIGN_NAME) {design}
+            source /openLANE_flow/scripts/magic/drc.tcl
+        """.format(pdk_tlef_dir=pdk_tlef_dir, design=design, routed=routed))
+    openlane("magic",
+            "-dnull",
+            "-noconsole",
+            "-rcfile",
+            "%s/sky130A.magicrc" % pdk_magic_dir,
+            "%s/drc.tcl" % build_folder)
 
 def lvs(build_folder, design, in_1, in_2, report):
     print("--- LVS ---")
@@ -587,7 +605,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     global bb_used
 
     subprocess.run([
-        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."      
+        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."
     ], check=True)
 
     if variant == "DEFAULT":
@@ -663,6 +681,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     powered_netlist = i(".powered.nl.v")
     antenna_report = i(".antenna.rpt")
     report = i(".rpt")
+    drc_report = i(".drc.rpt")
 
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
@@ -754,6 +773,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
                 build_folder,
                 routed,
                 antenna_report
+            )
+        ),
+        (
+            "drc",
+            lambda: drc(
+                build_folder,
+                design,
+                routed
             )
         ),
         (
