@@ -239,7 +239,7 @@ module RAM32 #(parameter USE_LATCH=1) (
     generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : SLICE
-            RAM8 #(.USE_LATCH(USE_LATCH)) RAM8x32 (.CLK(CLK_buf), .WE(WE_buf),.EN(SEL[i]), .Di(Di_buf), .Do(Do_pre), .A(A_buf[2:0]) ); 
+            RAM8 #(.USE_LATCH(USE_LATCH)) RAM8 (.CLK(CLK_buf), .WE(WE_buf),.EN(SEL[i]), .Di(Di_buf), .Do(Do_pre), .A(A_buf[2:0]) ); 
         end
     endgenerate
 
@@ -289,10 +289,10 @@ module RAM128 #(parameter USE_LATCH=1) (
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[6:5]), .SEL(SEL));
 
     // 32x32 RAM Banks
-    RAM32 #(.USE_LATCH(USE_LATCH)) BANK_B0 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[4:0]) );    
-    RAM32 #(.USE_LATCH(USE_LATCH)) BANK_B1 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[4:0]) );    
-    RAM32 #(.USE_LATCH(USE_LATCH)) BANK_B2 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[4:0]) );    
-    RAM32 #(.USE_LATCH(USE_LATCH)) BANK_B3 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[4:0]) );    
+    RAM32 #(.USE_LATCH(USE_LATCH)) \BLOCK[0].RAM32 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[4:0]) );    
+    RAM32 #(.USE_LATCH(USE_LATCH)) \BLOCK[1].RAM32 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[4:0]) );    
+    RAM32 #(.USE_LATCH(USE_LATCH)) \BLOCK[2].RAM32 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[4:0]) );    
+    RAM32 #(.USE_LATCH(USE_LATCH)) \BLOCK[3].RAM32 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[4:0]) );    
 
     // Output MUX    
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A_buf[6:5]), .X(Do) );
@@ -328,10 +328,10 @@ module RAM512 #(parameter USE_LATCH=1) (
     DEC2x4 DEC (.EN(EN_buf), .A(A_buf[8:7]), .SEL(SEL));
 
     // 128x32 RAM Banks
-    RAM128 #(.USE_LATCH(USE_LATCH)) BANK128_B0 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[6:0]) );    
-    RAM128 #(.USE_LATCH(USE_LATCH)) BANK128_B1 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[6:0]) );    
-    RAM128 #(.USE_LATCH(USE_LATCH)) BANK128_B2 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[6:0]) );    
-    RAM128 #(.USE_LATCH(USE_LATCH)) BANK128_B3 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[6:0]) );    
+    RAM128 #(.USE_LATCH(USE_LATCH)) \BANK128[0].RAM128 (.CLK(CLK_buf), .EN(SEL[0]), .WE(WE_buf), .Di(Di_buf), .Do(Do_0), .A(A_buf[6:0]) );    
+    RAM128 #(.USE_LATCH(USE_LATCH)) \BANK128[1].RAM128 (.CLK(CLK_buf), .EN(SEL[1]), .WE(WE_buf), .Di(Di_buf), .Do(Do_1), .A(A_buf[6:0]) );    
+    RAM128 #(.USE_LATCH(USE_LATCH)) \BANK128[2].RAM128 (.CLK(CLK_buf), .EN(SEL[2]), .WE(WE_buf), .Di(Di_buf), .Do(Do_2), .A(A_buf[6:0]) );    
+    RAM128 #(.USE_LATCH(USE_LATCH)) \BANK128[3].RAM128 (.CLK(CLK_buf), .EN(SEL[3]), .WE(WE_buf), .Di(Di_buf), .Do(Do_3), .A(A_buf[6:0]) );    
 
     // Output MUX
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A_buf[8:7]), .X(Do) );
@@ -382,10 +382,10 @@ module RAM2048 #(parameter USE_LATCH=1) (
     DEC2x4 DEC (.EN(EN), .A(A[10:9]), .SEL(SEL));
 
     // 32x32 RAM Banks
-    RAM512 #(.USE_LATCH(USE_LATCH)) BANK512_B0 (.CLK(CLK), .EN(SEL[0]), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
-    RAM512 #(.USE_LATCH(USE_LATCH)) BANK512_B1 (.CLK(CLK), .EN(SEL[1]), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) );    
-    RAM512 #(.USE_LATCH(USE_LATCH)) BANK512_B2 (.CLK(CLK), .EN(SEL[2]), .WE(WE), .Di(Di), .Do(Do_2), .A(A[8:0]) );    
-    RAM512 #(.USE_LATCH(USE_LATCH)) BANK512_B3 (.CLK(CLK), .EN(SEL[3]), .WE(WE), .Di(Di), .Do(Do_3), .A(A[8:0]) );   
+    RAM512 #(.USE_LATCH(USE_LATCH)) \BANK512[0].RAM512 (.CLK(CLK), .EN(SEL[0]), .WE(WE), .Di(Di), .Do(Do_0), .A(A[8:0]) );    
+    RAM512 #(.USE_LATCH(USE_LATCH)) \BANK512[1].RAM512 (.CLK(CLK), .EN(SEL[1]), .WE(WE), .Di(Di), .Do(Do_1), .A(A[8:0]) );    
+    RAM512 #(.USE_LATCH(USE_LATCH)) \BANK512[2].RAM512 (.CLK(CLK), .EN(SEL[2]), .WE(WE), .Di(Di), .Do(Do_2), .A(A[8:0]) );    
+    RAM512 #(.USE_LATCH(USE_LATCH)) \BANK512[3].RAM512 (.CLK(CLK), .EN(SEL[3]), .WE(WE), .Di(Di), .Do(Do_3), .A(A[8:0]) );   
   
     // Output MUX
     MUX4x1_32 DoMUX ( .A0(Do_0), .A1(Do_1), .A2(Do_2), .A3(Do_3), .S(A[10:9]), .X(Do) );

@@ -628,7 +628,7 @@ class Mux(Placeable):
 
 class HigherLevelPlaceable(Placeable):
     # TODO: Dual ported higher level placeables.
-    def __init__(self, inner_re: RegExp, instances: List[Instance]):
+    def __init__(self, instances: List[Instance], block_size: int):
         self.clkbuf: Instance = None
         self.enbuf: Instance = None
         self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
@@ -646,14 +646,12 @@ class HigherLevelPlaceable(Placeable):
 
         raw_domux: List[Instance] = []
 
-        r_block = inner_re
-
         m = NS()
         r = self.regexes()
 
         for instance in instances:
             n = instance.getName()
-            if sarv(m, "block_match", re.search(r_block, n)):
+            if sarv(m, "block_match", re.search(getattr(r, str(block_size)), n)):
                 i = int(m.block_match[1])
                 raw_blocks[i] = raw_blocks.get(i) or []
                 raw_blocks[i].append(instance)
@@ -677,7 +675,9 @@ class HigherLevelPlaceable(Placeable):
                 raw_domux.append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-        self.blocks = d2a({k: constructor[inner_re](v) for k, v in
+
+
+        self.blocks = d2a({k: create_hierarchy(v, block_size) for k, v in
             raw_blocks.items()})
         self.decoder_ands = d2a(raw_decoder_ands)
         self.dibufs = d2a(raw_dibufs)
@@ -772,8 +772,23 @@ class HigherLevelPlaceable(Placeable):
     def word_count(self):
         return len(self.blocks) * (self.blocks[0].word_count())
 
-constructor = {
-    r"\bBANK_B(\d+)\b": Block,
-    r"\bBANK128_B(\d+)\b": partial(HigherLevelPlaceable, r"\bBANK_B(\d+)\b"),
-    r"\bBANK512_B(\d+)\b": partial(HigherLevelPlaceable, r"\bBANK128_B(\d+)\b")
-}
+def create_hierarchy(instances, word_count):
+    hierarchy = None
+    if word_count == 1:
+        hierarchy = Word(instances)
+    elif word_count == 8:
+        hierarchy = Slice(instances)
+    elif word_count == 32:
+        hierarchy = Block(instances)
+    else:
+        """
+        I derived this equation based on the structure we have.
+        Feel free to independently verify it.
+
+        Valid for 128 <= 𝒙 <= 2048:
+
+            𝒚 = 32 * 4 ^ ⌈log2(𝒙 / 128) / 2⌉
+        """
+        block_size = 32 * (4 ** math.ceil(math.log2(word_count / 128) / 2))
+        hierarchy = HigherLevelPlaceable(instances, block_size)
+    return hierarchy

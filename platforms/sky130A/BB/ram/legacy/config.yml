@@ -6,4 +6,5 @@ variants:
   - null
 rx_overrides:
   Block.floatbuf: "\\bFLOATBUF_B(\\d+)\\\\(\\d*)\\[(\\d+)\\\\]"
+  Mux.mux: "\\bMUX(\\d+)\\\\\\[(\\d+)\\\\\\]"
   Word.byte: "\\bB(\\d+)\\b"
