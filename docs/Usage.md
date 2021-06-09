@@ -31,12 +31,10 @@ The compilation flow at a minimum needs two options: the building blocks and the
 
 ```sh
 export PDK_ROOT=/usr/local/pdk
-./dffram.py -b sky130A:ram/legacy -s 8x32
+./dffram.py -b sky130A:ram -s 8x32
 ```
 
 The building block set `platform:name` corresponds to ./platform/\<pdk\>/BB/\<name\>/model.v. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
-
-The bleeding edge building block set is `sky130A:ram`, but the default is `ram/legacy`. Legacy only supports x32 sizes.
 
 ## Options
 For a full list of options, please invoke:
