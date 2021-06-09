@@ -125,6 +125,9 @@ class Placer:
             elif word_count == 512:
                 self.hierarchy = \
                 HigherLevelPlaceable(includes[128], self.instances)
+            elif word_count == 1024:
+                self.hierarchy = \
+                HigherLevelPlaceable(includes[512], self.instances)
             elif word_count == 2048:
                 self.hierarchy = \
                 HigherLevelPlaceable(includes[512], self.instances)

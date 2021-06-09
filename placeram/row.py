@@ -71,8 +71,8 @@ class Row(object):
         instance.setOrient(self.orientation)
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
-        self.since_last_tap += width
 
+        self.since_last_tap += width
         self.x += width
         self.cell_counter += 1
 
@@ -164,5 +164,5 @@ class Row(object):
 
             for fill in fills:
                 fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
-                r.place(fill_cell, ignore_tap=True)
+                r.place(fill_cell)
                 r.fill_counter += 1

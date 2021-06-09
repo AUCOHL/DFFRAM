@@ -24,3 +24,4 @@ build/
 __pycache__
 *.ext
 support/
+/c2w
