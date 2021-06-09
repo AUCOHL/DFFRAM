@@ -858,6 +858,8 @@ def main():
         flow()
     except subprocess.CalledProcessError as e:
         print("A step has failed:", e)
+        print("Invokable:")
+        print(' '.join(e.cmd))
         exit(69)
     except Exception:
         print("An unhandled exception has occurred.", traceback.format_exc())

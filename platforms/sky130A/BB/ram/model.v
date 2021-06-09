@@ -563,7 +563,7 @@ module RAM256 #(parameter   USE_LATCH=1,
 
     generate
         genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
+        for (i=0; i< 2; i=i+1) begin : BANK128
             RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .A0(A0[6:0]) );        
         end
      endgenerate
@@ -597,7 +597,7 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
 
     generate
         genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
+        for (i=0; i< 2; i=i+1) begin : BANK128
             RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
         end
      endgenerate
@@ -628,7 +628,7 @@ module RAM512 #(parameter   USE_LATCH=1,
 
     generate
         genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK
+        for (i=0; i< 4; i=i+1) begin : BANK128
             RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), 
                 .EN0(SEL0[i]), 
                 .WE0(WE0), 
@@ -673,7 +673,7 @@ module RAM512_1RW1R  #(parameter    USE_LATCH=1,
 
     generate
         genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK
+        for (i=0; i< 4; i=i+1) begin : BANK128
             RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
         end
      endgenerate
@@ -717,8 +717,8 @@ module RAM1024 #(parameter  USE_LATCH=1,
 
      generate
         genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) );        
+        for (i=0; i< 2; i=i+1) begin : BANK512
+            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM512 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) );        
         end
      endgenerate
 
@@ -768,8 +768,8 @@ module RAM1024_1RW1R #(parameter  USE_LATCH=1,
 
      generate
         genvar i;
-        for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM512_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[8:0]), .A1(A1_buf[8:0]) );        
+        for (i=0; i< 2; i=i+1) begin : BANK512
+            RAM512_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM512 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[8:0]), .A1(A1_buf[8:0]) );        
         end
      endgenerate
 
@@ -811,8 +811,8 @@ module RAM2048 #(parameter  USE_LATCH=1,
 
      generate
         genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK
-            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) );        
+        for (i=0; i< 4; i=i+1) begin : BANK512
+            RAM512 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM512 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[8:0]) );        
         end
      endgenerate
 
@@ -861,8 +861,8 @@ module RAM2048_1RW1R #(parameter    USE_LATCH=1,
 
      generate
         genvar i;
-        for (i=0; i< 4; i=i+1) begin : BLOCK      
-            RAM512_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32_1RW1R (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[8:0]), .A1(A1_buf[8:0]) );        
+        for (i=0; i< 4; i=i+1) begin : BANK512      
+            RAM512_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM512 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[8:0]), .A1(A1_buf[8:0]) );        
         end
      endgenerate
 

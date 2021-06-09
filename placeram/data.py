@@ -651,7 +651,7 @@ class HigherLevelPlaceable(Placeable):
 
         for instance in instances:
             n = instance.getName()
-            if sarv(m, "block_match", re.search(r.block, n)):
+            if sarv(m, "block_match", re.search(getattr(r, str(block_size)), n)):
                 i = int(m.block_match[1])
                 raw_blocks[i] = raw_blocks.get(i) or []
                 raw_blocks[i].append(instance)
@@ -785,7 +785,7 @@ def create_hierarchy(instances, word_count):
         I derived this equation based on the structure we have.
         Feel free to independently verify it.
 
-        Valid for 0 < 𝒙 <= 2048:
+        Valid for 128 <= 𝒙 <= 2048:
 
             𝒚 = 32 * 4 ^ ⌈log2(𝒙 / 128) / 2⌉
         """
