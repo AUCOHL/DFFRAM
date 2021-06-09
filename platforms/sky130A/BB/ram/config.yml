@@ -1,6 +1,6 @@
 lib: sky130_fd_sc_hd
 widths: [8, 16, 24, 32, 40, 48, 56, 64]
-counts: [8, 32, 128]
+counts: [8, 32, 128, 256, 512, 1024, 2048]
 design_name_template: "RAM{count}{variant}"
 variants:
   - null

@@ -210,7 +210,9 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
 
     openlane("bash", "%s/synth.sh" % build_folder)
 
+last_def = None
 def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height, in_file, out_file):
+    global last_def
     SITE_WIDTH=0.46
     SITE_HEIGHT=2.72
     print("--- Floorplan ---")
@@ -249,9 +251,11 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
         ))
 
     openlane("openroad", "%s/fp_init.tcl" % build_folder)
+    last_def = out_file
 
 
 def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, represent=os.devnull):
+    global last_def
     print("--- placeRAM Script ---")
     unaltered = out_file + ".ref"
 
@@ -274,8 +278,11 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
     with open(out_file, 'w') as f:
         f.write(altered_str)
 
+    last_def = out_file
+
 
 def place_pins(build_folder, in_file, out_file, pin_order_file):
+    global last_def
     print("--- Pin Placement ---")
     openlane(
         "python3",
@@ -293,6 +300,8 @@ def place_pins(build_folder, in_file, out_file, pin_order_file):
         "-o", out_file
     )
 
+    last_def = out_file
+
 def verify_placement(build_folder, in_file):
     print("--- Verify ---")
     with open("%s/verify.tcl" % build_folder, 'w') as f:
@@ -308,9 +317,7 @@ def verify_placement(build_folder, in_file):
         """.format(build_folder=build_folder,
             pdk_liberty_dir=pdk_liberty_dir,
             in_file=in_file)
-
-
-    )
+        )
 
     openlane("openroad", "%s/verify.tcl" % build_folder)
 
@@ -332,6 +339,7 @@ def create_image(build_folder, in_file, width=256,height=256):
         last_image = in_file + ".png"
 
 def pdngen(build_folder, width, height, in_file, out_file):
+    global last_def
     print("--- Power Distribution Network Construction ---")
     pitch = 50 # temp: till we arrive at a function that takes in width
     offset = 25 # temp: till we arrive at a function that takes in width
@@ -395,6 +403,7 @@ def pdngen(build_folder, width, height, in_file, out_file):
     openlane("openroad", "%s/pdn.tcl" % build_folder)
 
 def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
+    global last_def
     print("--- Routing Obstruction Creation---")
     openlane(
         "python3",
@@ -406,8 +415,10 @@ def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
             width=width,
             height=height),
         "--output", out_file)
+    last_def = out_file
 
 def route(build_folder, in_file, out_file):
+    global last_def
     print("--- Route ---")
     global_route_guide = "%s/gr.guide" % build_folder
     with open("%s/tr.param" % build_folder, 'w') as f:
@@ -443,6 +454,7 @@ def route(build_folder, in_file, out_file):
             build_folder=build_folder))
 
     openlane("openroad", "%s/route.tcl" % build_folder)
+    last_def = out_file
 
 def spef_extract(build_folder, def_file, spef_file=None):
     print("--- Extract SPEF ---")
@@ -455,6 +467,7 @@ def spef_extract(build_folder, def_file, spef_file=None):
 def add_pwr_gnd_pins(build_folder, original_netlist,
         def_file, intermediate_file, out_file1,
         out_file2):
+    global last_def
     print("--- Adding power and ground pins to netlist ---")
 
     openlane("python3", "/openLANE_flow/scripts/write_powered_def.py",
@@ -487,6 +500,7 @@ def add_pwr_gnd_pins(build_folder, original_netlist,
         """.format(verilog_file=out_file1, out_file=out_file2))
 
     openlane("yosys", "-c", "%s/rewrite_netlist.tcl" % build_folder)
+    last_def = out_file2
 
 
 def write_ram_lef(build_folder, design, in_file, out_file):
@@ -519,6 +533,34 @@ def write_ram_lib(build_folder, design, netlist, libfile):
             netlist,
             libfile)
 
+def magic_drc(build_folder, design, def_file):
+    print("--- Magic DRC ---")
+    with open("%s/drc.tcl" % build_folder, "w") as f:
+        f.write("""
+            set ::env(MAGIC_DRC_USE_GDS) 0
+            set ::env(TECH_LEF) {pdk_tlef_dir}/sky130_fd_sc_hd.tlef
+            set ::env(magic_report_file_tag) {def_file}
+            set ::env(magic_result_file_tag) {def_file}
+            set ::env(CURRENT_DEF) {def_file}
+            set ::env(DESIGN_NAME) {design}
+            source /openLANE_flow/scripts/magic/drc.tcl
+        """.format(pdk_tlef_dir=pdk_tlef_dir, design=design, def_file=def_file))
+    openlane("magic",
+            "-dnull",
+            "-noconsole",
+            "-rcfile",
+            "%s/sky130A.magicrc" % pdk_magic_dir,
+            "%s/drc.tcl" % build_folder)
+    drc_report = "%s.drc" % def_file
+    drc_report_str = open(drc_report).read()
+    count = r"COUNT:\s*(\d+)"
+    errors = 0
+    count_match = re.search(count, drc_report_str)
+    if count_match is not None:
+        errors = int(count_match[1])
+    if errors != 0:
+        print("Error: There are %i DRC errors. Check %s." % (errors, drc_report))
+        exit(65)
 
 def lvs(build_folder, design, in_1, in_2, report):
     print("--- LVS ---")
@@ -575,7 +617,7 @@ def antenna_check(build_folder, def_file, out_file):
 
 
 @click.command()
-@click.option("-f", "--frm", default="synthesis", help="Start from this step")
+@click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="lvs", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
@@ -583,11 +625,12 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-b", "--building-blocks", default="sky130A:ram/legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
-    global bb_used
+@click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant, drc):
+    global bb_used, last_def, last_image
 
     subprocess.run([
-        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."      
+        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."
     ], check=True)
 
     if variant == "DEFAULT":
@@ -663,6 +706,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
     powered_netlist = i(".powered.nl.v")
     antenna_report = i(".antenna.rpt")
     report = i(".rpt")
+    drc_report = i(".drc.rpt")
 
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
@@ -782,6 +826,9 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
         if to == name:
             execute_steps = False
 
+    if drc:
+        magic_drc(build_folder, design, last_def)
+
     elapsed = time.time() - start
 
     if last_image is not None:
@@ -809,6 +856,9 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant):
 def main():
     try:
         flow()
+    except subprocess.CalledProcessError as e:
+        print("A step has failed:", e)
+        exit(69)
     except Exception:
         print("An unhandled exception has occurred.", traceback.format_exc())
         exit(69)
