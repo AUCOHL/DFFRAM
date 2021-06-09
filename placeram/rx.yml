@@ -37,6 +37,7 @@ Mux:
   selbuf: "\\bSEL(\\d*)?BUF\\\\\\[(\\d+)\\\\\\]"
   mux: "\\bMUX(\\d+)\\\\\\[(\\d+)\\\\\\]"
 HigherLevelPlaceable:
+  block: "\\BLOCK\\\\\\[(\\d+)\\\\\\]"
   clkbuf: "\\bCLKBUF\\b"
   enbuf: "\\bENBUF\\b"
   decoder_and: "\\bDEC\\.AND(\\d+)\\b"

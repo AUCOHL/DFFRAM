@@ -38,11 +38,11 @@ except ImportError:
     print("You need to install pyyaml: python3 -m pip install pyyank")
     exit(78)
 
-from .util import eprint
-from .placeable import override_regex_dict
-from .data import Block, Slice, Word, HigherLevelPlaceable
+from . import data
 from .row import Row
+from .util import eprint
 from .reg_data import DFFRF
+from .placeable import override_regex_dict
 
 import os
 import re
@@ -109,28 +109,7 @@ class Placer:
         if regFile:
             self.hierarchy = DFFRF(self.instances)
         else:
-            includes = {32:r"\bBANK_B(\d+)\b",
-                        128: r"\bBANK128_B(\d+)\b",
-                        512: r"\bBANK512_B(\d+)\b"}
-
-            if word_count == 1:
-                self.hierarchy = Word(self.instances)
-            elif word_count == 8:
-                self.hierarchy = Slice(self.instances)
-            elif word_count == 32:
-                self.hierarchy = Block(self.instances)
-            elif word_count == 128:
-                self.hierarchy = \
-                HigherLevelPlaceable(includes[32], self.instances)
-            elif word_count == 512:
-                self.hierarchy = \
-                HigherLevelPlaceable(includes[128], self.instances)
-            elif word_count == 1024:
-                self.hierarchy = \
-                HigherLevelPlaceable(includes[512], self.instances)
-            elif word_count == 2048:
-                self.hierarchy = \
-                HigherLevelPlaceable(includes[512], self.instances)
+            self.hierarchy = data.create_hierarchy(self.instances, word_count)
 
     def represent(self, file):
         self.hierarchy.represent(file=file)
