@@ -712,7 +712,7 @@ class HigherLevelPlaceable(LRPlaceable):
                 port = int(m.enbuf_match[1] or "0")
                 raw_enbufs[port] = instance
             elif sarv(m, "domux_match", re.search(r.domux, n)):
-                port = int(m.domux_match[1])
+                port = int(m.domux_match[1] or "0")
                 raw_domuxes[port] = raw_domuxes.get(port) or []
                 raw_domuxes[port].append(instance)
             else:
