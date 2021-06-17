@@ -51,32 +51,30 @@ jobs:
           export PATTERN=tb_RAM${{ matrix.size }}
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
-  test_legacy:
-    name: Test (Legacy)
-    runs-on: ubuntu-latest
-    needs: verify_models
-    strategy:
-        matrix:
-          size: ["8x32", "32x32", "128x32"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Get PDK
-        run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
-      - name: Run
-        env:
-          PDK_ROOT: /tmp/pdklite
-        run: |
-          ./dffram.py -s ${{ matrix.size }}
-  test_experimental:
-    name: Test (Experimental)
+  test_flow:
+    name: Test Flow
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          count: ["8", "32"]
-          width: ["8", "16", "32"] # 64 temporarily removed (crashes)
-          variant: ["DEFAULT", "1RW1R"]
+          include:
+            - { count: "8", width: "8", variant: "DEFAULT" }
+            - { count: "8", width: "8", variant: "1RW1R" }
+            - { count: "8", width: "16", variant: "DEFAULT" }
+            - { count: "8", width: "16", variant: "1RW1R" }
+            - { count: "8", width: "32", variant: "DEFAULT" }
+            - { count: "8", width: "32", variant: "1RW1R" }
+            - { count: "32", width: "8", variant: "DEFAULT" }
+            - { count: "32", width: "8", variant: "1RW1R" }
+            - { count: "32", width: "16", variant: "DEFAULT" }
+            - { count: "32", width: "16", variant: "1RW1R" }
+            - { count: "32", width: "32", variant: "DEFAULT" }
+            - { count: "32", width: "32", variant: "1RW1R" }
+            - { count: "256", width: "8", variant: "DEFAULT" }
+            - { count: "256", width: "8", variant: "1RW1R" }
+            - { count: "256", width: "16", variant: "DEFAULT" }
+            - { count: "256", width: "16", variant: "1RW1R" }
+            - { count: "256", width: "32", variant: "DEFAULT" }
+            #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
         uses: actions/checkout@v2

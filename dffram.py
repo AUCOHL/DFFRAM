@@ -623,7 +623,7 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
 @click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="path to sky130A pdk")
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-b", "--building-blocks", default="sky130A:ram/legacy", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option("-b", "--building-blocks", default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant, drc):
