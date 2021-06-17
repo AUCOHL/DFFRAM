@@ -27,7 +27,7 @@ import sys
 import math
 from types import SimpleNamespace as NS
 from functools import partial
-from typing import List, Dict, Union, TextIO
+from typing import Callable, List, Dict, Union, TextIO
 
 # --
 
@@ -358,7 +358,84 @@ class Slice(Placeable): # A slice is defined as 8 words.
     def word_count(self):
         return 8
 
-class Block(Placeable): # A block is defined as 4 slices (32 words)
+class LRPlaceable(Placeable):
+    """
+    A Placeable that can have some of its elements placed in left & right columns.
+
+    This is to make the design more routable.
+    """
+
+    def lrplace(self, row_list: List[Row], start_row: int, addresses: int, common: List[Instance], port_elements: List[str], place_horizontal_elements: Callable) -> int:
+        # Prologue. Split vertical elements into left and right columns
+        chunks = []
+        chunk_count = math.ceil(addresses / 2)
+        per_chunk = math.ceil(len(common) / chunk_count)
+
+        i = 0
+        while i < len(common):
+            chunks.append(common[i: i + per_chunk])
+            i += per_chunk
+
+        vertical_left = []
+        vertical_right = []
+        right = True
+
+        for i in range(0, addresses):
+            target = vertical_right if right else vertical_left
+            column = []
+            for accessor in port_elements:
+                elements: Union[List[Instance], Instance] = getattr(self, accessor)
+                if len(elements) == 0:
+                    continue
+                element = elements[i]
+                if isinstance(element, list):
+                    column += element
+                else:
+                    column.append(element)
+            if right and len(chunks):
+                column += chunks[i // 2]
+            target.append(column)
+            right = not right
+        
+        final_rows = []
+
+        # Act 1. Place Left Vertical Elements
+        current_row = start_row
+
+        for column in vertical_left:
+            current_row = start_row
+            for el in column:
+                r = row_list[current_row]
+                r.place(el)
+                current_row += 1
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+        final_rows.append(current_row)
+
+        # Act 2. Place Horizontal Elements
+        current_row = place_horizontal_elements(start_row)
+
+        Row.fill_rows(row_list, start_row, current_row)
+
+        final_rows.append(current_row)
+
+        # Act 3. Place Right Vertical Elements
+        for column in vertical_right:
+            current_row = start_row
+            for el in column:
+                r = row_list[current_row]
+                r.place(el)
+                current_row += 1
+
+        final_rows.append(current_row)
+
+        # Epilogue
+        max_row = max(*final_rows)
+        Row.fill_rows(row_list, start_row, max_row)
+        return max_row
+
+class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
     def __init__(self, instances: List[Instance]):
         self.clkbuf: Instance = None
         self.dibufs: List[Instance] = None
@@ -471,109 +548,61 @@ class Block(Placeable): # A block is defined as 4 slices (32 words)
         P.ri("Clock Buffer", self.clkbuf, tab_level, file)
 
         ra("Enable Buffers", self.enbufs)
-        ra("Decoder AND Gates", self.decoder_ands, header="Address")
+        ra("Decoder AND Gates", self.decoder_ands, header="Port")
         ra("Write Enable Buffers", self.webufs)
-        ra("Address Buffers", self.abufs, header="Address")
+        ra("Address Buffers", self.abufs, header="Port")
         ra("Data Input Buffers", self.dibufs)
-        ra("Data Output Buffers", self.dobufs, header="Address")
-        ra("Ties", self.ties, header="Address")
-        ra("Float Buffer Enable Buffers", self.fbufenbufs, header="Address")
-        ra("Float Buffers", self.floatbufs, header="Address")
+        ra("Data Output Buffers", self.dobufs, header="Port")
+        ra("Ties", self.ties, header="Port")
+        ra("Float Buffer Enable Buffers", self.fbufenbufs, header="Port")
+        ra("Float Buffers", self.floatbufs, header="Port")
         ra("Slices", self.slices, header="Slice")
 
     def place(self, row_list: List[Row], start_row: int = 0):
-        # Prologue. Split vertical elements into left and right columns
-        addresses = len(self.abufs)
-        common = [self.clkbuf] + self.webufs # Should be spread across right columns
-        chunks = []
-        chunk_count = math.ceil(addresses / 2) 
-        per_chunk = math.ceil(len(common) / chunk_count)
-    
-        i = 0
-        while i < len(common):
-            chunks.append(common[i: i + per_chunk])
-            i += per_chunk
-
-        vertical_left = []
-        vertical_right = []
-        right = True
-
-        for i in range(0, addresses):
-            target = vertical_right if right else vertical_left
-            column = [
-                self.enbufs[i],
-                *self.abufs[i],
-                *self.decoder_ands[i],
-                *self.fbufenbufs[i]
-            ]
-            if right:
-                column += chunks[i // 2]
-            target.append(column)
-            right = not right
-
-        final_rows = []
-
-        # Act 1. Place Left Vertical Elements
-        current_row = start_row
-
-        for column in vertical_left:
+        def place_horizontal_elements(start_row: int):
             current_row = start_row
-            for el in column:
-                r = row_list[current_row]
-                r.place(el)
-                current_row += 1
-
-        Row.fill_rows(row_list, start_row, current_row)
-
-        final_rows.append(current_row)
-
-        # Act 2. Place Horizontal Elements
-        current_row = start_row
-
-        r = row_list[current_row]
-
-        for dibuf in self.dibufs:
-            r.place(dibuf)
-
-        current_row += 1
-
-        for slice in self.slices:
-            current_row = slice.place(row_list, current_row)
-
-        for i, port in enumerate(self.ties):
             r = row_list[current_row]
-            for j, tie in enumerate(port):
-                r.place(tie)
-                for floatbuf in self.floatbufs[i][j]:
-                    r.place(floatbuf)
+
+            for dibuf in self.dibufs:
+                r.place(dibuf)
+
             current_row += 1
 
-        for port in self.dobufs:
-            r = row_list[current_row]
-            for dobuf in port:
-                r.place(dobuf)
-            current_row += 1
+            for slice in self.slices:
+                current_row = slice.place(row_list, current_row)
 
-        Row.fill_rows(row_list, start_row, current_row)
-
-        final_rows.append(current_row)
-
-        # Act 3. Place Right Vertical Elements
-        current_row = start_row
-
-        for column in vertical_right:
-            current_row = start_row
-            for el in column:
+            for i, port in enumerate(self.ties):
                 r = row_list[current_row]
-                r.place(el)
+                for j, tie in enumerate(port):
+                    r.place(tie)
+                    for floatbuf in self.floatbufs[i][j]:
+                        r.place(floatbuf)
                 current_row += 1
 
-        final_rows.append(current_row)
+            for port in self.dobufs:
+                r = row_list[current_row]
+                for dobuf in port:
+                    r.place(dobuf)
+                current_row += 1
 
-        # Epilogue
-        max_row = max(*final_rows)
-        Row.fill_rows(row_list, start_row, max_row)
-        return max_row
+            return current_row
+        
+        return self.lrplace(
+            row_list=row_list,
+            start_row=start_row,
+            addresses=len(self.abufs),
+            common=[
+                self.clkbuf,
+                *self.webufs
+            ],
+            port_elements=[
+                "enbufs",
+                "abufs",
+                "decoder_ands",
+                "fbufenbufs"
+            ],
+            place_horizontal_elements=place_horizontal_elements
+        )
 
     def word_count(self):
         return 32
@@ -626,25 +655,31 @@ class Mux(Placeable):
         return start_row + 1
 
 
-class HigherLevelPlaceable(Placeable):
-    # TODO: Dual ported higher level placeables.
+class HigherLevelPlaceable(LRPlaceable):
     def __init__(self, instances: List[Instance], block_size: int):
         self.clkbuf: Instance = None
-        self.enbuf: Instance = None
-        self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
         self.dibufs: List[Instance] = None
         self.webufs: List[Instance] = None
-        self.abufs: List[Instance] = None
-        self.domux: Mux = None
 
-        raw_blocks: Dict[int, List[Instance]] = {}
-        raw_decoder_ands: Dict[int, Instance] = {}
+        self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
+        
+        # These sets of buffers are duplicated once per read port,
+        # so the first access always picks the port.
+        self.decoder_ands: List[List[Instance]] = None
+        self.enbufs: List[Instance] = None
+        self.domuxes: List[Mux] = None
+        self.abufs: List[List[Instance]] = None
 
+        # --
         raw_dibufs: Dict[int, Instance] = {}
         raw_webufs: Dict[int, Instance] = {}
-        raw_abufs: Dict[int, Instance] = {}
 
-        raw_domux: List[Instance] = []
+        raw_blocks: Dict[int, List[Instance]] = {}
+
+        raw_decoder_ands: Dict[int, Dict[int, Instance]] = {}
+        raw_enbufs: Dict[int, Instance] = {}
+        raw_domuxes: Dict[int, List[Instance]] = {}
+        raw_abufs: Dict[int, Dict[int, Instance]] = {}
 
         m = NS()
         r = self.regexes()
@@ -656,8 +691,10 @@ class HigherLevelPlaceable(Placeable):
                 raw_blocks[i] = raw_blocks.get(i) or []
                 raw_blocks[i].append(instance)
             elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
-                i = int(m.decoder_and_match[1])
-                raw_decoder_ands[i] = instance
+                port = int(m.decoder_and_match[1] or "0")
+                i = int(m.decoder_and_match[2])
+                raw_decoder_ands[port] = raw_decoder_ands.get(port) or {}
+                raw_decoder_ands[port][i] = instance
             elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
                 i = int(m.dibuf_match[1])
                 raw_dibufs[i] = instance
@@ -667,24 +704,31 @@ class HigherLevelPlaceable(Placeable):
             elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
             elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                i = int(m.abuf_match[1])
-                raw_abufs[i] = instance
+                port = int(m.abuf_match[1] or "0")
+                i = int(m.abuf_match[2])
+                raw_abufs[port] = raw_abufs.get(port) or {}
+                raw_abufs[port][i] = instance
             elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                self.enbuf = instance
+                port = int(m.enbuf_match[1] or "0")
+                raw_enbufs[port] = instance
             elif sarv(m, "domux_match", re.search(r.domux, n)):
-                raw_domux.append(instance)
+                port = int(m.domux_match[1])
+                raw_domuxes[port] = raw_domuxes.get(port) or []
+                raw_domuxes[port].append(instance)
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
+    
+        self.dibufs = d2a(raw_dibufs)
+        self.webufs = d2a(raw_webufs)
 
         self.blocks = d2a({k: create_hierarchy(v, block_size) for k, v in
             raw_blocks.items()})
-        self.decoder_ands = d2a(raw_decoder_ands)
-        self.dibufs = d2a(raw_dibufs)
 
-        self.webufs = d2a(raw_webufs)
-        self.abufs = d2a(raw_abufs)
-        self.domux = Mux(raw_domux)
+        self.decoder_ands = d2a({k: d2a(v) for k, v in raw_decoder_ands.items()})
+        self.enbufs = d2a(raw_enbufs)
+        self.domuxes = d2a({ k: Mux(v) for k, v in raw_domuxes.items()})
+        self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
 
     def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
@@ -692,82 +736,69 @@ class HigherLevelPlaceable(Placeable):
         def ra(n, a, **kwargs):
             P.ra(n, a, tab_level, file, **kwargs)
 
-        if self.enbuf:
-            P.ri("Enable Buffer", self.enbuf, tab_level, file)
-
         if self.clkbuf:
             P.ri("Clock Buffer", self.clkbuf, tab_level, file)
-
-        if self.decoder_ands:
-            ra("Decoder AND Gates", self.decoder_ands)
-
-        if self.webufs:
-            ra("Write Enable Buffers", self.webufs)
-
-        if self.abufs:
-            ra("Address Buffers", self.abufs)
-
-        if self.dibufs:
-            ra("Input Buffers", self.dibufs)
+        ra("Input Buffers", self.dibufs)
+        ra("Write Enable Buffers", self.webufs)
 
         ra("Blocks", self.blocks, header="Block")
 
-        self.domux.represent(tab_level, file)
+        ra("Decoder AND Gates", self.decoder_ands, header="Port")
+        ra("Address Buffers", self.abufs, header="Port")
+        ra("Enable Buffers", self.enbufs, header="Port")
+        ra("Output Multiplexers", self.domuxes, header="Port")
 
     def place(self, row_list: List[Row], start_row: int = 0):
-
-        def symmetrically_placeable(obj):
-            symm_placement_wc = 128
-            return obj.word_count() > symm_placement_wc
-
+        def symmetrically_placeable():
+            return self.word_count() > 128
+        
         current_row = start_row
-        r = row_list[current_row]
 
-        for dibuf in self.dibufs:
-            r.place(dibuf)
+        def place_horizontal_elements(start_row: int):
+            # all of the big designs include 4 instances
+            # of the smaller block they are constituted of
+            # so they can all be 1:1 if they are 2x2
+            # the smallest 1:1 is the 128 word block
+            # it is placed all on top of each other
+            current_row = start_row
+            r = row_list[current_row]
+            for dibuf in self.dibufs:
+                r.place(dibuf)
 
-        current_row += 1
+            current_row += 1
 
-        # all of the big designs include 4 instances
-        # of the smaller block they are constituted of
-        # so they can all be 1:1 if they are 2x2
-        # the smallest 1:1 is the 128 word block
-        # it is placed all on top of each other
-        partition_cap = int(math.sqrt(len(self.blocks)))
-        if symmetrically_placeable(self):
-            for block_idx in range(len(self.blocks)):
-                if block_idx == partition_cap:
-                    current_row = start_row
-                current_row = self.blocks[block_idx].place(row_list, current_row)
-        else:
-            for ablock in self.blocks:
-                current_row = ablock.place(row_list, current_row)
+            partition_cap = int(math.sqrt(len(self.blocks)))
+            if symmetrically_placeable():
+                for i in range(len(self.blocks)):
+                    if i == partition_cap:
+                        current_row = start_row
+                    current_row = self.blocks[i].place(row_list, current_row)
+            else:
+                for block in self.blocks:
+                    current_row = block.place(row_list, current_row)
 
-        current_row += 1
+            current_row += 1
 
-        current_row = self.domux.place(row_list, current_row)
+            for domux in self.domuxes:
+                current_row = domux.place(row_list, current_row)
 
-        Row.fill_rows(row_list, start_row, current_row)
+            return current_row
 
-        last_column = [
-            self.clkbuf,
-            self.enbuf,
-            *self.webufs,
-            *self.abufs,
-            *self.decoder_ands
-        ]
-
-        c2 = start_row
-        for el in last_column:
-            if el:
-                r = row_list[c2]
-                r.place(el)
-                c2 += 1
-
-        Row.fill_rows(row_list, start_row, current_row)
-
-
-        return current_row
+        return self.lrplace(
+            row_list=row_list,
+            start_row=current_row,
+            addresses=len(self.domuxes),
+            common=[
+                *([self.clkbuf] if self.clkbuf is not None else []),
+                *self.webufs
+            ],
+            port_elements=[
+                "enbufs",
+                "abufs",
+                "decoder_ands"
+            ],
+            place_horizontal_elements=place_horizontal_elements
+        )
 
     def word_count(self):
         return len(self.blocks) * (self.blocks[0].word_count())
@@ -787,8 +818,10 @@ def create_hierarchy(instances, word_count):
 
         Valid for 128 <= 𝒙 <= 2048:
 
-            𝒚 = 32 * 4 ^ ⌈log2(𝒙 / 128) / 2⌉
+            𝒇(𝒙) = 32 * 4 ^ ⌈log2(𝒙 / 128) / 2⌉
         """
-        block_size = 32 * (4 ** math.ceil(math.log2(word_count / 128) / 2))
+        def f(x):
+            return 32 * (4 ** math.ceil(math.log2(x / 128) / 2))
+        block_size = f(word_count)
         hierarchy = HigherLevelPlaceable(instances, block_size)
     return hierarchy
