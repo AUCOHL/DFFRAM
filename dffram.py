@@ -140,7 +140,7 @@ def openlane(*args_tuple):
     args = list(args_tuple)
     run_docker("dffram-env", args)
 
-def sta(build_folder, design, netlist, spef_file=None):
+def sta(build_folder, design, netlist, clk_period=3, spef_file=None):
     print("--- Static Timing Analysis ---")
     with open("%s/sta.tcl" % build_folder, 'w') as f:
         env_vars = """
@@ -150,7 +150,7 @@ def sta(build_folder, design, netlist, spef_file=None):
             set ::env(IO_PCT) 0.2
             set ::env(SYNTH_MAX_FANOUT) 5
             set ::env(CLOCK_PORT) "CLK"
-            set ::env(CLOCK_PERIOD) "3"
+            set ::env(CLOCK_PERIOD) "{clk_period}"
             set ::env(LIB_FASTEST) {pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ff_n40C_1v95.lib
             set ::env(LIB_SLOWEST) {pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__ss_100C_1v60.lib
             set ::env(CURRENT_NETLIST) {netlist}
@@ -162,7 +162,8 @@ def sta(build_folder, design, netlist, spef_file=None):
             build_folder=build_folder,
             pdk_ref_dir=pdk_ref_dir,
             design=design,
-            netlist=netlist)
+            netlist=netlist,
+            clk_period=clk_period)
         if spef_file:
             env_vars =\
                     """
@@ -624,9 +625,10 @@ def antenna_check(build_folder, def_file, out_file):
 @click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="path to sky130A pdk")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-b", "--building-blocks", default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option("-cp", "--clk_period", default=3, type=float, help="clk period for sta")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant, drc):
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc):
     global bb_used, last_def, last_image
 
     subprocess.run([
@@ -736,7 +738,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant, drc):
                 netlist
             )
         ),
-        ("sta_1", lambda: sta(build_folder, design, netlist)),
+        ("sta_1", lambda: sta(build_folder, design, netlist, clk_period)),
         ("placement", lambda: placement(width, height)),
         (
             "pdngen",
@@ -757,7 +759,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, variant, drc):
             "sta_2",
             lambda: (
                 spef_extract(build_folder, routed, spef),
-                sta(build_folder, design, netlist, spef)
+                sta(build_folder, design, netlist, clk_period, spef)
             )
         ),
         (
