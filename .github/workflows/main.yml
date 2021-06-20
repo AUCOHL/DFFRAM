@@ -27,6 +27,33 @@ jobs:
             export PATTERN=tb_RAM$SIZE
             /bin/bash -c "make lint"
           done
+  sta:
+    name: STA on All Models (incl. Synthesis)
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          count: ["8", "32", "128", "256", "1024", "2048"]
+          width: ["32"]
+          variant: ["DEFAULT", "1RW1R"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get IcarusVerilog
+        run: |
+          sudo apt-get install -y iverilog
+          sudo wget https://github.com/mikefarah/yq/releases/download/v4.2.0/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+      - name: Get PDK
+        run: |
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+      - name: Run Verification
+        env:
+          PDK_ROOT: /tmp/pdklite
+        run: |
+          CLK_PERIOD=$(yq e '.${{ matrix.count }}x${{ matrix.width }}' ./.github/workflows/clk_periods.yml)
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
+          -b sky130A:ram -v ${{ matrix.variant }} --to sta_1 -cp $CLK_PERIOD
+          ! grep -l VIOLATED -r ./build/*/*.sta.rpt;
   verify_models:
     name: Verify Models
     runs-on: ubuntu-latest
