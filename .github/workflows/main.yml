@@ -27,32 +27,8 @@ jobs:
             export PATTERN=tb_RAM$SIZE
             /bin/bash -c "make lint"
           done
-  synthesis:
-    name: Synthesize all Models
-    runs-on: ubuntu-latest
-    strategy:
-        matrix:
-          count: ["8", "32", "128", "256", "1024", "2048"]
-          width: ["8", "32", "64"]
-          variant: ["DEFAULT", "1RW1R"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Get IcarusVerilog
-        run: |
-          sudo apt-get install -y iverilog
-      - name: Get PDK
-        run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
-      - name: Run Verification
-        env:
-          PDK_ROOT: /tmp/pdklite
-        run: |
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
-          -b sky130A:ram -v ${{ matrix.variant }} \
-          --only synthesis
   sta:
-    name: Run STA on all models
+    name: STA on All Models (incl. Synthesis)
     runs-on: ubuntu-latest
     strategy:
         matrix:
