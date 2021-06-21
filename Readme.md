@@ -16,8 +16,6 @@ The objective of this project is to develop a DFF/Latch-based RAM, Register File
 
 The layout generated from the compiler is highly compact (95%+ placement density) as the cells are placed on the floor plan using a custom placer. Moreover, the custom placer ensures that the routing will be relatively simple. Currently, the compiler uses OpenROAD routers to route the macros with great success. 
 
-*Note: The project will consider the creation of a custom router if automatic routing using open-source global and detailed routers do not give good results, though, they are, so far.*
-
 The Compiler relies on basic building blocks to construct the layout of different RAM/RF/Cache configurations. Check [the compiler documentation](./docs/Compiler.md) for more info. The following shows how a 32x32 memory (DFF based) is constructed.
 
 ![](./docs/img/ram_ex.png)
