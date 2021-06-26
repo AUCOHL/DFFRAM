@@ -443,6 +443,10 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
         end
     endgenerate
     
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2 DIODE_Do0_FF [WSIZE*8-1:0] (.DIODE(Do0_pre));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2 DIODE_Do1_FF [WSIZE*8-1:0] (.DIODE(Do1_pre));
     sky130_fd_sc_hd__dfxtp_1 Do0_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
     sky130_fd_sc_hd__dfxtp_1 Do1_FF[WSIZE*8-1:0] ( .D(Do1_pre), .Q(Do1), .CLK(CLK) );
     
