@@ -2,6 +2,7 @@ Bit:
   latch: "\\bLATCH\\b"
   ff: "\\bFF\\b"
   obuf: "\\bOBUF(\\d*)?\\b"
+  diode: "DIODE"
 Byte:
   bit: "\\BIT\\\\\\[(\\d+)\\\\\\]"
   cg: "\\bCG\\b"
@@ -26,6 +27,7 @@ Block:
   decoder_and: "\\bDEC(\\d*)\\.AND(\\d+)\\b"
   dibuf: "\\bDIBUF\\\\\\[(\\d+)\\\\\\]"
   dobuf: "\\bDo(\\d*)_FF\\\\\\[(\\d+)\\\\\\]"
+  diode_dobuf: "\\bDIODE_Do(\\d*)_FF\\\\\\[(\\d+)\\\\\\]"
   webuf: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
   clkbuf: "\\bCLKBUF\\b"
   abuf: "\\bA(\\d*)BUF\\\\\\[(\\d+)\\\\\\]"
