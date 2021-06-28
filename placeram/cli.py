@@ -49,11 +49,11 @@ import re
 import traceback
 
 class Placer:
-    TAP_CELL_NAME = "sky130_fd_sc_hd__tapvpwrvgnd_1"
     TAP_DISTANCE_MICRONS = 15
 
     DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
     FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
+    TAP_CELL_RX = r"sky130_fd_sc_hd__tapvpwrvgnd_(\d+)"
 
     def __init__(self, lef, tech_lef, df, word_count, word_width, register_file, fill_cell_data):
         # Initialize Database
@@ -66,13 +66,11 @@ class Placer:
         self.sites = self.tlef.getSites()
         self.cells = self.lef.getMasters()
 
-        ## Extract the tap cell for later use
-        self.tap_cell = list(filter(lambda x: x.getName() == Placer.TAP_CELL_NAME, self.cells))[0]
-
         ## Extract the fill cells for later use
         ### We use decap cells to substitute fills wherever possible.
         raw_fill_cells = list(filter(lambda x: re.match(Placer.FILL_CELL_RX, x.getName()), self.cells))
         raw_decap_cells = list(filter(lambda x: re.match(Placer.DECAP_CELL_RX, x.getName()), self.cells))
+        raw_tap_cells = list(filter(lambda x: re.match(Placer.TAP_CELL_RX, x.getName()), self.cells))
         self.fill_cells_by_sites = {}
         for cell in raw_fill_cells:
             match_info = re.match(Placer.FILL_CELL_RX, cell.getName())
@@ -80,6 +78,10 @@ class Placer:
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_decap_cells:
             match_info = re.match(Placer.DECAP_CELL_RX, cell.getName())
+            site_count = int(match_info[1])
+            self.fill_cells_by_sites[site_count] = cell
+        for cell in raw_tap_cells:
+            match_info = re.match(Placer.TAP_CELL_RX, cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
 
@@ -93,9 +95,6 @@ class Placer:
         self.instances = self.block.getInsts()
         eprint("Found %i instances…" % len(self.instances))
 
-        def create_tap(name):
-            return odb.dbInst_create(self.block, self.tap_cell, name)
-
         def create_fill(name, sites=1):
             fill_cell = self.fill_cells_by_sites[sites]
             return odb.dbInst_create(self.block, fill_cell, name)
@@ -103,8 +102,7 @@ class Placer:
         self.micron_in_units = self.block.getDefUnits()
         tap_distance = self.micron_in_units * Placer.TAP_DISTANCE_MICRONS
 
-        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], create_tap, tap_distance, create_fill, fill_cell_sizes)
-
+        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], tap_distance, create_fill, fill_cell_sizes, Placer.TAP_CELL_RX)
 
         if register_file:
             self.hierarchy = DFFRF(self.instances)
@@ -119,6 +117,8 @@ class Placer:
     def place(self):
         eprint("Starting placement…")
         last_row = self.hierarchy.place(self.rows)
+
+        Row.fill_rows(self.rows, 0,  last_row)
 
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
@@ -146,7 +146,6 @@ class Placer:
             width = master.getWidth() / self.micron_in_units
             height = master.getHeight() / self.micron_in_units
             logical_area += width * height
-
 
         eprint("Placement concluded with core area of %fµm x %fµm." % (self.core_width, self.core_height))
 

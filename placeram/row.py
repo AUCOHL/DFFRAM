@@ -19,17 +19,21 @@
 from opendbpy import dbRow, dbInst, dbSite
 from typing import List, Callable
 
+import re
+import sys
+import traceback
+
 class Row(object):
     sw: float = None
     sh: float = None
 
+    tap_rx: str = None
     tap_distance: float = None
-    create_tap: Callable[[str], dbInst] = None
-
-    create_fill: Callable[[str, int], dbInst] = None
 
     # Assumption: A fill of size 1 is always available.
     # If not, there WILL be an out of bounds error.
+    # The fill of size 1 is also the tap cell.
+    create_fill: Callable[[str, int], dbInst] = None
     supported_fill_sizes: List[int] = None
 
     def __init__(self, ordinal, row_obj):
@@ -59,9 +63,8 @@ class Row(object):
 
     def tap(self, width: float=0):
         if self.since_last_tap + width > Row.tap_distance:
-            self.place(Row.create_tap("tap_%i_%i" % (self.ordinal, self.tap_counter)), ignore_tap=True)
+            self.place(Row.create_fill("tap_%i_%i" % (self.ordinal, self.tap_counter), 1), ignore_tap=True)
             self.tap_counter += 1
-            self.since_last_tap = 0
 
     def place(self, instance: dbInst, ignore_tap: bool =False):
         width = instance.getMaster().getWidth()
@@ -72,18 +75,21 @@ class Row(object):
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
 
-        self.since_last_tap += width
+        if re.match(Row.tap_rx, instance.getName()):
+            self.since_last_tap = 0
+        else:
+            self.since_last_tap += width
         self.x += width
         self.cell_counter += 1
 
     @staticmethod
-    def from_odb(rows: List[dbRow], regular_site: dbSite, create_tap: Callable[[str], dbInst], max_tap_distance: float, create_fill: Callable[[str, int], dbInst], supported_fill_sizes: List[int]):
-        Row.create_tap = create_tap
+    def from_odb(rows: List[dbRow], regular_site: dbSite, max_tap_distance: float, create_fill: Callable[[str, int], dbInst], supported_fill_sizes: List[int], tap_cell_rx: str):
         Row.sw, Row.sh = (regular_site.getWidth(), regular_site.getHeight())
         Row.tap_distance = max_tap_distance
 
         Row.create_fill = create_fill
         Row.supported_fill_sizes = sorted(supported_fill_sizes, reverse=True)
+        Row.tap_rx = tap_cell_rx
 
         returnable = []
         for i, row in enumerate(rows):
@@ -120,28 +126,39 @@ class Row(object):
         [A][B][C][D]
         [C][S]
         [F][X][N]
-        [V]
+        [V]   [K]
 
         -- After this function --
 
         [A][B][C][D]
         [C][S][ F  ]
         [F][X][N][F]
-        [V][ F  ][F]
-
-        Technology's amazing, innit?
+        [V]   [K][F]
 
         """
+
         def pack(size, fill_sizes):
             fills = []
             current = size
             tracker = 0
 
+            since_last_tap = 0
+            if current > 1:
+                # Always start with a tap.
+                fills.append(1)
+                current -= 1
+            
             while current > 0:
                 current_fill = fill_sizes[tracker]
                 while current >= current_fill:
-                    fills.append(current_fill)
-                    current -= current_fill
+                    if since_last_tap + current_fill > Row.tap_distance:
+                        fills.append(1)
+                        since_last_tap = 0
+                        current -= 1
+                    else:
+                        fills.append(current_fill)
+                        since_last_tap += (current_fill * Row.sw)
+                        current -= current_fill
                 tracker += 1
 
             return fills
@@ -161,8 +178,7 @@ class Row(object):
             empty = max_sw - width_sites
 
             fills = pack(empty, Row.supported_fill_sizes)
-
             for fill in fills:
                 fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
-                r.place(fill_cell)
+                r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1

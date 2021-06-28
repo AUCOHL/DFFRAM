@@ -351,12 +351,12 @@ class Slice(Placeable): # A slice is defined as 8 words.
         for decoder in vertical_right:
             current_row = decoder.place(row_list, start_row)
 
-        Row.fill_rows(row_list, start_row, current_row)
+        #Row.fill_rows(row_list, start_row, current_row)
         final_rows.append(current_row)
 
         # Epilogue
         max_row = max(*final_rows)
-        Row.fill_rows(row_list, start_row, max_row)
+        # Row.fill_rows(row_list, start_row, max_row)
         return max_row
 
     def word_count(self):
@@ -420,7 +420,7 @@ class LRPlaceable(Placeable):
         # Act 2. Place Horizontal Elements
         current_row = place_horizontal_elements(start_row)
 
-        Row.fill_rows(row_list, start_row, current_row)
+        #Row.fill_rows(row_list, start_row, current_row)
 
         final_rows.append(current_row)
 
@@ -436,7 +436,7 @@ class LRPlaceable(Placeable):
 
         # Epilogue
         max_row = max(*final_rows)
-        Row.fill_rows(row_list, start_row, max_row)
+        #Row.fill_rows(row_list, start_row, max_row)
         return max_row
 
 class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
@@ -581,28 +581,24 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
 
             for slice in self.slices:
                 current_row = slice.place(row_list, current_row)
-            for i, port in enumerate(self.ties):
+
+            for port in range(0, len(self.ties)):
                 r = row_list[current_row]
-                for j, tie in enumerate(port):
+                for tie_group, tie in enumerate(self.ties[port]):
                     r.place(tie)
-                    for floatbuf in self.floatbufs[i][j]:
+                    for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
+
                 current_row += 1
-
-            # for port in self.dobufs:
-            #     r = row_list[current_row]
-            #     for dobuf in port:
-            #         r.place(dobuf)
-            #     current_row += 1
-
-            for idx in range(len(self.dobufs)):
                 r = row_list[current_row]
-                for sidx in range(len(self.dobufs[idx])):
-                    r.place(self.dobufs[idx][sidx])
-                    r.place(self.diodes_dobufs[idx][sidx])
+
+                dobufs = self.dobufs[port]
+                diodes_dobufs = self.diodes_dobufs[port]
+                for dobuf, diode in zip(dobufs, diodes_dobufs):
+                    r.place(dobuf)
+                    r.place(diode)
+
                 current_row += 1
-
-
             return current_row
 
         return self.lrplace(
