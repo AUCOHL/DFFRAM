@@ -626,11 +626,34 @@ def antenna_check(build_folder, def_file, out_file):
     openlane("openroad", "%s/antenna_check.tcl" % build_folder)
     openlane("mv", "%s/antenna.rpt" % build_folder, out_file)
 
+def gds(build_folder, design, def_file, out_file):
+    if out_file.endswith(".gds"):
+        out_file = out_file[:-4]
+    def_file = os.path.relpath(def_file, build_folder)
+    out_file = os.path.relpath(out_file, build_folder)
+    print("--- GDS ---")
+    with open("%s/gds.sh" % build_folder, "w") as f:
+        f.write(f"""
+        set -e
+        echo "Starting GDS..."
+        export DESIGN_NAME={design}
+        export TECH_LEF={pdk_tlef_dir}/sky130_fd_sc_hd.tlef
+        export MAGIC_PAD=0
+        export MAGIC_ZEROIZE_ORIGIN=1
+        export CURRENT_DEF={def_file}
+        export MAGIC_GENERATE_GDS=1
+        export magic_result_file_tag={out_file}
+        export RESULTS_DIR=.
+        cd {build_folder}
+        mkdir -p magic
+        magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < /openLANE_flow/scripts/magic/mag_gds.tcl
+        """)
 
+    openlane("bash", "%s/gds.sh" % build_folder)
 
 @click.command()
 @click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
-@click.option("-t", "--to", default="lvs", help="End after this step")
+@click.option("-t", "--to", default="gds", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
 @click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="path to sky130A pdk")
@@ -722,6 +745,7 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
     antenna_report = i(".antenna.rpt")
     report = i(".rpt")
     drc_report = i(".drc.rpt")
+    gds_file = i(".gds")
 
     try:
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
@@ -824,6 +848,15 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
                 powered_netlist,
                 report
             )
+        ),
+        (
+            "gds",
+            lambda: gds(
+                build_folder,
+                design,
+                powered_def,
+                gds_file
+            )
         )
     ]
 
@@ -841,7 +874,7 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
         if to == name:
             execute_steps = False
 
-    if drc:
+    if drc and last_def is not None:
         magic_drc(build_folder, design, last_def)
 
     elapsed = time.time() - start
