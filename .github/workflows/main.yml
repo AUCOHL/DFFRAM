@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
         matrix:
-          count: ["8", "32", "128", "256", "1024", "2048"]
+          count: ["8", "32", "128"] #, "256", "1024", "2048"]
           width: ["32"]
           variant: ["DEFAULT", "1RW1R"]
     steps:
@@ -50,7 +50,7 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          CLK_PERIOD=$(yq e '.${{ matrix.count }}x${{ matrix.width }}' ./.github/workflows/clk_periods.yml)
+          CLK_PERIOD=$(yq e '.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/clk_periods.yml)
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
           -b sky130A:ram -v ${{ matrix.variant }} --to sta_1 -cp $CLK_PERIOD
           ! grep -l VIOLATED -r ./build/*/*.sta.rpt;
@@ -79,7 +79,7 @@ jobs:
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
   test_flow:
-    name: Test Flow
+    name: Test Flow (1RW, 1RW1R)
     runs-on: ubuntu-latest
     strategy:
         matrix:
@@ -113,3 +113,21 @@ jobs:
           PDK_ROOT: /tmp/pdklite
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:ram -v ${{ matrix.variant }}
+  test_flow_rf:
+    name: Test Flow (2R1W)
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+          include:
+            - { count: "32", width: "32", variant: "2R1W" }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get PDK
+        run: |
+          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+      - name: Run
+        env:
+          PDK_ROOT: /tmp/pdklite
+        run: |
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:rf -v ${{ matrix.variant }}

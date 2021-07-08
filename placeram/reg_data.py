@@ -121,7 +121,7 @@ class DFFRF(Placeable): # 32 words
         raw_words = {}
         raw_decoders5x32 = {}
 
-        word = r"\bFILE\\\[(\d+)\\\]\.RFW\b"
+        word = r"\bREGF\\\[(\d+)\\\]\.RFW\b"
         decoder5x32 = r"\bDEC(\d+)\b"
 
         raw_rfw0_ties = {}
@@ -329,9 +329,13 @@ class Decoder3x8(Placeable):
     def __init__(self, instances):
         self.andgates = None
 
-        andgate = r"AND(\d+)"
+        andgate = r"\bAND(\d+)\b"
+        abuf = r"\bABUF\\\[(\d+)\\\]"
+        enbuf = r"\bENBUF\b"
 
         raw_andgates = {} # multiple decoders so multiple entries ordered by 1st match
+        raw_abufs = {}
+        self.enbuf = None
 
         m = NS()
         for instance in instances:
@@ -342,10 +346,17 @@ class Decoder3x8(Placeable):
                 i = int(m.andgate_match[1])
                 raw_andgates[i] = raw_andgates.get(i) or []
                 raw_andgates[i] = instance
+            elif sarv(m, "abuf_match", re.search(abuf, n)):
+                i = int(m.abuf_match[1])
+                raw_abufs[i] = raw_abufs.get(i) or []
+                raw_abufs[i] = instance
+            elif sarv(m, "enbuf_match", re.search(enbuf, n)):
+                self.enbuf = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.andgates = d2a(raw_andgates)
+        self.abufs = d2a(raw_abufs)
 
     def place(self, row_list, start_row=0):
         """
@@ -357,6 +368,13 @@ class Decoder3x8(Placeable):
             r = row_list[start_row + i]
             if i < len(self.andgates):
                 r.place(self.andgates[i])
+
+        i = 0
+        for instance in self.abufs + [self.enbuf]:
+            r = row_list[start_row + i]
+            r.place(instance)
+            i += 1
+
 
         return start_row + 8
 

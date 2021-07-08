@@ -35,10 +35,10 @@ module DEC2x4 (
     input   [1:0]   A,
     output  [3:0]   SEL
 );
-    sky130_fd_sc_hd__nor3b_4    AND0 ( .Y(SEL[0]), .A(A[0]),   .B(A[1]), .C_N(EN) );
-    sky130_fd_sc_hd__and3b_4    AND1 ( .X(SEL[1]), .A_N(A[1]), .B(A[0]), .C(EN) );
-    sky130_fd_sc_hd__and3b_4    AND2 ( .X(SEL[2]), .A_N(A[0]), .B(A[1]), .C(EN) );
-    sky130_fd_sc_hd__and3_4     AND3 ( .X(SEL[3]), .A(A[1]),   .B(A[0]), .C(EN) );
+    sky130_fd_sc_hd__nor3b_2    AND0 ( .Y(SEL[0]), .A(A[0]),   .B(A[1]), .C_N(EN) );
+    sky130_fd_sc_hd__and3b_2    AND1 ( .X(SEL[1]), .A_N(A[1]), .B(A[0]), .C(EN) );
+    sky130_fd_sc_hd__and3b_2    AND2 ( .X(SEL[2]), .A_N(A[0]), .B(A[1]), .C(EN) ); // 4.600000
+    sky130_fd_sc_hd__and3_2     AND3 ( .X(SEL[3]), .A(A[1]),   .B(A[0]), .C(EN) ); // 4.14
     
 endmodule
 

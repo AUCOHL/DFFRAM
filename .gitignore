@@ -25,3 +25,5 @@ __pycache__
 *.ext
 support/
 /c2w
+/*.def
+*.log

@@ -124,8 +124,14 @@ def prep(build_folder, local_pdk_root):
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
     merge_lefs_into(build_folder)
 
+command_list = []
+def cl():
+    with open("./command_list.log", "w") as f:
+        f.write("\n".join([" ".join(cmd) for cmd in command_list]))
+
 def run_docker(image, args):
-    subprocess.run([
+    global command_list
+    cmd = [
         "docker", "run",
         "-v",  "%s:%s" % (pdk_root, pdk_root),
         "-v", "%s:/mnt/dffram" % rp("."),
@@ -134,7 +140,9 @@ def run_docker(image, args):
         "-e", "PDKPATH=%s/sky130A" % (pdk_root),
         "-e", "LC_ALL=en_US.UTF-8",
         "-e", "LANG=en_US.UTF-8"
-    ] + [image] + args, check=True)
+    ] + [image] + args
+    command_list.append(cmd)
+    subprocess.run(cmd, check=True)
 
 def openlane(*args_tuple):
     args = list(args_tuple)
@@ -256,7 +264,7 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
     last_def = out_file
 
 
-def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, represent=os.devnull):
+def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, density=os.devnull, represent=os.devnull):
     global last_def
     print("--- placeRAM Script ---")
     unaltered = out_file + ".ref"
@@ -268,6 +276,7 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, re
         "--tech-lef", "%s/sky130_fd_sc_hd.tlef" % pdk_tlef_dir,
         "--size", size,
         "--write-dimensions", dimensions,
+        "--write-density", density,
         "--represent", represent,
         "--building-blocks", building_blocks,
         in_file
@@ -697,6 +706,7 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
     initial_floorplan = i(".initfp.def")
     initial_placement = i(".initp.def")
     dimensions_file = i(".dimensions.txt")
+    density_file = i(".density.txt")
     final_floorplan = i(".fp.def")
     no_pins_placement = i(".npp.def")
     final_placement = i(".placed.def")
@@ -722,10 +732,10 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
     def placement(in_width, in_height):
         nonlocal width, height
         floorplan(build_folder, design, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
-        placeram(initial_floorplan, initial_placement, size, building_blocks, dimensions_file)
+        placeram(initial_floorplan, initial_placement, size, building_blocks, dimensions=dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
-        placeram(final_floorplan, no_pins_placement, size, building_blocks)
+        placeram(final_floorplan, no_pins_placement, size, building_blocks, density=density_file)
         place_pins(build_folder, no_pins_placement, final_placement, pin_order_file)
         verify_placement(build_folder, final_placement)
         create_image(build_folder, final_placement, width, height)
@@ -858,16 +868,17 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
                 pass
 
     print("Done in %.2fs." % elapsed)
+    cl()
 def main():
     try:
         flow()
     except subprocess.CalledProcessError as e:
         print("A step has failed:", e)
-        print("Invokable:")
-        print(' '.join(e.cmd))
+        cl()
         exit(69)
     except Exception:
         print("An unhandled exception has occurred.", traceback.format_exc())
+        cl()
         exit(69)
 
 if __name__ == '__main__':
