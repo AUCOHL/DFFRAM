@@ -626,30 +626,58 @@ def antenna_check(build_folder, def_file, out_file):
     openlane("openroad", "%s/antenna_check.tcl" % build_folder)
     openlane("mv", "%s/antenna.rpt" % build_folder, out_file)
 
-def gds(build_folder, design, def_file, out_file):
-    if out_file.endswith(".gds"):
-        out_file = out_file[:-4]
-    def_file = os.path.relpath(def_file, build_folder)
-    out_file = os.path.relpath(out_file, build_folder)
+def gds(build_folder, design, def_file, gds_file):
+    
+    def_file_rel = os.path.relpath(def_file, build_folder)
+    gds_file_rel = os.path.relpath(gds_file, build_folder)
+
+    gds_file_noext = gds_file_rel
+    if gds_file_noext.endswith(".gds"):
+        gds_file_noext = gds_file_noext[:-4]
+
     print("--- GDS ---")
     with open("%s/gds.sh" % build_folder, "w") as f:
         f.write(f"""
         set -e
-        echo "Starting GDS..."
-        export DESIGN_NAME={design}
-        export TECH_LEF={pdk_tlef_dir}/sky130_fd_sc_hd.tlef
-        export MAGIC_PAD=0
-        export MAGIC_ZEROIZE_ORIGIN=1
-        export CURRENT_DEF={def_file}
-        export MAGIC_GENERATE_GDS=1
-        export magic_result_file_tag={out_file}
-        export RESULTS_DIR=.
         cd {build_folder}
         mkdir -p magic
-        magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < /openLANE_flow/scripts/magic/mag_gds.tcl
+
+        export TECH_LEF={pdk_tlef_dir}/sky130_fd_sc_hd.tlef
+        export DESIGN_NAME={design}
+        export CURRENT_DEF={def_file_rel}
+        export CURRENT_GDS={gds_file_rel}
+        export magic_report_file_tag={gds_file_rel}
+        export magic_result_file_tag={gds_file_noext}
+        export MAGIC_PAD=0
+        export MAGIC_ZEROIZE_ORIGIN=1
+        export MAGIC_GENERATE_GDS=1
+        export MAGIC_DRC_USE_GDS=1
+        export RESULTS_DIR=.
+
+        cat /openLANE_flow/scripts/magic/mag_gds.tcl > ./gds.tcl
+        sed -i "s/exit 0/feedback save .\/magic\/feedback.txt; exit 0/" ./gds.tcl
+
+        echo "Streaming out GDSII..."
+        magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < ./gds.tcl
+        echo "Running GDS DRC..."
+        magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < /openLANE_flow/scripts/magic/drc.tcl
         """)
 
+    
     openlane("bash", "%s/gds.sh" % build_folder)
+
+    drc_report = "%s.drc" % gds_file
+    drc_report_str = open(drc_report).read()
+    count = r"COUNT:\s*(\d+)"
+    errors = 0
+    count_match = re.search(count, drc_report_str)
+    if count_match is not None:
+        errors = int(count_match[1])
+    if errors != 0:
+        print("Error: There are %i DRC errors. Check %s." % (errors, drc_report))
+        exit(65)
+    else:
+        print("DRC successful.")
 
 @click.command()
 @click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
