@@ -199,11 +199,10 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
         set vtop {design}
         set SCL $env(LIBERTY)
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-        read_verilog ./platforms/sky130A/sky130_fd_sc_hd/diode_blackbox.v
         read_verilog {bb_used}
         {chparam}
         hierarchy -check -top {design}
-        synth -top {design} -flatten
+        synth -top {design}
         opt_clean -purge
         splitnets
         opt_clean -purge
@@ -388,7 +387,6 @@ def pdngen(build_folder, width, height, in_file, out_file):
         connect {{
         {{ met1 met4 }}
         }}
-        pins {{ met4 }}
     }}
     """.format(pitch=pitch, offset=offset)
 
@@ -686,12 +684,11 @@ def gds(build_folder, design, def_file, gds_file):
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
 @click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="path to sky130A pdk")
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-sfx", "--suffix", default="", help="suffix added to the end of the project folder name")
 @click.option("-b", "--building-blocks", default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
-@click.option("-cp", "--clk_period", default=3, type=float, help="clk period for sta")
+@click.option("-C", "--clock-period", "clk_period", default=3, type=float, help="clk period for sta")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
-def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_period, variant, drc):
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc):
     global bb_used, last_def, last_image
 
     subprocess.run([
@@ -742,7 +739,7 @@ def flow(frm, to, only, pdk_root, skip, size, suffix, building_blocks, clk_perio
         "width_bytes": word_width_bytes,
         "variant": variant_string
     })
-    build_folder = "./build/%s_SIZE%i%s" % (design, word_width, suffix)
+    build_folder = "./build/%s_SIZE%i" % (design, word_width)
 
     ensure_dir(build_folder)
 

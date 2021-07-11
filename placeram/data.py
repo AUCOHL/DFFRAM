@@ -15,7 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from .util import d2a, sarv
 from .row import Row
 from .placeable import Placeable, DataError, RegExp
@@ -38,8 +37,7 @@ class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
         self.store = None
         self.obufs = None
-        self.diodes = []
-
+        
         raw_obufs: Dict[int, Instance] = {}
 
         m = NS()
@@ -54,8 +52,6 @@ class Bit(Placeable):
                 raw_obufs[port] = instance
             elif sarv(m, "latch_match", re.search(r.latch, n)):
                 self.store = instance
-            elif sarv(m, "diode_match", re.search(r.diode, n)):
-                self.diode = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
@@ -71,9 +67,8 @@ class Bit(Placeable):
         r = row_list[start_row]
 
         r.place(self.store)
-        r.place(self.diode)
-        for idx in range(len(self.obufs)):
-            r.place(self.obufs[idx])
+        for obuf in self.obufs:
+            r.place(obuf)
 
         return start_row
 
@@ -84,7 +79,7 @@ class Byte(Placeable):
         self.clkinv: Instance = None
         self.bits: List[Bit] = None
         self.selinvs: List[Instance] = None
-
+        
         raw_bits: Dict[int, List[Instance]] = {}
         raw_selinvs: Dict[int, Instance] = {}
 
@@ -400,7 +395,7 @@ class LRPlaceable(Placeable):
                 column += chunks[i // 2]
             target.append(column)
             right = not right
-
+        
         final_rows = []
 
         # Act 1. Place Left Vertical Elements
@@ -456,7 +451,7 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         self.fbufenbufs: List[List[Instance]] = None
         ## Floatbufs are grouped further: there are a couple of floatbufs per tie cell.
         self.ties: List[List[Instance]] = None
-        self.floatbufs: List[List[List[Instance]]] = None
+        self.floatbufs: List[List[List[Instance]]] = None 
 
         raw_enbufs: Dict[int, Instance] = {}
 
@@ -465,7 +460,6 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
 
         raw_dibufs: Dict[int, Instance] = {}
         raw_dobufs: Dict[int, Dict[int, Instance]] = {}
-        raw_diodes_dobufs: Dict[int, Dict[int, Instance]] = {}
 
         raw_webufs: Dict[int, Instance] = {}
 
@@ -525,11 +519,6 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 i = int(m.dobuf_match[2])
                 raw_dobufs[port] = raw_dobufs.get(port) or {}
                 raw_dobufs[port][i] = instance
-            elif sarv(m, "diode_dobuf_match", re.search(r.diode_dobuf, n)):
-                port = int(m.diode_dobuf_match[1] or "0")
-                i = int(m.diode_dobuf_match[2])
-                raw_diodes_dobufs[port] = raw_diodes_dobufs.get(port) or {}
-                raw_diodes_dobufs[port][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
@@ -540,7 +529,6 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         self.enbufs = d2a(raw_enbufs)
         self.dibufs = d2a(raw_dibufs)
         self.dobufs = d2a({k: d2a(v) for k, v in raw_dobufs.items()})
-        self.diodes_dobufs = d2a({k: d2a(v) for k, v in raw_diodes_dobufs.items()})
 
         self.webufs = d2a(raw_webufs)
         self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
@@ -589,18 +577,14 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
 
-                current_row += 1
+            for port in self.dobufs:
                 r = row_list[current_row]
-
-                dobufs = self.dobufs[port]
-                diodes_dobufs = self.diodes_dobufs[port]
-                for dobuf, diode in zip(dobufs, diodes_dobufs):
+                for dobuf in port:
                     r.place(dobuf)
-                    r.place(diode)
-
                 current_row += 1
-            return current_row
 
+            return current_row
+        
         return self.lrplace(
             row_list=row_list,
             start_row=start_row,
@@ -676,7 +660,7 @@ class HigherLevelPlaceable(LRPlaceable):
         self.webufs: List[Instance] = None
 
         self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
-
+        
         # These sets of buffers are duplicated once per read port,
         # so the first access always picks the port.
         self.decoder_ands: List[List[Instance]] = None
@@ -732,7 +716,7 @@ class HigherLevelPlaceable(LRPlaceable):
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-
+    
         self.dibufs = d2a(raw_dibufs)
         self.webufs = d2a(raw_webufs)
 
@@ -765,7 +749,7 @@ class HigherLevelPlaceable(LRPlaceable):
     def place(self, row_list: List[Row], start_row: int = 0):
         def symmetrically_placeable():
             return self.word_count() > 128
-
+        
         current_row = start_row
 
         def place_horizontal_elements(start_row: int):

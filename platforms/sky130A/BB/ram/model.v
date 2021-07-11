@@ -133,8 +133,6 @@ module BYTE #(  parameter   USE_LATCH=1)(
         sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
     
         for(i=0; i<8; i=i+1) begin : BIT
-            (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODEi0 (.DIODE(Di0[i]));
             if(USE_LATCH == 0)
                 sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
@@ -175,8 +173,6 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
         sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
     
         for(i=0; i<8; i=i+1) begin : BIT
-            (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODEi0 (.DIODE(Di0[i]));
             if(USE_LATCH == 0)
                 sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
@@ -364,9 +360,7 @@ module RAM32 #( parameter   USE_LATCH=1,
         end
     endgenerate
     
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do_FF [WSIZE*8-1:0] (.DIODE(Do0_pre));
-    sky130_fd_sc_hd__dfxtp_1 Do_FF [WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
+    sky130_fd_sc_hd__dfxtp_1 Do_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
 
 endmodule
 
@@ -443,10 +437,6 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
         end
     endgenerate
     
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0_FF [WSIZE*8-1:0] (.DIODE(Do0_pre));
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do1_FF [WSIZE*8-1:0] (.DIODE(Do1_pre));
     sky130_fd_sc_hd__dfxtp_1 Do0_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
     sky130_fd_sc_hd__dfxtp_1 Do1_FF[WSIZE*8-1:0] ( .D(Do1_pre), .Q(Do1), .CLK(CLK) );
     
