@@ -202,7 +202,7 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
         read_verilog {bb_used}
         {chparam}
         hierarchy -check -top {design}
-        synth -top {design}
+        synth -top {design} -flatten
         opt_clean -purge
         splitnets
         opt_clean -purge
