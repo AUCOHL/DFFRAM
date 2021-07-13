@@ -27,6 +27,7 @@ import math
 from types import SimpleNamespace as NS
 from functools import partial
 from typing import Callable, List, Dict, Union, TextIO
+from itertools import zip_longest
 
 # --
 
@@ -436,7 +437,10 @@ class LRPlaceable(Placeable):
 
 class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
     def __init__(self, instances: List[Instance]):
+        self.clk_diode: Instance = None
         self.clkbuf: Instance = None
+        self.clkbuf_diode: Instance = None
+
         self.dibufs: List[Instance] = None
         self.webufs: List[Instance] = None
 
@@ -447,7 +451,9 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         self.decoder_ands: List[List[Instance]] = None
         self.enbufs: List[Instance] = None
         self.dobufs: List[List[Instance]] = None
+        self.a_diodes: List[List[Instance]] = None
         self.abufs: List[List[Instance]] = None
+        self.abuf_diodes: List[List[Instance]] = None
         self.fbufenbufs: List[List[Instance]] = None
         ## Floatbufs are grouped further: there are a couple of floatbufs per tie cell.
         self.ties: List[List[Instance]] = None
@@ -460,10 +466,13 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
 
         raw_dibufs: Dict[int, Instance] = {}
         raw_dobufs: Dict[int, Dict[int, Instance]] = {}
+        raw_do_diodes: Dict[int, Dict[int, Instance]] = {}
 
         raw_webufs: Dict[int, Instance] = {}
-
+        
+        raw_a_diodes: Dict[int, Dict[int, Instance]] = {}
         raw_abufs: Dict[int, Dict[int, Instance]] = {}
+        raw_abuf_diodes: Dict[int, Dict[int, Instance]] = {}
 
         raw_ties: Dict[int, Dict[int, Instance]] = {}
         raw_fbufenbufs: Dict[int, Dict[int, Instance]] = {}
@@ -489,8 +498,22 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
             elif sarv(m, "webuf_match", re.search(r.webuf, n)):
                 i = int(m.webuf_match[1])
                 raw_webufs[i] = instance
+            elif sarv(m, "clk_match", re.search(r.clk_diode, n)):
+                self.clk_diode = instance
+            elif sarv(m, "clkbufd_match", re.search(r.clkbuf_diode, n)):
+                self.clkbuf_diode = instance
             elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
+            elif sarv(m, "a_matches", re.search(r.a_diode, n)):
+                port = int(m.a_matches[1] or "0")
+                i = int(m.a_matches[2])
+                raw_a_diodes[port] = raw_a_diodes.get(port) or {}
+                raw_a_diodes[port][i] = instance
+            elif sarv(m, "abufd_match", re.search(r.abuf_diode, n)):
+                port = int(m.abufd_match[1] or "0")
+                i = int(m.abufd_match[2])
+                raw_abuf_diodes[port] = raw_abuf_diodes.get(port) or {}
+                raw_abuf_diodes[port][i] = instance
             elif sarv(m, "abuf_match", re.search(r.abuf, n)):
                 port = int(m.abuf_match[1] or "0")
                 i = int(m.abuf_match[2])
@@ -519,6 +542,11 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 i = int(m.dobuf_match[2])
                 raw_dobufs[port] = raw_dobufs.get(port) or {}
                 raw_dobufs[port][i] = instance
+            elif sarv(m, "dobufd_match", re.search(r.dobuf_diode, n)):
+                port = int(m.dobufd_match[1] or "0")
+                i = int(m.dobufd_match[2])
+                raw_do_diodes[port] = raw_do_diodes.get(port) or {}
+                raw_do_diodes[port][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
@@ -529,6 +557,7 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         self.enbufs = d2a(raw_enbufs)
         self.dibufs = d2a(raw_dibufs)
         self.dobufs = d2a({k: d2a(v) for k, v in raw_dobufs.items()})
+        self.do_diodes = d2a({k: d2a(v) for k, v in raw_do_diodes.items()})
 
         self.webufs = d2a(raw_webufs)
         self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
@@ -537,6 +566,9 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
 
         self.ties = d2a({k: d2a(v) for k, v in raw_ties.items()})
         self.floatbufs = d2a({k: d2a({k: d2a(v2) for k, v2 in v.items()}) for k, v in raw_floatbufs.items()})
+        self.abuf_diodes = d2a({k: d2a(v) for k, v in raw_abuf_diodes.items()})
+        self.a_diodes = d2a({k: d2a(v) for k, v in raw_a_diodes.items()})
+
 
     def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
@@ -552,6 +584,7 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         ra("Address Buffers", self.abufs, header="Port")
         ra("Data Input Buffers", self.dibufs)
         ra("Data Output Buffers", self.dobufs, header="Port")
+        ra("Data Output Diodes", self.do_diodes, header="Port")
         ra("Ties", self.ties, header="Port")
         ra("Float Buffer Enable Buffers", self.fbufenbufs, header="Port")
         ra("Float Buffers", self.floatbufs, header="Port")
@@ -570,17 +603,22 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
             for slice in self.slices:
                 current_row = slice.place(row_list, current_row)
 
-            for port in range(0, len(self.ties)):
+            port_count = len(self.ties)
+
+            for port in range(port_count):
                 r = row_list[current_row]
                 for tie_group, tie in enumerate(self.ties[port]):
                     r.place(tie)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
 
-            for port in self.dobufs:
+            for port in range(port_count):
                 r = row_list[current_row]
-                for dobuf in port:
+                dobufs = self.dobufs[port]
+                diodes = self.do_diodes[port]
+                for dobuf, diode in zip(dobufs, diodes):
                     r.place(dobuf)
+                    r.place(diode)
                 current_row += 1
 
             return current_row
@@ -590,12 +628,16 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
             start_row=start_row,
             addresses=len(self.abufs),
             common=[
+                self.clk_diode,
                 self.clkbuf,
+                self.clkbuf_diode,
                 *self.webufs
             ],
             port_elements=[
                 "enbufs",
+                "a_diodes",
                 "abufs",
+                "abuf_diodes",
                 "decoder_ands",
                 "fbufenbufs"
             ],
@@ -613,9 +655,13 @@ class Mux(Placeable):
         # First access is the byte
         self.selbufs: List[List[Instance]] = None
         self.muxes: List[List[Instance]] = None
+        self.mux_diodes: List[List[Instance]] = None
+        self.input_diodes: List[List[List[Instance]]] = None
 
         raw_selbufs: Dict[int, Dict[int, Instance]] = {}
         raw_muxes: Dict[int, Dict[int, Instance]] = {}
+        raw_mux_diodes: Dict[int, Dict[int, Instance]] = {}
+        raw_input_diodes: Dict[int, Dict[int, Dict[int, Instance]]] = {}
 
         m = NS()
         r = self.regexes()
@@ -625,6 +671,15 @@ class Mux(Placeable):
                 line, byte = (int(m.selbuf_match[1] or "0"), int(m.selbuf_match[2]))
                 raw_selbufs[byte] = raw_selbufs.get(byte) or {}
                 raw_selbufs[byte][line] = instance
+            # elif sarv(m, "ind_match", re.search(r.input_diode, n)):
+            #     byte, input, bit = (int(m.ind_match[1]), (int(m.ind_match[2]), int(m.ind_match[3])))
+            #     raw_input_diodes[byte] = raw_mux_diodes.get(byte) or {}
+            #     raw_input_diodes[byte][input] = raw_input_diodes[byte].get(input) or {}
+            #     raw_input_diodes[byte][input][bit] = instance
+            elif sarv(m, "muxd_match", re.search(r.mux_diode, n)):
+                byte, bit = (int(m.muxd_match[1]), int(m.muxd_match[2]))
+                raw_mux_diodes[byte] = raw_mux_diodes.get(byte) or {}
+                raw_mux_diodes[byte][bit] = instance
             elif sarv(m, "mux_match", re.search(r.mux, n)):
                 byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
                 raw_muxes[byte] = raw_muxes.get(byte) or {}
@@ -634,6 +689,7 @@ class Mux(Placeable):
 
         self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
         self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
+        self.mux_diodes = d2a({k: d2a(v) for k, v in raw_mux_diodes.items()})
 
     def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
@@ -644,11 +700,14 @@ class Mux(Placeable):
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
-        for selbuf_lines, mux_bits in zip(self.selbufs, self.muxes):
-            for line in selbuf_lines:
-                r.place(line)
-            for bit in mux_bits:
-                r.place(bit)
+        group_list = len(self.muxes)
+        for i in range(group_list):
+            for selbuf in self.selbufs[i]:
+                r.place(selbuf)
+            for mux, diode in zip_longest(self.muxes[i], self.mux_diodes[i]):
+                r.place(mux)
+                if diode is not None:
+                    r.place(diode)
 
         return start_row + 1
 
@@ -663,6 +722,7 @@ class HigherLevelPlaceable(LRPlaceable):
         
         # These sets of buffers are duplicated once per read port,
         # so the first access always picks the port.
+        self.a_diodes: List[List[Instance]] = None
         self.decoder_ands: List[List[Instance]] = None
         self.enbufs: List[Instance] = None
         self.domuxes: List[Mux] = None
@@ -677,7 +737,11 @@ class HigherLevelPlaceable(LRPlaceable):
         raw_decoder_ands: Dict[int, Dict[int, Instance]] = {}
         raw_enbufs: Dict[int, Instance] = {}
         raw_domuxes: Dict[int, List[Instance]] = {}
+
+        raw_a_diodes: Dict[int, Dict[int, Instance]] = {}
         raw_abufs: Dict[int, Dict[int, Instance]] = {}
+
+        raw_do_diodes: Dict[int, Dict[int, Instance]] = {}
 
         m = NS()
         r = self.regexes()
@@ -701,6 +765,11 @@ class HigherLevelPlaceable(LRPlaceable):
                 raw_webufs[i] = instance
             elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
+            elif sarv(m, "a_matches", re.search(r.a_diode, n)):
+                port = int(m.a_matches[1] or "0")
+                i = int(m.a_matches[2])
+                raw_a_diodes[port] = raw_a_diodes.get(port) or {}
+                raw_a_diodes[port][i] = instance
             elif sarv(m, "abuf_match", re.search(r.abuf, n)):
                 port = int(m.abuf_match[1] or "0")
                 i = int(m.abuf_match[2])
@@ -713,12 +782,18 @@ class HigherLevelPlaceable(LRPlaceable):
                 port = int(m.domux_match[1] or "0")
                 raw_domuxes[port] = raw_domuxes.get(port) or []
                 raw_domuxes[port].append(instance)
+            elif sarv(m, "dobufd_match", re.search(r.dobuf_diode, n)):
+                port = int(m.dobufd_match[1] or "0")
+                i = int(m.dobufd_match[2])
+                raw_do_diodes[port] = raw_do_diodes.get(port) or {}
+                raw_do_diodes[port][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
     
         self.dibufs = d2a(raw_dibufs)
         self.webufs = d2a(raw_webufs)
+        self.do_diodes = d2a({k: d2a(v) for k, v in raw_do_diodes.items()})
 
         self.blocks = d2a({k: create_hierarchy(v, block_size) for k, v in
             raw_blocks.items()})
@@ -727,6 +802,7 @@ class HigherLevelPlaceable(LRPlaceable):
         self.enbufs = d2a(raw_enbufs)
         self.domuxes = d2a({ k: Mux(v) for k, v in raw_domuxes.items()})
         self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
+        self.a_diodes = d2a({k: d2a(v) for k, v in raw_a_diodes.items()})
 
     def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
         tab_level += 1
@@ -780,6 +856,13 @@ class HigherLevelPlaceable(LRPlaceable):
             for domux in self.domuxes:
                 current_row = domux.place(row_list, current_row)
 
+            r = row_list[current_row]
+            for port in self.do_diodes:
+                for do_diode in port:
+                    r.place(do_diode)
+                current_row += 1
+
+
             return current_row
 
         return self.lrplace(
@@ -793,6 +876,7 @@ class HigherLevelPlaceable(LRPlaceable):
             port_elements=[
                 "enbufs",
                 "abufs",
+                "a_diodes",
                 "decoder_ands"
             ],
             place_horizontal_elements=place_horizontal_elements

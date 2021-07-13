@@ -151,7 +151,18 @@ def openlane(*args_tuple):
 def sta(build_folder, design, netlist, clk_period=3, spef_file=None):
     print("--- Static Timing Analysis ---")
     with open("%s/sta.tcl" % build_folder, 'w') as f:
-        env_vars = """
+        spef_var = f"""
+        set ::env(opensta_report_file_tag) {netlist}.sta
+        """
+        if spef_file:
+            spef_var = f"""
+            set ::env(CURRENT_SPEF) {spef_file}
+            set ::env(opensta_report_file_tag) {spef_file}.sta
+            """
+            
+
+        env_vars = f"""
+            set ::env(MERGED_LEF_UNPADDED) {build_folder}/sky130_fd_sc_hd.merged.lef
             set ::env(SYNTH_DRIVING_CELL) "sky130_fd_sc_hd__inv_8"
             set ::env(SYNTH_DRIVING_CELL_PIN) "Y"
             set ::env(SYNTH_CAP_LOAD) "17.65"
@@ -164,27 +175,11 @@ def sta(build_folder, design, netlist, clk_period=3, spef_file=None):
             set ::env(CURRENT_NETLIST) {netlist}
             set ::env(DESIGN_NAME) {design}
             set ::env(BASE_SDC_FILE) /openLANE_flow/scripts/base.sdc
+            {spef_var}
             source "/openLANE_flow/scripts/sta.tcl"
-
-        """.format(
-            build_folder=build_folder,
-            pdk_ref_dir=pdk_ref_dir,
-            design=design,
-            netlist=netlist,
-            clk_period=clk_period)
-        if spef_file:
-            env_vars =\
-                    """
-                    set ::env(CURRENT_SPEF) {spef_file}
-                    set ::env(opensta_report_file_tag) {spef_file}.sta
-                    """.format(spef_file=spef_file) + env_vars
-        else:
-            env_vars =\
-                    """
-                    set ::env(opensta_report_file_tag) {netlist}.sta
-                    """.format(netlist=netlist) + env_vars
+        """
         f.write(env_vars)
-    openlane("sta", "%s/sta.tcl" % build_folder)
+    openlane("openroad", "%s/sta.tcl" % build_folder)
 
 bb_used = "BB.v"
 # Not true synthesis, just elaboration.
@@ -194,7 +189,7 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
     if len(widths_supported) > 1:
         chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
     with open("%s/synth.tcl" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         yosys -import
         set vtop {design}
         set SCL $env(LIBERTY)
@@ -209,13 +204,13 @@ def synthesis(build_folder, design, widths_supported, word_width_bytes, out_file
         write_verilog -noattr -noexpr -nodec {out_file}
         stat -top {design} -liberty $SCL
         exit
-        """.format(design=design, out_file=out_file, bb_used=bb_used, chparam=chparam))
+        """)
 
     with open("%s/synth.sh" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         export LIBERTY={pdk_ref_dir}/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
         yosys {build_folder}/synth.tcl
-        """.format(build_folder=build_folder, pdk_ref_dir=pdk_ref_dir))
+        """)
 
     openlane("bash", "%s/synth.sh" % build_folder)
 
@@ -232,8 +227,13 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
 
+    wpm = width + wmargin
+    hpm = height + hmargin
+
+    track_file = f"{build_folder}/sky130.tracks"
+
     with open("%s/fp_init.tcl" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_verilog {in_file}
@@ -243,23 +243,19 @@ def floorplan(build_folder, design, wmargin_sites, hmargin_sites, width, height,
             -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
             -site unithd\\
             -tracks {pdk_tech_dir}/openlane/sky130_fd_sc_hd/tracks.info
+        # source {track_file}
         write_def {out_file}
-        """.format(
-            build_folder=build_folder,
-            pdk_tech_dir=pdk_tech_dir,
-            pdk_liberty_dir=pdk_liberty_dir,
-            design=design,
-            wmargin=wmargin,
-            hmargin=hmargin,
-            wpm=width + wmargin,
-            full_width=full_width,
-            hpm=height + hmargin,
-            full_height=full_height,
-            in_file=in_file,
-            out_file=out_file
-        ))
+        """)
 
-    openlane("openroad", "%s/fp_init.tcl" % build_folder)
+    with open("%s/fp_init.sh" % build_folder, 'w') as f:
+        f.write(f"""
+        set -e
+
+        # python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_tech_dir}/openlane/sky130_fd_sc_hd/tracks.info -o {track_file}
+        openroad {build_folder}/fp_init.tcl
+        """)
+
+    openlane("bash", "%s/fp_init.sh" % build_folder)
     last_def = out_file
 
 
@@ -294,10 +290,11 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, de
 def place_pins(build_folder, in_file, out_file, pin_order_file):
     global last_def
     print("--- Pin Placement ---")
+
     openlane(
         "python3",
         "/openLANE_flow/scripts/io_place.py",
-        "--input-lef", "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
+        "--input-lef", f"{build_folder}/sky130_fd_sc_hd.merged.lef",
         "--input-def", in_file,
         "--config", pin_order_file,
         "--hor-layer", "4",
@@ -310,12 +307,14 @@ def place_pins(build_folder, in_file, out_file, pin_order_file):
         "-o", out_file
     )
 
+
+
     last_def = out_file
 
 def verify_placement(build_folder, in_file):
     print("--- Verify ---")
     with open("%s/verify.tcl" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
@@ -324,36 +323,29 @@ def verify_placement(build_folder, in_file):
             exit 65
         }}
         puts "Placement successful."
-        """.format(build_folder=build_folder,
-            pdk_liberty_dir=pdk_liberty_dir,
-            in_file=in_file)
-        )
-
+        """)
     openlane("openroad", "%s/verify.tcl" % build_folder)
 
-last_image = None
 def create_image(build_folder, in_file, width=256,height=256):
-    global last_image
-    if not os.getenv("CREATE_IMAGE") is not None:
-        print("--- Create Image ---")
-        openlane(
-            "bash",
-            "xvfb-run", "-a", "klayout", "-z",
-            "-rd", "input_layout=%s" % in_file,
-            "-rd", "extra_lefs=%s" % "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
-            "-rd", "tech_file=%s" % "%s/sky130A.lyt" % pdk_klayout_dir,
-            "-rd", "width=%s" % (width),
-            "-rd", "height=%s" % (height),
-            "-rm", "./scripts/klayout/scrot_layout.py"
-        )
-        last_image = in_file + ".png"
+    print("--- Create Image ---")
+    openlane(
+        "bash",
+        "xvfb-run", "-a", "klayout", "-z",
+        "-rd", "input_layout=%s" % in_file,
+        "-rd", "extra_lefs=%s" % "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
+        "-rd", "tech_file=%s" % "%s/sky130A.lyt" % pdk_klayout_dir,
+        "-rd", "width=%s" % (width),
+        "-rd", "height=%s" % (height),
+        "-rm", "./scripts/klayout/scrot_layout.py"
+    )
+    return in_file + ".png"
 
 def pdngen(build_folder, width, height, in_file, out_file):
     global last_def
     print("--- Power Distribution Network Construction ---")
     pitch = 50 # temp: till we arrive at a function that takes in width
     offset = 25 # temp: till we arrive at a function that takes in width
-    pdn_cfg = """
+    pdn_cfg = f"""
 
     set ::halo 0
     # POWER or GROUND #Std. cell rails starting with power or ground rails at the bottom of the core area
@@ -388,25 +380,21 @@ def pdngen(build_folder, width, height, in_file, out_file):
         {{ met1 met4 }}
         }}
     }}
-    """.format(pitch=pitch, offset=offset)
+    """
 
     pdn_cfg_file = "%s/pdn.cfg" % build_folder
     with open(pdn_cfg_file, 'w') as f:
         f.write(pdn_cfg)
 
-    pdn_tcl = """
+    pdn_tcl = f"""
+    read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
 
-        read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
+    read_def {in_file}
 
-        read_def {in_file}
+    pdngen {pdn_cfg_file} -verbose
 
-        pdngen {cfg_file} -verbose
-
-        write_def {out_file}
-        """.format(build_folder=build_folder,
-                in_file=in_file,
-                cfg_file=pdn_cfg_file,
-                out_file=out_file)
+    write_def {out_file}
+    """
 
     with open("%s/pdn.tcl" % build_folder, 'w') as f:
         f.write(pdn_tcl)
@@ -421,9 +409,7 @@ def obs_route(build_folder, metal_layer, width, height, in_file, out_file):
         "--lef", "%s/sky130_fd_sc_hd.merged.lef" % build_folder,
         "--input-def", in_file,
         "--obstructions",
-        "met{metal_layer} 0 0 {width} {height}".format(metal_layer=metal_layer,
-            width=width,
-            height=height),
+        f"met{metal_layer} 0 0 {width} {height}",
         "--output", out_file)
     last_def = out_file
 
@@ -433,7 +419,7 @@ def route(build_folder, in_file, out_file):
     global_route_guide = "%s/gr.guide" % build_folder
     with open("%s/tr.param" % build_folder, 'w') as f:
         # We use textwrap.dedent because tr.params does not take kindly to whitespace, at all
-        f.write(textwrap.dedent("""\
+        f.write(textwrap.dedent(f"""\
         lef:{build_folder}/sky130_fd_sc_hd.merged.lef
         def:{in_file}
         output:{out_file}
@@ -442,26 +428,25 @@ def route(build_folder, in_file, out_file):
         outputDRC:{build_folder}/drc
         threads:8
         verbose:1
-        """.format(in_file=in_file, out_file=out_file, global_route_guide=global_route_guide, build_folder=build_folder)))
+        OR_SEED:69
+        """))
 
     with open("%s/route.tcl" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         source ./platforms/sky130A/sky130_fd_sc_hd/openroad.vars
         read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
         read_def {in_file}
+        set ::env(GLB_RT_ALLOW_CONGESTION) "1"
         global_route \\
             -guide_file {global_route_guide} \\
             -layers $global_routing_layers \\
             -clock_layers $global_routing_clock_layers \\
             -unidirectional_routing \\
             -overflow_iterations 100
+        # repair_antennas sky130_fd_sc_hd__diode_2/DIODE
         tr::detailed_route_cmd {build_folder}/tr.param
-        """.format(build_folder,
-            pdk_liberty_dir=pdk_liberty_dir,
-            in_file=in_file,
-            global_route_guide=global_route_guide,
-            build_folder=build_folder))
+        """)
 
     openlane("openroad", "%s/route.tcl" % build_folder)
     last_def = out_file
@@ -488,26 +473,25 @@ def add_pwr_gnd_pins(build_folder, original_netlist,
             "-o", intermediate_file)
 
     with open("%s/write_pwr_gnd_verilog.tcl" % build_folder, "w") as f:
-        f.write("""
+        f.write(f"""
         read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
-        read_def {def_file}
-        read_verilog {netlist}
+        read_def {intermediate_file}
+        read_verilog {original_netlist}
         puts "Writing the modified nl.v "
         puts "writing file"
-        puts {out_file}
-        write_verilog -include_pwr_gnd {out_file}
-        """.format(build_folder=build_folder,netlist=original_netlist, def_file=intermediate_file,
-            out_file=out_file1))
+        puts {out_file1}
+        write_verilog -include_pwr_gnd {out_file1}
+        """)
 
     openlane("openroad",
             "%s/write_pwr_gnd_verilog.tcl" % build_folder)
 
     with open("%s/rewrite_netlist.tcl" % build_folder, 'w') as f:
-        f.write("""
+        f.write(f"""
         yosys -import
-        read_verilog {verilog_file}; # usually from openroad
-        write_verilog -noattr -noexpr -nohex -nodec {out_file};
-        """.format(verilog_file=out_file1, out_file=out_file2))
+        read_verilog {out_file1}; # usually from openroad
+        write_verilog -noattr -noexpr -nohex -nodec {out_file2};
+        """)
 
     openlane("yosys", "-c", "%s/rewrite_netlist.tcl" % build_folder)
     last_def = out_file2
@@ -516,17 +500,13 @@ def add_pwr_gnd_pins(build_folder, original_netlist,
 def write_ram_lef(build_folder, design, in_file, out_file):
     print("--- Write LEF view of the RAM Module ---")
     with open("%s/write_lef.tcl" % build_folder, "w") as f:
-        f.write("""
+        f.write(f"""
         puts "Running magic script…"
         lef read {build_folder}/sky130_fd_sc_hd.merged.lef
         def read {in_file}
         load {design} -dereference
         lef write {out_file}
-        """.format(
-            build_folder=build_folder,
-            design=design,
-            in_file=in_file,
-            out_file=out_file))
+        """)
 
     openlane("magic",
             "-dnull",
@@ -546,7 +526,7 @@ def write_ram_lib(build_folder, design, netlist, libfile):
 def magic_drc(build_folder, design, def_file):
     print("--- Magic DRC ---")
     with open("%s/drc.tcl" % build_folder, "w") as f:
-        f.write("""
+        f.write(f"""
             set ::env(MAGIC_DRC_USE_GDS) 0
             set ::env(TECH_LEF) {pdk_tlef_dir}/sky130_fd_sc_hd.tlef
             set ::env(magic_report_file_tag) {def_file}
@@ -554,7 +534,7 @@ def magic_drc(build_folder, design, def_file):
             set ::env(CURRENT_DEF) {def_file}
             set ::env(DESIGN_NAME) {design}
             source /openLANE_flow/scripts/magic/drc.tcl
-        """.format(pdk_tlef_dir=pdk_tlef_dir, design=design, def_file=def_file))
+        """)
     openlane("magic",
             "-dnull",
             "-noconsole",
@@ -575,7 +555,7 @@ def magic_drc(build_folder, design, def_file):
 def lvs(build_folder, design, in_1, in_2, report):
     print("--- LVS ---")
     with open("%s/lvs.tcl" % build_folder, "w") as f:
-        f.write("""
+        f.write(f"""
         puts "Running magic script…"
         lef read {build_folder}/sky130_fd_sc_hd.merged.lef
         def read {in_1}
@@ -589,20 +569,16 @@ def lvs(build_folder, design, in_1, in_2, report):
         extract
         ext2spice lvs
         ext2spice
-        """.format(build_folder=build_folder, design=design, in_1=in_1))
+        """)
 
     with open("%s/lvs.sh" % build_folder, "w") as f:
-        f.write("""
+        f.write(f"""
+        +e
         magic -rcfile {pdk_magic_dir}/sky130A.magicrc -noconsole -dnull < {build_folder}/lvs.tcl
         mv *.ext *.spice {build_folder}
         netgen -batch lvs "{build_folder}/{design}.spice {design}" "{in_2} {design}" -full
         mv comp.out {report}
-        """.format(build_folder=build_folder,
-            pdk_magic_dir=pdk_magic_dir,
-            design=design,
-            in_1=in_1,
-            in_2=in_2,
-            report=report))
+        """)
 
     openlane("bash", "%s/lvs.sh" % build_folder)
 
@@ -610,19 +586,36 @@ def antenna_check(build_folder, def_file, out_file):
     # using openroad antenna check
     print("--- Antenna Check ---")
     with open("%s/antenna_check.tcl" % build_folder, 'w') as f:
-        f.write("""
-            set ::env(REPORTS_DIR) {build_folder}
-            set ::env(MERGED_LEF_UNPADDED) {build_folder}/sky130_fd_sc_hd.merged.lef
-            set ::env(CURRENT_DEF) {def_file}
-            read_lef $::env(MERGED_LEF_UNPADDED)
-            read_def -order_wires {def_file}
-            check_antennas -path {build_folder}
-            # source /openLANE_flow/scripts/openroad/or_antenna_check.tcl
-        """.format(build_folder=build_folder,
-            def_file=def_file,
-            out_file=out_file))
+        f.write(f"""
+        set ::env(REPORTS_DIR) {build_folder}
+        set ::env(MERGED_LEF_UNPADDED) {build_folder}/sky130_fd_sc_hd.merged.lef
+        set ::env(CURRENT_DEF) {def_file}
+        read_lef $::env(MERGED_LEF_UNPADDED)
+        read_def -order_wires {def_file}
+        check_antennas -path {build_folder}
+        # source /openLANE_flow/scripts/openroad/or_antenna_check.tcl
+        """)
     openlane("openroad", "%s/antenna_check.tcl" % build_folder)
     openlane("mv", "%s/antenna.rpt" % build_folder, out_file)
+
+    antenna_report_str = open(out_file).read()
+    net = ""
+    cell = ""
+
+    issues = []
+    for line in antenna_report_str.split("\n"):
+        if "Net" in line:
+            net = line
+        elif "sky130" in line:
+            cell = line
+        elif "*" in line:
+            issues.append(f"{net}\n{cell}\n{line}")
+    issue_count = len(issues)
+    print(f"Antenna Report Summary: {issue_count} violations")
+    for issue in issues:
+        print(issue)
+
+
 
 def gds(build_folder, design, def_file, gds_file):
     
@@ -653,6 +646,7 @@ def gds(build_folder, design, def_file, gds_file):
         export RESULTS_DIR=.
 
         cat /openLANE_flow/scripts/magic/mag_gds.tcl > ./gds.tcl
+        sed -i "s/def read \$::env(CURRENT_DEF)/def read \$::env(CURRENT_DEF) -labels/" ./gds.tcl
         sed -i "s/exit 0/feedback save .\/magic\/feedback.txt; exit 0/" ./gds.tcl
 
         echo "Streaming out GDSII..."
@@ -688,7 +682,9 @@ def gds(build_folder, design, def_file, gds_file):
 @click.option("-C", "--clock-period", "clk_period", default=3, type=float, help="clk period for sta")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc):
+@click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
+@click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout):
     global bb_used, last_def, last_image
 
     subprocess.run([
@@ -730,7 +726,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(64)
 
-    wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
+    wmargin, hmargin = (0, 0) # (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
     variant_string = (("_%s" % variant) if variant is not None else "")
     design_name_template = config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
@@ -787,7 +783,6 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         placeram(final_floorplan, no_pins_placement, size, building_blocks, density=density_file)
         place_pins(build_folder, no_pins_placement, final_placement, pin_order_file)
         verify_placement(build_folder, final_placement)
-        create_image(build_folder, final_placement, width, height)
 
     steps = [
         (
@@ -813,8 +808,15 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         (
             "routing",
             lambda: (
-                route(build_folder, obstructed, routed),
-                create_image(build_folder, routed)
+                route(build_folder, obstructed, routed)
+            )
+        ),
+        (
+            "antenna_check",
+            lambda: antenna_check(
+                build_folder,
+                routed,
+                antenna_report
             )
         ),
         (
@@ -834,8 +836,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                     powered_def,
                     norewrite_powered_netlist,
                     powered_netlist
-                ),
-                create_image(build_folder, powered_def)
+                )
             )
         ),
         (
@@ -854,14 +855,6 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                 design,
                 powered_netlist,
                 lib_view
-            )
-        ),
-        (
-            "antenna_check",
-            lambda: antenna_check(
-                build_folder,
-                routed,
-                antenna_report
             )
         ),
         (
@@ -899,31 +892,41 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         if to == name:
             execute_steps = False
 
-    if drc and last_def is not None:
-        magic_drc(build_folder, design, last_def)
+    if last_def is not None:
+        if drc:
+            magic_drc(build_folder, design, last_def)
+
+        if image:
+            image = create_image(build_folder, last_def)
+            if sys.platform == "darwin":
+                try:
+                    subprocess.run([
+                        "open", "-a", "Preview",
+                        last_image
+                    ], check=True)
+                    print("Opened last image in Preview.")
+                except:
+                    pass
+            if sys.platform == "linux":
+                try:
+                    # WSL
+                    subprocess.run([
+                        "wslview",
+                        image
+                    ], check=True)
+                    print("Opened last image in Windows.")
+                except:
+                    pass
+
+        if klayout:
+            subprocess.Popen([
+                "klayout",
+                last_def,
+            ])
 
     elapsed = time.time() - start
 
-    if last_image is not None:
-        if sys.platform == "darwin":
-            try:
-                subprocess.run([
-                    "open", "-a", "Preview",
-                    last_image
-                ], check=True)
-                print("Opened last image in Preview.")
-            except:
-                pass
-        if sys.platform == "linux":
-            try:
-                # WSL
-                subprocess.run([
-                    "wslview",
-                    last_image
-                ], check=True)
-                print("Opened last image in Windows.")
-            except:
-                pass
+    
 
     print("Done in %.2fs." % elapsed)
     cl()
@@ -932,6 +935,7 @@ def main():
         flow()
     except subprocess.CalledProcessError as e:
         print("A step has failed:", e)
+        print(f"Quick invoke: {' '.join(e.cmd)}")
         cl()
         exit(69)
     except Exception:
