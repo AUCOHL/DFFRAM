@@ -72,20 +72,15 @@ module MUX4x1 #(parameter   WIDTH=32)
 );
     localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL0, SEL1;
+
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2 SEL_DIODE [1:0] (.DIODE(S));      
+
     sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL0), .A(S[0]));
     sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S[1]));
     generate
         genvar i;
         for(i=0; i<SIZE; i=i+1) begin : M
-            // (* keep = "true" *)
-            // sky130_fd_sc_hd__diode_2 DIODE_A0MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
-            // (* keep = "true" *)
-            // sky130_fd_sc_hd__diode_2 DIODE_A1MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
-            // (* keep = "true" *)
-            // sky130_fd_sc_hd__diode_2 DIODE_A2MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
-            // (* keep = "true" *)
-            // sky130_fd_sc_hd__diode_2 DIODE_A3MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
-
             sky130_fd_sc_hd__mux4_1 MUX[7:0] (
                     .A0(A0[(i+1)*8-1:i*8]), 
                     .A1(A1[(i+1)*8-1:i*8]), 

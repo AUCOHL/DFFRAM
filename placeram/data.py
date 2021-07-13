@@ -58,12 +58,6 @@ class Bit(Placeable):
 
         self.obufs = d2a(raw_obufs)
 
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ri("Storage Element", self.store, tab_level, file)
-        P.ra("Output Buffers", self.obufs, tab_level, file)
-
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
@@ -108,17 +102,6 @@ class Byte(Placeable):
 
         self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
         self.selinvs = d2a(raw_selinvs)
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ri("Clock Gate", self.clockgate, tab_level, file)
-        P.ri("Clock Gate AND", self.cgand, tab_level, file)
-        P.ra("Selection Line Inverters", self.selinvs, tab_level, file)
-        if self.clkinv is not None:
-            P.ri("Clock Inverter", self.clkinv, tab_level, file)
-
-        P.ra("Bits", self.bits, tab_level, file, header="Bit")
 
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
@@ -165,13 +148,6 @@ class Word(Placeable):
         self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
         self.selbufs = d2a(raw_selbufs)
 
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ri("Clock Buffer", self.clkbuf, tab_level, file)
-        P.ra("Selection Line Buffers", self.selbufs, tab_level, file)
-        P.ra("Bytes", self.bytes, tab_level, file, header="Byte")
-
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
@@ -215,13 +191,6 @@ class Decoder3x8(Placeable):
 
         self.and_gates = d2a(raw_and_gates)
         self.abufs = d2a(raw_abufs)
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ri("Enable Buffer", self.enbuf, tab_level, file)
-        P.ra("AND Gates", self.and_gates, tab_level, file)
-        P.ra("Addreess Buffers", self.abufs, tab_level, file)
 
     def place(self, row_list: List[Row], start_row: int = 0):
         """
@@ -279,13 +248,6 @@ class Slice(Placeable): # A slice is defined as 8 words.
         word_count = len(self.words)
         if word_count != 8:
             raise DataError("Slice has (%i/8) words." % word_count)
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ra("Decoders", self.decoders, tab_level, file, header="Decoder")
-        P.ra("Write Enable Buffers", self.webufs, tab_level, file)
-        P.ra("Words", self.words, tab_level, file, header="Word")
 
     def place(self, row_list: List[Row], start_row: int = 0):
         """
@@ -570,26 +532,6 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
         self.a_diodes = d2a({k: d2a(v) for k, v in raw_a_diodes.items()})
 
 
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        def ra(n, a, **kwargs):
-            P.ra(n, a, tab_level, file, **kwargs)
-
-        P.ri("Clock Buffer", self.clkbuf, tab_level, file)
-
-        ra("Enable Buffers", self.enbufs)
-        ra("Decoder AND Gates", self.decoder_ands, header="Port")
-        ra("Write Enable Buffers", self.webufs)
-        ra("Address Buffers", self.abufs, header="Port")
-        ra("Data Input Buffers", self.dibufs)
-        ra("Data Output Buffers", self.dobufs, header="Port")
-        ra("Data Output Diodes", self.do_diodes, header="Port")
-        ra("Ties", self.ties, header="Port")
-        ra("Float Buffer Enable Buffers", self.fbufenbufs, header="Port")
-        ra("Float Buffers", self.floatbufs, header="Port")
-        ra("Slices", self.slices, header="Slice")
-
     def place(self, row_list: List[Row], start_row: int = 0):
         def place_horizontal_elements(start_row: int):
             current_row = start_row
@@ -657,7 +599,9 @@ class Mux(Placeable):
         self.muxes: List[List[Instance]] = None
         self.mux_diodes: List[List[Instance]] = None
         self.input_diodes: List[List[List[Instance]]] = None
+        self.sel_diodes: List[Instance] = None
 
+        raw_sel_diodes: Dict[int, Instance] = {}
         raw_selbufs: Dict[int, Dict[int, Instance]] = {}
         raw_muxes: Dict[int, Dict[int, Instance]] = {}
         raw_mux_diodes: Dict[int, Dict[int, Instance]] = {}
@@ -672,8 +616,8 @@ class Mux(Placeable):
                 raw_selbufs[byte] = raw_selbufs.get(byte) or {}
                 raw_selbufs[byte][line] = instance
             # elif sarv(m, "ind_match", re.search(r.input_diode, n)):
-            #     byte, input, bit = (int(m.ind_match[1]), (int(m.ind_match[2]), int(m.ind_match[3])))
-            #     raw_input_diodes[byte] = raw_mux_diodes.get(byte) or {}
+            #     byte, input, bit = (int(m.ind_match[1]), int(m.ind_match[2]), int(m.ind_match[3]))
+            #     raw_input_diodes[byte] = raw_input_diodes.get(byte) or {}
             #     raw_input_diodes[byte][input] = raw_input_diodes[byte].get(input) or {}
             #     raw_input_diodes[byte][input][bit] = instance
             elif sarv(m, "muxd_match", re.search(r.mux_diode, n)):
@@ -684,30 +628,35 @@ class Mux(Placeable):
                 byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
                 raw_muxes[byte] = raw_muxes.get(byte) or {}
                 raw_muxes[byte][bit] = instance
+            elif sarv(m, "seld_match", re.search(r.sel_diode, n)):
+                line = int(m.seld_match[1])
+                raw_sel_diodes[line] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
         self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
         self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
         self.mux_diodes = d2a({k: d2a(v) for k, v in raw_mux_diodes.items()})
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        P.ra("Selection Buffers", self.selbufs, tab_level, file, header="Byte")
-        P.ra("Logic Elements", self.muxes, tab_level, file, header="Byte")
+        self.input_diodes = d2a({k: d2a({k2: d2a(v2) for k2, v2 in v.items()}) for k, v in raw_input_diodes.items()})
+        self.sel_diodes = d2a(raw_sel_diodes)
 
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
-        group_list = len(self.muxes)
-        for i in range(group_list):
+        # for line in self.sel_diodes:
+        #     r.place(line)
+
+        byte = len(self.muxes)
+        for i in range(byte):
             for selbuf in self.selbufs[i]:
                 r.place(selbuf)
             for mux, diode in zip_longest(self.muxes[i], self.mux_diodes[i]):
                 r.place(mux)
                 if diode is not None:
                     r.place(diode)
+            # for input in self.input_diodes[i]:
+            #     for diode in input:
+            #         r.place(diode)
 
         return start_row + 1
 
@@ -803,24 +752,6 @@ class HigherLevelPlaceable(LRPlaceable):
         self.domuxes = d2a({ k: Mux(v) for k, v in raw_domuxes.items()})
         self.abufs = d2a({k: d2a(v) for k, v in raw_abufs.items()})
         self.a_diodes = d2a({k: d2a(v) for k, v in raw_a_diodes.items()})
-
-    def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
-        tab_level += 1
-
-        def ra(n, a, **kwargs):
-            P.ra(n, a, tab_level, file, **kwargs)
-
-        if self.clkbuf:
-            P.ri("Clock Buffer", self.clkbuf, tab_level, file)
-        ra("Input Buffers", self.dibufs)
-        ra("Write Enable Buffers", self.webufs)
-
-        ra("Blocks", self.blocks, header="Block")
-
-        ra("Decoder AND Gates", self.decoder_ands, header="Port")
-        ra("Address Buffers", self.abufs, header="Port")
-        ra("Enable Buffers", self.enbufs, header="Port")
-        ra("Output Multiplexers", self.domuxes, header="Port")
 
     def place(self, row_list: List[Row], start_row: int = 0):
         def symmetrically_placeable():
