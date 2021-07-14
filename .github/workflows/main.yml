@@ -96,12 +96,12 @@ jobs:
             - { count: "32", width: "16", variant: "1RW1R" }
             - { count: "32", width: "32", variant: "DEFAULT" }
             - { count: "32", width: "32", variant: "1RW1R" }
-            - { count: "256", width: "8", variant: "DEFAULT" }
-            - { count: "256", width: "8", variant: "1RW1R" }
-            - { count: "256", width: "16", variant: "DEFAULT" }
-            - { count: "256", width: "16", variant: "1RW1R" }
-            - { count: "256", width: "32", variant: "DEFAULT" }
-            #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
+            - { count: "128", width: "8", variant: "DEFAULT" }
+            - { count: "128", width: "8", variant: "1RW1R" }
+            - { count: "128", width: "16", variant: "DEFAULT" }
+            - { count: "128", width: "16", variant: "1RW1R" }
+            - { count: "128", width: "32", variant: "DEFAULT" }
+            #- { count: "128", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
