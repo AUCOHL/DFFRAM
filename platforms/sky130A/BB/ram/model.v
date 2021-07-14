@@ -80,7 +80,17 @@ module MUX4x1 #(parameter   WIDTH=32)
     sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S[1]));
     generate
         genvar i;
+
         for(i=0; i<SIZE; i=i+1) begin : M
+            (* keep = "true" *)
+            sky130_fd_sc_hd__diode_2 DIODE_A0MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            (* keep = "true" *)
+            sky130_fd_sc_hd__diode_2 DIODE_A1MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            (* keep = "true" *)
+            sky130_fd_sc_hd__diode_2 DIODE_A2MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            (* keep = "true" *)
+            sky130_fd_sc_hd__diode_2 DIODE_A3MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));
+
             sky130_fd_sc_hd__mux4_1 MUX[7:0] (
                     .A0(A0[(i+1)*8-1:i*8]), 
                     .A1(A1[(i+1)*8-1:i*8]), 
@@ -129,12 +139,15 @@ module BYTE #(  parameter   USE_LATCH=1)(
 
     generate 
         genvar i;
+        (* keep = "true" *)
+        sky130_fd_sc_hd__diode_2 DIODE_CLK (.DIODE(CLK));
 
         if(USE_LATCH == 1) begin
             sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
             sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK_B), .GCLK(GCLK), .GATE(WE0_WIRE) );
-        end else
+        end else begin
             sky130_fd_sc_hd__dlclkp_1 CG( .CLK(CLK), .GCLK(GCLK), .GATE(WE0_WIRE) );
+        end
     
         sky130_fd_sc_hd__inv_1 SELINV(.Y(SEL0_B), .A(SEL0));
         sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
@@ -497,6 +510,8 @@ module RAM128 #(parameter   USE_LATCH=1,
     wire [(WSIZE*8-1):0]     Do0_pre[3:0]; 
                             
     // Buffers
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2 DIODE_DI [WSIZE*8-1:0] (.DIODE(Di0));
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
 
 
@@ -524,7 +539,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
     
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0[WSIZE*8-1:0]));
+    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0));
 
 endmodule
 

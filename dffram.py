@@ -48,38 +48,38 @@ def rp(path):
 def ensure_dir(path):
     return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
-def remove_line_containing(lef_lines, regex):
-    for lef_line in lef_lines:
-        match = re.search(regex, lef_line)
-        if match:
-            lef_lines.remove(lef_line)
-    return lef_lines
-
-def remove_version(lef_lines):
-    return remove_line_containing(lef_lines, r"(.*)VERSION(.*)")
-
-def remove_nowireextensionatpin(lef_lines):
-    return remove_line_containing(lef_lines, r"(.*)NOWIREEXTENSIONATPIN(.*)")
-
-def remove_dividerchar(lef_lines):
-    return remove_line_containing(lef_lines, r"(.*)DIVIDERCHAR(.*)")
-
-def remove_busbitchars(lef_lines):
-    return remove_line_containing(lef_lines, r"(.*)BUSBITCHARS(.*)")
-
-def remove_endlibrary(lef_lines):
-    return remove_line_containing(lef_lines, r"(.*)END( *)LIBRARY(.*)")
-
-def pre_process_merged_lef(lef_lines):
-    pre_processing_steps = [remove_version, remove_nowireextensionatpin,
-                            remove_dividerchar, remove_busbitchars,
-                            remove_endlibrary]
-    for apre_processing_step in pre_processing_steps:
-        lef_lines = apre_processing_step(lef_lines)
-
-    return lef_lines
+# --
 
 def merge_lefs_into(build_folder, merged_filename="sky130_fd_sc_hd.merged.lef"):
+    def pre_process_merged_lef(lef_lines):
+        def remove_line_containing(lef_lines, regex):
+            for lef_line in lef_lines:
+                match = re.search(regex, lef_line)
+                if match:
+                    lef_lines.remove(lef_line)
+            return lef_lines
+
+        def remove_version(lef_lines):
+            return remove_line_containing(lef_lines, r"(.*)VERSION(.*)")
+
+        def remove_nowireextensionatpin(lef_lines):
+            return remove_line_containing(lef_lines, r"(.*)NOWIREEXTENSIONATPIN(.*)")
+
+        def remove_dividerchar(lef_lines):
+            return remove_line_containing(lef_lines, r"(.*)DIVIDERCHAR(.*)")
+
+        def remove_busbitchars(lef_lines):
+            return remove_line_containing(lef_lines, r"(.*)BUSBITCHARS(.*)")
+
+        def remove_endlibrary(lef_lines):
+            return remove_line_containing(lef_lines, r"(.*)END( *)LIBRARY(.*)")
+        pre_processing_steps = [remove_version, remove_nowireextensionatpin,
+                                remove_dividerchar, remove_busbitchars,
+                                remove_endlibrary]
+        for apre_processing_step in pre_processing_steps:
+            lef_lines = apre_processing_step(lef_lines)
+
+        return lef_lines
     build_folder = os.path.abspath(os.path.realpath(build_folder))
     # Common header we only need one of
     header = ["VERSION 5.7 ;\n",
@@ -179,7 +179,7 @@ def sta(build_folder, design, netlist, clk_period=3, spef_file=None):
             source "/openLANE_flow/scripts/sta.tcl"
         """
         f.write(env_vars)
-    openlane("openroad", "%s/sta.tcl" % build_folder)
+    openlane("sta", "%s/sta.tcl" % build_folder)
 
 bb_used = "BB.v"
 # Not true synthesis, just elaboration.
@@ -287,25 +287,37 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, de
     last_def = out_file
 
 
-def place_pins(build_folder, in_file, out_file, pin_order_file):
+def place_pins(build_folder, design, in_file, out_file, pin_order_file):
     global last_def
     print("--- Pin Placement ---")
 
-    openlane(
-        "python3",
-        "/openLANE_flow/scripts/io_place.py",
-        "--input-lef", f"{build_folder}/sky130_fd_sc_hd.merged.lef",
-        "--input-def", in_file,
-        "--config", pin_order_file,
-        "--hor-layer", "4",
-        "--ver-layer", "3",
-        "--ver-width-mult", "2",
-        "--hor-width-mult", "2",
-        "--hor-extension", "-1",
-        "--ver-extension", "-1",
-        "--length", "2",
-        "-o", out_file
-    )
+    if os.getenv("USE_AUTOPLACE") == "1":
+        with open("%s/place_pins.tcl" % build_folder, "w") as f:
+            f.write(f"""
+            read_liberty {pdk_liberty_dir}/sky130_fd_sc_hd__tt_025C_1v80.lib
+            read_lef {build_folder}/sky130_fd_sc_hd.merged.lef
+            read_def {in_file}
+            place_pins -ver_layers met2 -hor_layers met3
+            write_def {out_file}
+            """)
+
+        openlane("openroad", "%s/place_pins.tcl" % build_folder)
+    else:
+        openlane(
+            "python3",
+            "/openLANE_flow/scripts/io_place.py",
+            "--input-lef", f"{build_folder}/sky130_fd_sc_hd.merged.lef",
+            "--input-def", in_file,
+            "--config", pin_order_file,
+            "--hor-layer", "4",
+            "--ver-layer", "3",
+            "--ver-width-mult", "2",
+            "--hor-width-mult", "2",
+            "--hor-extension", "-1",
+            "--ver-extension", "-1",
+            "--length", "2",
+            "-o", out_file
+        )
 
 
 
@@ -768,10 +780,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     drc_report = i(".drc.rpt")
     gds_file = i(".gds")
 
-    try:
-        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-    except Exception:
-        width, height = 20000, 20000
+    width, height = 20000, 20000
 
 
     def placement(in_width, in_height):
@@ -781,7 +790,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
         floorplan(build_folder, design, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeram(final_floorplan, no_pins_placement, size, building_blocks, density=density_file)
-        place_pins(build_folder, no_pins_placement, final_placement, pin_order_file)
+        place_pins(build_folder, design, no_pins_placement, final_placement, pin_order_file)
         verify_placement(build_folder, final_placement)
 
     steps = [

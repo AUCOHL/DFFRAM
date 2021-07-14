@@ -33,6 +33,82 @@ from itertools import zip_longest
 
 P = Placeable
 
+class Mux(Placeable):
+    """
+    Constraint: The number of selection buffers is necessarily == the number of bytes.
+    """
+    def __init__(self, instances: List[Instance]):
+        # First access is the byte
+        self.selbufs: List[List[Instance]] = None
+        self.muxes: List[List[Instance]] = None
+        self.mux_diodes: List[List[Instance]] = None
+        self.input_diodes: List[List[List[Instance]]] = None
+        self.sel_diodes: List[Instance] = None
+
+        raw_sel_diodes: Dict[int, Instance] = {}
+        raw_selbufs: Dict[int, Dict[int, Instance]] = {}
+        raw_muxes: Dict[int, Dict[int, Instance]] = {}
+        raw_mux_diodes: Dict[int, Dict[int, Instance]] = {}
+        raw_input_diodes: Dict[int, Dict[int, Dict[int, Instance]]] = {}
+
+        m = NS()
+        r = self.regexes()
+        for instance in instances:
+            n = instance.getName()
+            if sarv(m, "selbuf_match", re.search(r.selbuf, n)):
+                line, byte = (int(m.selbuf_match[1] or "0"), int(m.selbuf_match[2]))
+                raw_selbufs[byte] = raw_selbufs.get(byte) or {}
+                raw_selbufs[byte][line] = instance
+            elif sarv(m, "ind_match", re.search(r.input_diode, n)):
+                byte, input, bit = (int(m.ind_match[1]), int(m.ind_match[2]), int(m.ind_match[3]))
+                raw_input_diodes[byte] = raw_input_diodes.get(byte) or {}
+                raw_input_diodes[byte][input] = raw_input_diodes[byte].get(input) or {}
+                raw_input_diodes[byte][input][bit] = instance
+            elif sarv(m, "muxd_match", re.search(r.mux_diode, n)):
+                byte, bit = (int(m.muxd_match[1]), int(m.muxd_match[2]))
+                raw_mux_diodes[byte] = raw_mux_diodes.get(byte) or {}
+                raw_mux_diodes[byte][bit] = instance
+            elif sarv(m, "mux_match", re.search(r.mux, n)):
+                byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
+                raw_muxes[byte] = raw_muxes.get(byte) or {}
+                raw_muxes[byte][bit] = instance
+            elif sarv(m, "seld_match", re.search(r.sel_diode, n)):
+                line = int(m.seld_match[1])
+                raw_sel_diodes[line] = instance
+            else:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
+        self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
+        self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
+        self.mux_diodes = d2a({k: d2a(v) for k, v in raw_mux_diodes.items()})
+        self.input_diodes = d2a({k: d2a({k2: d2a(v2) for k2, v2 in v.items()}) for k, v in raw_input_diodes.items()})
+        self.sel_diodes = d2a(raw_sel_diodes)
+
+    def place(self, row_list: List[Row], start_row: int = 0):
+        current_row = start_row
+        r = row_list[current_row]
+
+        for line in self.sel_diodes:
+            r.place(line)
+
+        byte = len(self.muxes)
+        for i in range(byte):
+            for selbuf in self.selbufs[i]:
+                r.place(selbuf)
+            for mux, diode in zip_longest(self.muxes[i], self.mux_diodes[i]):
+                r.place(mux)
+                if diode is not None:
+                    r.place(diode)
+
+        current_row += 1
+        r = row_list[current_row]
+        
+        for i in range(byte):
+            for input in self.input_diodes[i]:
+                for diode in input:
+                    r.place(diode)
+
+        return current_row + 1
 
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
@@ -72,6 +148,7 @@ class Byte(Placeable):
         self.clockgate: Instance = None
         self.cgand: Instance = None
         self.clkinv: Instance = None
+        self.clkdiode: Instance = None
         self.bits: List[Bit] = None
         self.selinvs: List[Instance] = None
         
@@ -97,6 +174,8 @@ class Byte(Placeable):
                 raw_selinvs[port] = instance
             elif sarv(m, "clkinv_match", re.search(r.clkinv, n)):
                 self.clkinv = instance
+            elif sarv(m, "clkd_match", re.search(r.clk_diode, n)):
+                self.clkdiode = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
@@ -111,6 +190,7 @@ class Byte(Placeable):
 
         r.place(self.clockgate)
         r.place(self.cgand)
+        r.place(self.clkdiode)
         for selinv in self.selinvs:
             r.place(selinv)
         if self.clkinv is not None:
@@ -553,17 +633,20 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                     r.place(tie)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
+            
+            current_row += 1
 
             for port in range(port_count):
                 r = row_list[current_row]
                 dobufs = self.dobufs[port]
                 diodes = self.do_diodes[port]
-                for dobuf, diode in zip(dobufs, diodes):
+                for dobuf in dobufs:
                     r.place(dobuf)
+                r = row_list[current_row]
+                for diode in diodes:
                     r.place(diode)
-                current_row += 1
 
-            return current_row
+            return current_row + 1
         
         return self.lrplace(
             row_list=row_list,
@@ -589,82 +672,13 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
     def word_count(self):
         return 32
 
-class Mux(Placeable):
-    """
-    Constraint: The number of selection buffers is necessarily == the number of bytes.
-    """
-    def __init__(self, instances: List[Instance]):
-        # First access is the byte
-        self.selbufs: List[List[Instance]] = None
-        self.muxes: List[List[Instance]] = None
-        self.mux_diodes: List[List[Instance]] = None
-        self.input_diodes: List[List[List[Instance]]] = None
-        self.sel_diodes: List[Instance] = None
-
-        raw_sel_diodes: Dict[int, Instance] = {}
-        raw_selbufs: Dict[int, Dict[int, Instance]] = {}
-        raw_muxes: Dict[int, Dict[int, Instance]] = {}
-        raw_mux_diodes: Dict[int, Dict[int, Instance]] = {}
-        raw_input_diodes: Dict[int, Dict[int, Dict[int, Instance]]] = {}
-
-        m = NS()
-        r = self.regexes()
-        for instance in instances:
-            n = instance.getName()
-            if sarv(m, "selbuf_match", re.search(r.selbuf, n)):
-                line, byte = (int(m.selbuf_match[1] or "0"), int(m.selbuf_match[2]))
-                raw_selbufs[byte] = raw_selbufs.get(byte) or {}
-                raw_selbufs[byte][line] = instance
-            # elif sarv(m, "ind_match", re.search(r.input_diode, n)):
-            #     byte, input, bit = (int(m.ind_match[1]), int(m.ind_match[2]), int(m.ind_match[3]))
-            #     raw_input_diodes[byte] = raw_input_diodes.get(byte) or {}
-            #     raw_input_diodes[byte][input] = raw_input_diodes[byte].get(input) or {}
-            #     raw_input_diodes[byte][input][bit] = instance
-            elif sarv(m, "muxd_match", re.search(r.mux_diode, n)):
-                byte, bit = (int(m.muxd_match[1]), int(m.muxd_match[2]))
-                raw_mux_diodes[byte] = raw_mux_diodes.get(byte) or {}
-                raw_mux_diodes[byte][bit] = instance
-            elif sarv(m, "mux_match", re.search(r.mux, n)):
-                byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
-                raw_muxes[byte] = raw_muxes.get(byte) or {}
-                raw_muxes[byte][bit] = instance
-            elif sarv(m, "seld_match", re.search(r.sel_diode, n)):
-                line = int(m.seld_match[1])
-                raw_sel_diodes[line] = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-        self.selbufs = d2a({k: d2a(v) for k, v in raw_selbufs.items()})
-        self.muxes = d2a({k: d2a(v) for k, v in raw_muxes.items()})
-        self.mux_diodes = d2a({k: d2a(v) for k, v in raw_mux_diodes.items()})
-        self.input_diodes = d2a({k: d2a({k2: d2a(v2) for k2, v2 in v.items()}) for k, v in raw_input_diodes.items()})
-        self.sel_diodes = d2a(raw_sel_diodes)
-
-    def place(self, row_list: List[Row], start_row: int = 0):
-        r = row_list[start_row]
-
-        # for line in self.sel_diodes:
-        #     r.place(line)
-
-        byte = len(self.muxes)
-        for i in range(byte):
-            for selbuf in self.selbufs[i]:
-                r.place(selbuf)
-            for mux, diode in zip_longest(self.muxes[i], self.mux_diodes[i]):
-                r.place(mux)
-                if diode is not None:
-                    r.place(diode)
-            # for input in self.input_diodes[i]:
-            #     for diode in input:
-            #         r.place(diode)
-
-        return start_row + 1
-
-
 class HigherLevelPlaceable(LRPlaceable):
     def __init__(self, instances: List[Instance], block_size: int):
         self.clkbuf: Instance = None
+        
+        self.di_diode: List[Instance] = None
         self.dibufs: List[Instance] = None
+
         self.webufs: List[Instance] = None
 
         self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
@@ -678,6 +692,7 @@ class HigherLevelPlaceable(LRPlaceable):
         self.abufs: List[List[Instance]] = None
 
         # --
+        raw_di_diodes: Dict[int, Instance] = {}
         raw_dibufs: Dict[int, Instance] = {}
         raw_webufs: Dict[int, Instance] = {}
 
@@ -706,6 +721,9 @@ class HigherLevelPlaceable(LRPlaceable):
                 i = int(m.decoder_and_match[2])
                 raw_decoder_ands[port] = raw_decoder_ands.get(port) or {}
                 raw_decoder_ands[port][i] = instance
+            elif sarv(m, "did_match", re.search(r.di_diode, n)):
+                i = int(m.did_match[1])
+                raw_di_diodes[i] = instance
             elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
                 i = int(m.dibuf_match[1])
                 raw_dibufs[i] = instance
@@ -739,7 +757,7 @@ class HigherLevelPlaceable(LRPlaceable):
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
 
-    
+        self.di_diodes = d2a(raw_di_diodes)
         self.dibufs = d2a(raw_dibufs)
         self.webufs = d2a(raw_webufs)
         self.do_diodes = d2a({k: d2a(v) for k, v in raw_do_diodes.items()})
@@ -767,7 +785,9 @@ class HigherLevelPlaceable(LRPlaceable):
             # it is placed all on top of each other
             current_row = start_row
             r = row_list[current_row]
-            for dibuf in self.dibufs:
+
+            for diode, dibuf in zip(self.di_diodes, self.dibufs):
+                r.place(diode)
                 r.place(dibuf)
 
             current_row += 1
@@ -781,8 +801,6 @@ class HigherLevelPlaceable(LRPlaceable):
             else:
                 for block in self.blocks:
                     current_row = block.place(row_list, current_row)
-
-            current_row += 1
 
             for domux in self.domuxes:
                 current_row = domux.place(row_list, current_row)
