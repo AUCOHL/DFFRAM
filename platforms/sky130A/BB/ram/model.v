@@ -99,9 +99,6 @@ module MUX4x1 #(parameter   WIDTH=32)
                     .S0(SEL0[i]), 
                     .S1(SEL1[i]), 
                     .X(X[(i+1)*8-1:i*8]) );
-            
-            (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODE_MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));       
         end
     endgenerate
 endmodule
@@ -360,16 +357,12 @@ module RAM32 #( parameter   USE_LATCH=1,
     (* keep = "true" *)
     sky130_fd_sc_hd__diode_2    DIODE_CLK         (.DIODE(CLK));
     sky130_fd_sc_hd__clkbuf_2   CLKBUF              (.X(CLK_buf), .A(CLK));
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2    DIODE_CLKBUF         (.DIODE(CLK_buf));
     
     sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]  (.X(WE0_buf), .A(WE0));
     
     (* keep = "true" *)
     sky130_fd_sc_hd__diode_2    DIODE_A0 [6:0]    (.DIODE(A0[6:0]));
     sky130_fd_sc_hd__clkbuf_2   A0BUF[4:0]           (.X(A0_buf),  .A(A0[4:0]));
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2    DIODE_A0BUF [6:0]    (.DIODE(A0_buf[6:0]));
     
     sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN0_buf), .A(EN0));
 
@@ -397,7 +390,7 @@ module RAM32 #( parameter   USE_LATCH=1,
     endgenerate
     
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0[WSIZE*8-1:0]));
+    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0_pre[WSIZE*8-1:0]));
     sky130_fd_sc_hd__dfxtp_1 Do0_FF [WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
 
 endmodule
@@ -537,9 +530,6 @@ module RAM128 #(parameter   USE_LATCH=1,
 
     // Output MUX    
     MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
-    
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0));
 
 endmodule
 
