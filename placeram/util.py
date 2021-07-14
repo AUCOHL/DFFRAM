@@ -18,12 +18,14 @@
 
 import sys
 from types import SimpleNamespace
-from typing import Any, Dict, List, T
+from typing import Any, Dict, List, TypeVar
+
+T = TypeVar('T')
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def d2a(d: Dict[int, T], depth=1) -> List[T]:
+def d2a(d: Dict[int, T], depth=1) -> List:
     """
     Dictionary To Array
     >>> d2a({ 2: "and", 1: "potatoes", 0: "mashed", 3: "gravy"})

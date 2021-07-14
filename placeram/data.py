@@ -94,13 +94,15 @@ class Mux(Placeable):
 
         current_row += 1
         r = row_list[current_row]
-        print(self.input_diodes)
-        for i in range(byte):
-            for input in self.input_diodes[i]:
-                for diode in input:
-                    r.place(diode)
 
-        return current_row + 1
+        if len(self.input_diodes):
+            for i in range(byte):
+                for input in self.input_diodes[i]:
+                    for diode in input:
+                        r.place(diode)
+            current_row += 1
+
+        return current_row 
 
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
