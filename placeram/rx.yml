@@ -1,7 +1,7 @@
 Mux:
   selbuf: "\\bSEL(\\d*)?BUF\\\\\\[(\\d+)\\\\\\]"
   mux: "\\bM\\\\\\[(\\d+)\\\\\\]\\.MUX\\\\\\[(\\d+)\\\\\\]"
-  input_diode: "\\bM\\\\\\[(\\d+)\\\\\\]\\.DIODE_A(\\d)MUX\\\\\\[(\\d+)\\\\\\]"
+  input_diode: "\\bM\\\\\\[(\\d+)\\\\\\]\\.DIODE_A(\\d+)MUX\\\\\\[(\\d+)\\\\\\]"
   sel_diode: "\\bSEL_DIODE\\\\\\[(\\d+)\\\\\\]"
 Bit:
   latch: "\\bLATCH\\b"
@@ -46,6 +46,7 @@ HigherLevelPlaceable:
   "32": "\\bBLOCK\\\\\\[(\\d+)\\\\\\]"
   "128": "\\bBANK128\\\\\\[(\\d+)\\\\\\]"
   "512": "\\bBANK512\\\\\\[(\\d+)\\\\\\]"
+  clk_diode: "\\bDIODE_CLK\\b"
   clkbuf: "\\bCLKBUF\\b"
   enbuf: "\\bEN(\\d*)BUF\\b"
   decoder_and: "\\bDEC(\\d*)\\.AND(\\d+)\\b"

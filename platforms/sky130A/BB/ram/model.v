@@ -83,13 +83,13 @@ module MUX4x1 #(parameter   WIDTH=32)
 
         for(i=0; i<SIZE; i=i+1) begin : M
             (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODE_A0MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            sky130_fd_sc_hd__diode_2 DIODE_A0MUX [(i+1)*8-1:i*8] (.DIODE(A0[(i+1)*8-1:i*8]));   
             (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODE_A1MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            sky130_fd_sc_hd__diode_2 DIODE_A1MUX [(i+1)*8-1:i*8] (.DIODE(A1[(i+1)*8-1:i*8]));   
             (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODE_A2MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));   
+            sky130_fd_sc_hd__diode_2 DIODE_A2MUX [(i+1)*8-1:i*8] (.DIODE(A2[(i+1)*8-1:i*8]));   
             (* keep = "true" *)
-            sky130_fd_sc_hd__diode_2 DIODE_A3MUX [(i+1)*8-1:i*8] (.DIODE(X[(i+1)*8-1:i*8]));
+            sky130_fd_sc_hd__diode_2 DIODE_A3MUX [(i+1)*8-1:i*8] (.DIODE(A3[(i+1)*8-1:i*8]));
 
             sky130_fd_sc_hd__mux4_1 MUX[7:0] (
                     .A0(A0[(i+1)*8-1:i*8]), 
@@ -180,6 +180,8 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
 
     generate 
         genvar i;
+        (* keep = "true" *)
+        sky130_fd_sc_hd__diode_2 DIODE_CLK (.DIODE(CLK));
 
         if(USE_LATCH == 1) begin
             sky130_fd_sc_hd__inv_1 CLKINV(.Y(CLK_B), .A(CLK));
@@ -192,8 +194,6 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
         sky130_fd_sc_hd__and2_1 CGAND( .A(SEL0), .B(WE0), .X(WE0_WIRE) );
     
         for(i=0; i<8; i=i+1) begin : BIT
-            // (* keep = "true" *)
-            // sky130_fd_sc_hd__diode_2 DIODEi0 (.DIODE(Di0[i]));
             if(USE_LATCH == 0)
                 sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
@@ -361,7 +361,7 @@ module RAM32 #( parameter   USE_LATCH=1,
     sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]  (.X(WE0_buf), .A(WE0));
     
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2    DIODE_A0 [6:0]    (.DIODE(A0[6:0]));
+    sky130_fd_sc_hd__diode_2    DIODE_A0 [4:0]    (.DIODE(A0[4:0]));
     sky130_fd_sc_hd__clkbuf_2   A0BUF[4:0]           (.X(A0_buf),  .A(A0[4:0]));
     
     sky130_fd_sc_hd__clkbuf_2   ENBUF               (.X(EN0_buf), .A(EN0));
@@ -422,9 +422,15 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
     // Di Buffers
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf), .A(Di0));
     // Control signals buffers
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_CLK         (.DIODE(CLK));
     sky130_fd_sc_hd__clkbuf_2   CLKBUF               (.X(CLK_buf),  .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[(WSIZE-1):0]   (.X(WE0_buf), .A(WE0));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_A0 [4:0]    (.DIODE(A0[4:0]));
     sky130_fd_sc_hd__clkbuf_2   A0BUF[4:0]           (.X(A0_buf),  .A(A0));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_A1 [4:0]    (.DIODE(A0[4:0]));
     sky130_fd_sc_hd__clkbuf_2   A1BUF[4:0]           (.X(A1_buf),  .A(A1));
     sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN0_buf), .A(EN0));
     sky130_fd_sc_hd__clkbuf_2   EN1BUF               (.X(EN1_buf), .A(EN1));
@@ -469,9 +475,9 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
     endgenerate
     
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0_FF [WSIZE*8-1:0] (.DIODE(Do0));
+    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0));
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do1_FF [WSIZE*8-1:0] (.DIODE(Do1));
+    sky130_fd_sc_hd__diode_2 DIODE_Do1 [WSIZE*8-1:0] (.DIODE(Do1));
     sky130_fd_sc_hd__dfxtp_1 Do0_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(CLK) );
     sky130_fd_sc_hd__dfxtp_1 Do1_FF[WSIZE*8-1:0] ( .D(Do1_pre), .Q(Do1), .CLK(CLK) );    
 
@@ -504,10 +510,11 @@ module RAM128 #(parameter   USE_LATCH=1,
                             
     // Buffers
     (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_DI [WSIZE*8-1:0] (.DIODE(Di0));
-    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
+    sky130_fd_sc_hd__diode_2    DIODE_DI [WSIZE*8-1:0]  (.DIODE(Di0));
+    sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0]    (.X(Di0_buf),  .A(Di0));
 
-
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_CLK            (.DIODE(CLK));
     sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK));
 
     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
@@ -516,7 +523,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     
     (* keep = "true" *)
     sky130_fd_sc_hd__diode_2    DIODE_A0 [6:0]    (.DIODE(A0[6:0]));
-    sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]            (.X(A0_buf),   .A(A0));
+    sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]        (.X(A0_buf),   .A(A0));
 
 
     DEC2x4 DEC (.EN(EN0_buf), .A(A0_buf[6:5]), .SEL(SEL0));
@@ -562,12 +569,20 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
     wire [(WSIZE*8-1):0]    Do1_pre[3:0]; 
                             
     // Buffers
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_DI [WSIZE*8-1:0]  (.DIODE(Di0));
     sky130_fd_sc_hd__clkbuf_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_CLK            (.DIODE(CLK));
     sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     sky130_fd_sc_hd__clkbuf_2   EN0BUF               (.X(EN0_buf),  .A(EN0));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_A0 [6:0]    (.DIODE(A0[6:0]));
     sky130_fd_sc_hd__clkbuf_2   A0BUF[6:0]           (.X(A0_buf),   .A(A0));
     sky130_fd_sc_hd__clkbuf_2   EN1BUF               (.X(EN1_buf),  .A(EN1));
+    (* keep = "true" *)
+    sky130_fd_sc_hd__diode_2    DIODE_A1 [6:0]    (.DIODE(A0[6:0]));
     sky130_fd_sc_hd__clkbuf_2   A1BUF[6:0]           (.X(A1_buf),   .A(A1));
 
     /* (* keep = "true" *) */
@@ -596,13 +611,7 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
         end
      endgenerate
 
-    // Output MUXs    
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0_MUX [((WSIZE*8)*2)-1:0] (.DIODE({Do0[1], Do0[0]}));
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do1_MUX [((WSIZE*8)*2)-1:0] (.DIODE({Do1[1], Do1[0]}));
-    /* (* keep = "true" *) */
-    /* sky130_fd_sc_hd__diode_2 DIODE_Do1_MUX [((WSIZE*8)*3)-1:0] (.DIODE({Do1[0], Do1_pre[1],Do1_pre[0]})); */
+    // Output MUXs
     MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
     MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
     

@@ -23,13 +23,21 @@ from typing import Any, Dict, List, T
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def d2a(d: Dict[int, T]) -> List[T]:
+def d2a(d: Dict[int, T], depth=1) -> List[T]:
     """
     Dictionary To Array
     >>> d2a({ 2: "and", 1: "potatoes", 0: "mashed", 3: "gravy"})
     ['mashed', 'potatoes', 'and', 'gravy']
+    >>> d2a({ 1: { 1: "lamb", 0: "little"}, 0: {4: "lamb", 1: "had", 2: "a", 3: "little", 0: "mary"}}, depth=1)
+    [{4: 'lamb', 1: 'had', 2: 'a', 3: 'little', 0: 'mary'}, {1: 'lamb', 0: 'little'}]
+    >>> d2a({ 1: { 1: "lamb", 0: "little"}, 0: {4: "lamb", 1: "had", 2: "a", 3: "little", 0: "mary"}}, depth=2)
+    [['mary', 'had', 'a', 'little', 'lamb'], ['little', 'lamb']]
     """
     as_list = list(d.items())
+    if (depth > 1):
+        for i, (key, value) in enumerate(as_list):
+            as_list[i] = (key, d2a(value, depth=depth-1))            
+        
     as_list.sort(key=lambda x: x[0])
     return list(map(lambda x: x[1], as_list))
 
