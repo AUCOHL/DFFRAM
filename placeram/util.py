@@ -17,6 +17,7 @@
 # limitations under the License.
 
 import sys
+import collections
 from types import SimpleNamespace
 from typing import Any, Dict, List, TypeVar
 
@@ -43,8 +44,6 @@ def d2a(d: Dict[int, T], depth=1) -> List:
     as_list.sort(key=lambda x: x[0])
     return list(map(lambda x: x[1], as_list))
 
-import collections.abc
-
 class DeepDictionary(collections.abc.MutableMapping):
     def __init__(self):
         pass
@@ -54,7 +53,7 @@ class DeepDictionary(collections.abc.MutableMapping):
             raise ValueError("cannot initialize deep dictionary of a depth less than one")
         self.depth = depth
         self.store = dict()
-        self.update(dict(*args, **kwargs))  # use the free update to set keys
+        self.update(dict(*args, **kwargs))
 
     def __getitem__(self, key):
         get_result = self.store.get(key)

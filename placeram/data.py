@@ -51,7 +51,7 @@ class Mux(Placeable):
         for instance in instances:
             n = instance.getName()
             if sarv(m, "selbuf_match", re.search(r.selbuf, n)):
-                line, byte = (int(m.selbuf_match[1] or "0"), int(m.selbuf_match[2]))
+                line, byte = (int(m.selbuf_match[1]), int(m.selbuf_match[2]))
                 self.selbufs[byte][line] = instance
             elif sarv(m, "ind_match", re.search(r.input_diode, n)):
                 byte, input, bit = (int(m.ind_match[1]), int(m.ind_match[2]), int(m.ind_match[3]))
@@ -107,7 +107,7 @@ class Bit(Placeable):
             if sarv(m, "ff_match", re.search(r.ff, n)):
                 self.store = instance
             elif sarv(m, "obuf_match", re.search(r.obuf, n)):
-                port = int(m.obuf_match[1] or "0")
+                port = int(m.obuf_match[1])
                 self.obufs[port] = instance
             elif sarv(m, "latch_match", re.search(r.latch, n)):
                 self.store = instance
@@ -151,7 +151,7 @@ class Byte(Placeable):
             elif sarv(m, "cgand_match", re.search(r.cgand, n)):
                 self.cgand = instance
             elif sarv(m, "selinv_match", re.search(r.selinv, n)):
-                port = int(m.selinv_match[1] or "0")
+                port = int(m.selinv_match[1])
                 self.selinvs[port] = instance
             elif sarv(m, "clkinv_match", re.search(r.clkinv, n)):
                 self.clkinv = instance
@@ -198,7 +198,7 @@ class Word(Placeable):
                 raw_bytes[i] = raw_bytes.get(i) or []
                 raw_bytes[i].append(instance)
             elif sarv(m, "sb_match", re.search(r.selbuf, n)):
-                port = int(m.sb_match[1] or "0")
+                port = int(m.sb_match[1])
                 self.selbufs[port] = instance
             elif sarv(m, "cb_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
@@ -288,7 +288,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
                 raw_words[i] = raw_words.get(i) or []
                 raw_words[i].append(instance)
             elif sarv(m, "d_match", re.search(r.decoder, n)):
-                port = int(m.d_match[1] or "0")
+                port = int(m.d_match[1])
                 raw_decoders[port] = raw_decoders.get(port) or []
                 raw_decoders[port].append(instance)
             elif sarv(m, "wb_match", re.search(r.webuf, n)):
@@ -386,6 +386,7 @@ class LRPlaceable(Placeable):
     def lrplace(self, row_list: List[Row], start_row: int, addresses: int, common: List[Instance], port_elements: List[str], place_horizontal_elements: Callable) -> int:
         # Prologue. Split vertical elements into left and right columns
         chunks = []
+        common = list(filter(lambda x: x, common))
         chunk_count = math.ceil(addresses / 2)
         per_chunk = math.ceil(len(common) / chunk_count)
 
@@ -487,7 +488,7 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 raw_slices[i] = raw_slices.get(i) or []
                 raw_slices[i].append(instance)
             elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
-                port, i = (int(m.decoder_and_match[1] or "0"), int(m.decoder_and_match[2]))
+                port, i = (int(m.decoder_and_match[1]), int(m.decoder_and_match[2]))
                 self.decoder_ands[port][i] = instance
             elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
                 i = int(m.dibuf_match[1])
@@ -500,28 +501,28 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
             elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
             elif sarv(m, "a_matches", re.search(r.a_diode, n)):
-                port, i = (int(m.a_matches[1] or "0"), int(m.a_matches[2]))
+                port, i = (int(m.a_matches[1]), int(m.a_matches[2]))
                 self.a_diodes[port][i] = instance
             elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                port, i = (int(m.abuf_match[1] or "0"), int(m.abuf_match[2]))
+                port, i = (int(m.abuf_match[1]), int(m.abuf_match[2]))
                 self.abufs[port][i] = instance
             elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                port = int(m.enbuf_match[1] or "0")
+                port = int(m.enbuf_match[1])
                 self.enbufs[port] = instance
             elif sarv(m, "tie_match", re.search(r.tie, n)):
-                port, i = (int(m.tie_match[1] or "0"), int(m.tie_match[2]))
+                port, i = (int(m.tie_match[1]), int(m.tie_match[2]))
                 self.ties[port][i] = instance
             elif sarv(m, "fbufenbuf_match", re.search(r.fbufenbuf, n)):
-                port, i = (int(m.fbufenbuf_match[1] or "0"), int(m.fbufenbuf_match[2]))
+                port, i = (int(m.fbufenbuf_match[1]), int(m.fbufenbuf_match[2]))
                 self.fbufenbufs[port][i] = instance
             elif sarv(m, "floatbuf_match", re.search(r.floatbuf, n)):
-                byte, port, bit = (int(m.floatbuf_match[1]), int(m.floatbuf_match[2] or "0"), int(m.floatbuf_match[3]))
+                byte, port, bit = (int(m.floatbuf_match[1]), int(m.floatbuf_match[2]), int(m.floatbuf_match[3]))
                 self.floatbufs[port][byte][bit] = instance
             elif sarv(m, "dobuf_match", re.search(r.dobuf, n)):
-                port, i = (int(m.dobuf_match[1] or "0"), int(m.dobuf_match[2]))
+                port, i = (int(m.dobuf_match[1]), int(m.dobuf_match[2]))
                 self.dobufs[port][i] = instance
             elif sarv(m, "dobufd_match", re.search(r.dobuf_diode, n)):
-                port, i = (int(m.dobufd_match[1] or "0"), int(m.dobufd_match[2]))
+                port, i = (int(m.dobufd_match[1]), int(m.dobufd_match[2]))
                 self.dobuf_diodes[port][i] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -619,11 +620,11 @@ class HigherLevelPlaceable(LRPlaceable):
                 raw_blocks[i] = raw_blocks.get(i) or []
                 raw_blocks[i].append(instance)
             elif sarv(m, "domux_match", re.search(r.domux, n)):
-                port = int(m.domux_match[1] or "0")
+                port = int(m.domux_match[1])
                 raw_domuxes[port] = raw_domuxes.get(port) or []
                 raw_domuxes[port].append(instance)
             elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
-                port, i = (int(m.decoder_and_match[1] or "0"), int(m.decoder_and_match[2]))
+                port, i = (int(m.decoder_and_match[1]), int(m.decoder_and_match[2]))
                 self.decoder_ands[port] = self.decoder_ands.get(port) or {}
                 self.decoder_ands[port][i] = instance
             elif sarv(m, "did_match", re.search(r.di_diode, n)):
@@ -640,13 +641,13 @@ class HigherLevelPlaceable(LRPlaceable):
             elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
                 self.clkbuf = instance
             elif sarv(m, "a_matches", re.search(r.a_diode, n)):
-                port, i = (int(m.a_matches[1] or "0"), int(m.a_matches[2]))
+                port, i = (int(m.a_matches[1]), int(m.a_matches[2]))
                 self.a_diodes[port][i] = instance
             elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                port, i = (int(m.abuf_match[1] or "0"), int(m.abuf_match[2]))
+                port, i = (int(m.abuf_match[1]), int(m.abuf_match[2]))
                 self.abufs[port][i] = instance
             elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                port = int(m.enbuf_match[1] or "0")
+                port = int(m.enbuf_match[1])
                 self.enbufs[port] = instance
             else:
                 raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
@@ -673,8 +674,9 @@ class HigherLevelPlaceable(LRPlaceable):
             current_row = start_row
             r = row_list[current_row]
 
-            for diode, dibuf in zip(self.di_diodes, self.dibufs):
-                r.place(diode)
+            for diode, dibuf in zip_longest(self.di_diodes, self.dibufs):
+                if diode is not None:
+                    r.place(diode)
                 r.place(dibuf)
 
             current_row += 1

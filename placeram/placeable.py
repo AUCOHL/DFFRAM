@@ -53,7 +53,7 @@ class Placeable(object):
         """
         for key, value in self.__dict__.items():
             if isinstance(value, DeepDictionary):
-                self.__dict__[key] = d2a(value.vanilla(), depth=value.depth)
+                self.__dict__[key] = d2a(value, depth=value.depth)
 
     @staticmethod
     def represent_instance(
