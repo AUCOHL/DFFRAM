@@ -150,14 +150,15 @@ class Row(object):
             
             while current > 0:
                 current_fill = fill_sizes[tracker]
+                current_width = (current_fill * Row.sw)
                 while current >= current_fill:
-                    if since_last_tap + current_fill > Row.tap_distance:
+                    if since_last_tap + current_width > Row.tap_distance:
                         fills.append(1)
                         since_last_tap = 0
                         current -= 1
                     else:
                         fills.append(current_fill)
-                        since_last_tap += (current_fill * Row.sw)
+                        since_last_tap += current_width
                         current -= current_fill
                 tracker += 1
 
