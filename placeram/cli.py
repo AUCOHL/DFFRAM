@@ -116,8 +116,9 @@ class Placer:
 
     def place(self):
         eprint("Starting placement…")
+        print(f"Placing across {len(self.rows)} rows...")
         last_row = self.hierarchy.place(self.rows)
-
+        print(f"Placement concluded with {last_row} rows...")
         Row.fill_rows(self.rows, 0,  last_row)
 
         # We can't rely on the fact that a placeable will probably fill

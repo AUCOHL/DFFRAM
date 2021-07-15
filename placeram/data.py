@@ -93,9 +93,10 @@ class Mux(Placeable):
                 r.place(mux)
 
         current_row += 1
-        r = row_list[current_row]
 
         if len(self.input_diodes):
+            r = row_list[current_row]
+
             for i in range(byte):
                 for input in self.input_diodes[i]:
                     for diode in input:
@@ -769,13 +770,17 @@ class HigherLevelPlaceable(LRPlaceable):
 
             partition_cap = int(math.sqrt(len(self.blocks)))
             if symmetrically_placeable():
+                max_rows = []
                 for i in range(len(self.blocks)):
                     if i == partition_cap:
                         current_row = start_row
                     current_row = self.blocks[i].place(row_list, current_row)
+                    max_rows.append(current_row)
+                current_row = max(max_rows)
             else:
                 for block in self.blocks:
                     current_row = block.place(row_list, current_row)
+
 
             for domux in self.domuxes:
                 current_row = domux.place(row_list, current_row)

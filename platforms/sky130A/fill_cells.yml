@@ -2,3 +2,4 @@
 decap: sky130_\w+__decap_(\d+)
 fill: sky130_\w+__fill_(\d+)
 tap: sky130_\w+__tap\w*_(\d+)
+diode: sky130_\w+__diode_(\d+)
