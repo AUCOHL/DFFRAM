@@ -6,6 +6,12 @@ from typing import List, Dict, Union, TextIO, Optional
 from types import SimpleNamespace
 
 from .row import Row
+from .util import d2a, DeepDictionary
+
+def dbInst__repr__(self):
+    return f"<dbInst {self.getMaster().getName()} {self.getName()}>"
+
+Instance.__repr__ = dbInst__repr__
 
 RegExp = str
 
@@ -21,7 +27,10 @@ def override_regex_dict(override_dict: Dict[str, RegExp]):
 Representable = Union[Instance, 'Placeable',  List['Representable']]
 
 class Placeable(object):
-    def place(self, row_list: List[Row], start_row: int = 0):
+    def place(self, row_list: List[Row], start_row: int = 0) -> int:
+        """
+        Returns the index of the row after the current one
+        """
         raise Exception("Method unimplemented.")
 
     def represent(self, tab_level: int = -1, file: TextIO = sys.stderr):
@@ -38,6 +47,14 @@ class Placeable(object):
         """
         return SimpleNamespace(**RegexDictionary[self.__class__.__name__])
 
+    def process_dds(self):
+        """
+        Transforms all deep dictionaries into sorted lists.
+        """
+        for key, value in self.__dict__.items():
+            if isinstance(value, DeepDictionary):
+                self.__dict__[key] = d2a(value.vanilla(), depth=value.depth)
+
     @staticmethod
     def represent_instance(
         name: str,
@@ -50,8 +67,7 @@ class Placeable(object):
         """
         if name != "":
             name += " "
-        str_instance = "[I<%s> '%s']" % (instance.getMaster().getName(), instance.getName())
-        print("%s%s%s" % ("".join(["  "] * tab_level), name, str_instance), file=file)
+        print("%s%s%s" % ("".join(["  "] * tab_level), name, instance), file=file)
 
     ri = represent_instance
 
