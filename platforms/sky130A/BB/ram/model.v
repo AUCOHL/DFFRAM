@@ -208,9 +208,9 @@ module BYTE_1RW1R #(  parameter   USE_LATCH=1)(
     
         for(i=0; i<8; i=i+1) begin : BIT
             if(USE_LATCH == 0)
-                sky130_fd_sc_hd__dfxtp_1 FF ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
+                sky130_fd_sc_hd__dfxtp_1 STORAGE ( .D(Di0[i]), .Q(Q_WIRE[i]), .CLK(GCLK) );
             else 
-                sky130_fd_sc_hd__dlxtp_1 LATCH (.Q(Q_WIRE[i]), .D(Di0[i]), .GATE(GCLK) );
+                sky130_fd_sc_hd__dlxtp_1 STORAGE (.Q(Q_WIRE[i]), .D(Di0[i]), .GATE(GCLK) );
 
             sky130_fd_sc_hd__ebufn_2 OBUF0 ( .A(Q_WIRE[i]), .Z(Do0[i]), .TE_B(SEL0_B) );
             sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(Q_WIRE[i]), .Z(Do1[i]), .TE_B(SEL1_B) );
