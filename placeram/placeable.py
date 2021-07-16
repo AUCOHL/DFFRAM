@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import yaml
 from opendbpy import dbInst as Instance
@@ -15,18 +16,63 @@ Instance.__repr__ = dbInst__repr__
 
 RegExp = str
 
-RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
-    open(os.path.join(os.path.dirname(__file__), "rx.yml"))
-)
-def override_regex_dict(override_dict: Dict[str, RegExp]):
-    global RegexDictionary
-    for key, value in override_dict.items():
-        class_name, regex = key.split(".")
-        RegexDictionary[class_name][regex] = value
-
-Representable = Union[Instance, 'Placeable',  List['Representable']]
-
 class Placeable(object):
+    RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
+        open(os.path.join(os.path.dirname(__file__), "rx.yml"))
+    )
+
+    def regex_dict(self) -> Dict[str, RegExp]:
+        return Placeable.RegexDictionary[self.__class__.__name__]
+
+    class Sieve(object):
+        def __init__(self, variable: str, groups: List[str] = [], group_rx_order=None, custom_behavior=None):
+            self.variable = variable
+            self.groups = groups
+            self.groups_rx_order = group_rx_order or list(range(1, len(groups) + 1))
+            self.custom_behavior = custom_behavior
+
+    def sieve(self, instances: List[Instance], sieves: List[Sieve]):
+        regexes = self.regex_dict()
+        compiled_regexes = { k: re.compile(v) for k, v in regexes.items() }
+        for sieve in sieves:
+            depth = len(sieve.groups)
+            if depth == 0:
+                self.__dict__[sieve.variable] = None
+            else:
+                self.__dict__[sieve.variable] = DeepDictionary(depth)
+        
+        for instance in instances:
+            n = instance.getName()
+            found = False
+            for sieve in sieves:
+                rx = compiled_regexes[sieve.variable]
+                result = rx.search(n)
+                if result is None:
+                    continue
+                found = True
+                if len(sieve.groups_rx_order) == 0:
+                    if sieve.custom_behavior is not None:
+                        sieve.custom_behavior(instance)
+                    else:
+                        self.__dict__[sieve.variable] = instance
+                else:
+                    access_order = []
+                    for ordinal in sieve.groups_rx_order:
+                        access_order.append(result.group(ordinal))
+
+                    if sieve.custom_behavior is not None:
+                        sieve.custom_behavior(instance, *access_order)
+
+                    last_access = access_order.pop()
+                    accessible = self.__dict__[sieve.variable]
+                    for access in access_order:
+                        accessible = accessible[access]
+                    
+                    accessible[last_access] = instance
+                break
+            if not found:
+                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+
     def place(self, row_list: List[Row], start_row: int = 0) -> int:
         """
         Returns the index of the row after the current one
@@ -40,14 +86,7 @@ class Placeable(object):
     def word_count(self):
         raise Exception("Method unimplemented.")
 
-    def regexes(self) -> SimpleNamespace:
-        """
-        Returns a dictionary of regexes for this class accessible with the dot
-        notation.
-        """
-        return SimpleNamespace(**RegexDictionary[self.__class__.__name__])
-
-    def process_dds(self):
+    def dicts_to_lists(self):
         """
         Transforms all deep dictionaries into sorted lists.
         """
@@ -74,7 +113,7 @@ class Placeable(object):
     @staticmethod
     def represent_array(
         name: str,
-        array: List[Representable],
+        array: List['Representable'],
         tab_level: int,
         file: TextIO = sys.stderr,
         header: Optional[str] = None
@@ -102,6 +141,8 @@ class Placeable(object):
         tab_level -= 1
 
     ra = represent_array
+
+Representable = Union[Instance, 'Placeable',  List['Representable']]
 
 class DataError(Exception):
     pass

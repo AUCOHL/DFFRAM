@@ -33,39 +33,20 @@ from itertools import zip_longest
 # --
 
 P = Placeable
+S = Placeable.Sieve
 
 class Mux(Placeable):
     """
     Constraint: The number of selection buffers is necessarily == the number of bytes.
     """
     def __init__(self, instances: List[Instance]):
-        self.sel_diodes: List[Instance] = DD()
-
-        # First access is the byte
-        self.selbufs: List[List[Instance]] = DD(2)
-        self.muxes: List[List[Instance]] = DD(2)
-        self.input_diodes: List[List[List[Instance]]] = DD(3)
-
-        m = NS()
-        r = self.regexes()
-        for instance in instances:
-            n = instance.getName()
-            if sarv(m, "selbuf_match", re.search(r.selbuf, n)):
-                line, byte = (int(m.selbuf_match[1]), int(m.selbuf_match[2]))
-                self.selbufs[byte][line] = instance
-            elif sarv(m, "ind_match", re.search(r.input_diode, n)):
-                byte, input, bit = (int(m.ind_match[1]), int(m.ind_match[2]), int(m.ind_match[3]))
-                self.input_diodes[byte][input][bit] = instance
-            elif sarv(m, "mux_match", re.search(r.mux, n)):
-                byte, bit = (int(m.mux_match[1]), int(m.mux_match[2]))
-                self.muxes[byte][bit] = instance
-            elif sarv(m, "seld_match", re.search(r.sel_diode, n)):
-                line = int(m.seld_match[1])
-                self.sel_diodes[line] = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-        self.process_dds()
+        self.sieve(instances, [
+            S(variable="sel_diodes", groups=["line"]),
+            S(variable="selbufs", groups=["byte", "line"], group_rx_order=[2, 1]),
+            S(variable="muxes", groups=["byte", "bit"]),
+            S(variable="input_diodes", groups=["byte", "input", "bit"])
+        ])
+        self.dicts_to_lists()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         current_row = start_row
@@ -96,25 +77,12 @@ class Mux(Placeable):
 
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
-        self.store = None
-        self.obufs = DD(1)
+        self.sieve(instances, [
+            S(variable="store"),
+            S(variable="obufs", groups=["port"])
+        ])
 
-        m = NS()
-        r = self.regexes()
-        for instance in instances:
-            n = instance.getName()
-
-            if sarv(m, "ff_match", re.search(r.ff, n)):
-                self.store = instance
-            elif sarv(m, "obuf_match", re.search(r.obuf, n)):
-                port = int(m.obuf_match[1])
-                self.obufs[port] = instance
-            elif sarv(m, "latch_match", re.search(r.latch, n)):
-                self.store = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-        self.process_dds()
+        self.dicts_to_lists()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
@@ -127,41 +95,22 @@ class Bit(Placeable):
 
 class Byte(Placeable):
     def __init__(self, instances: List[Instance]):
-        self.clockgate: Instance = None
-        self.cgand: Instance = None
-        self.clkinv: Instance = None
-        self.clkdiode: Instance = None
-        self.bits: List[Bit] = None
-        self.selinvs: List[Instance] = DD(1)
-        
         raw_bits: Dict[int, List[Instance]] = {}
+        def process_bit(instance, bit):
+            raw_bits[bit] = raw_bits.get(bit) or []
+            raw_bits[bit].append(instance)
 
-        m = NS()
-        r = self.regexes()
+        self.sieve(instances, [
+            S(variable="bits", groups=["bit"], custom_behavior=process_bit),
+            S(variable="clockgate"),
+            S(variable="cgand"),
+            S(variable="clkinv"),
+            S(variable="clkdiode"),
+            S(variable="selinvs", groups=["line"]),
+        ])
 
-        for instance in instances:
-            n = instance.getName()
-
-            if sarv(m, "bit_match", re.search(r.bit, n)):
-                i = int(m.bit_match[1])
-                raw_bits[i] = raw_bits.get(i) or []
-                raw_bits[i].append(instance)
-            elif sarv(m, "cg_match", re.search(r.cg, n)):
-                self.clockgate = instance
-            elif sarv(m, "cgand_match", re.search(r.cgand, n)):
-                self.cgand = instance
-            elif sarv(m, "selinv_match", re.search(r.selinv, n)):
-                port = int(m.selinv_match[1])
-                self.selinvs[port] = instance
-            elif sarv(m, "clkinv_match", re.search(r.clkinv, n)):
-                self.clkinv = instance
-            elif sarv(m, "clkd_match", re.search(r.clk_diode, n)):
-                self.clkdiode = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
+        self.dicts_to_lists()
         self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
-        self.process_dds()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
@@ -181,32 +130,19 @@ class Byte(Placeable):
 
 class Word(Placeable):
     def __init__(self, instances: List[Instance]):
-        self.clkbuf: Instance = None
-        self.bytes: List[Byte] = None
-        self.selbufs: List[Instance] = DD(1)
-
         raw_bytes: Dict[int, List[Instance]] = {}
+        def process_byte(instance, byte):
+            raw_bytes[byte] = raw_bytes.get(byte) or []
+            raw_bytes[byte].append(instance)
 
-        m = NS()
-        r = self.regexes()
+        self.sieve(instances, [
+            S(variable="bytes", groups=["byte"], custom_behavior=process_byte),
+            S(variable="clkbuf"),
+            S(variable="selbufs", groups=["port"])
+        ])
 
-        for instance in instances:
-            n = instance.getName()
-
-            if sarv(m, "byte_match", re.search(r.byte, n)):
-                i = int(m.byte_match[1])
-                raw_bytes[i] = raw_bytes.get(i) or []
-                raw_bytes[i].append(instance)
-            elif sarv(m, "sb_match", re.search(r.selbuf, n)):
-                port = int(m.sb_match[1])
-                self.selbufs[port] = instance
-            elif sarv(m, "cb_match", re.search(r.clkbuf, n)):
-                self.clkbuf = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
+        self.dicts_to_lists()
         self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
-        self.process_dds()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
@@ -225,28 +161,12 @@ class Word(Placeable):
 
 class Decoder3x8(Placeable):
     def __init__(self, instances: List[Instance]):
-        self.enbuf: Instance = None
-        self.and_gates: List[Instance] = DD(1)
-        self.abufs: List[Instance] = DD(1)
-
-        m = NS()
-        r = self.regexes()
-
-        for instance in instances:
-            n = instance.getName()
-
-            if sarv(m, "and_match", re.search(r.dand, n)):
-                i = int(m.and_match[1])
-                self.and_gates[i] = instance
-            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                i = int(m.abuf_match[1])
-                self.abufs[i] = instance
-            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                self.enbuf = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
-
-        self.process_dds()
+        self.sieve(instances, [
+            S(variable="enbuf"),
+            S(variable="and_gates", groups=["gate"]),
+            S(variable="abufs", groups=["address_bit"])
+        ])
+        self.dicts_to_lists()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         """
@@ -269,34 +189,24 @@ class Decoder3x8(Placeable):
 
 class Slice(Placeable): # A slice is defined as 8 words.
     def __init__(self, instances: List[Instance]):
-        self.webufs: List[Instance] = []
-        self.clkbuf: Instance = None
-        self.decoders: List[Decoder3x8] = None
-        self.words: List[Word] = None
-
         raw_words: Dict[int, List[Instance]] = {}
-        raw_decoders: Dict[int, List[Instance]] = {} # One per port.
+        def process_word(instance, word):
+            raw_words[word] = raw_words.get(word) or []
+            raw_words[word].append(instance)
 
-        m = NS()
-        r = self.regexes()
+        raw_decoders: Dict[int, List[Instance]] = {}
+        def process_decoder(instance, decoder):
+            raw_decoders[decoder] = raw_decoders.get(decoder) or []
+            raw_decoders[decoder].append(instance)
 
-        for instance in instances:
-            n = instance.getName()
+        self.sieve(instances, [
+            S(variable="words", groups=["word"], custom_behavior=process_word),
+            S(variable="decoders", groups=["port"], custom_behavior=process_decoder),
+            S(variable="clkbuf"),
+            S(variable="webufs", groups=["line"]),
+        ])
 
-            if sarv(m, "word_match", re.search(r.word, n)):
-                i = int(m.word_match[1])
-                raw_words[i] = raw_words.get(i) or []
-                raw_words[i].append(instance)
-            elif sarv(m, "d_match", re.search(r.decoder, n)):
-                port = int(m.d_match[1])
-                raw_decoders[port] = raw_decoders.get(port) or []
-                raw_decoders[port].append(instance)
-            elif sarv(m, "wb_match", re.search(r.webuf, n)):
-                self.webufs.append(instance) # Shouldn't this have the indices involved in some aspect?
-            elif sarv(m, "cb_match", re.search(r.clkbuf, n)):
-                self.clkbuf = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+        self.dicts_to_lists()
 
         self.decoders = d2a({k: Decoder3x8(v) for k, v in raw_decoders.items()})
         self.words = d2a({k: Word(v) for k, v in raw_words.items()})
@@ -456,80 +366,31 @@ class LRPlaceable(Placeable):
 
 class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
     def __init__(self, instances: List[Instance]):
-        self.clk_diode: Instance = None
-        self.clkbuf: Instance = None
-
-        self.slices: List[Slice]  = None
         raw_slices: Dict[int, List[Instance]] = {}
+        def process_slice(instance, slice):
+            raw_slices[slice] = raw_slices.get(slice) or []
+            raw_slices[slice].append(instance)
 
-        self.dibufs: List[Instance] = DD(1)
-        self.webufs: List[Instance] = DD(1)
+        self.sieve(instances, [
+            S(variable="slices", groups=["slice"], custom_behavior=process_slice),
+            S(variable="clk_diode"),
+            S(variable="clkbuf"),
+            S(variable="webufs", groups=["bit"]),
+            S(variable="enbufs", groups=["port"]),
+            S(variable="a_diodes", groups=["port", "address_bit"]),
+            S(variable="abufs", groups=["port", "address_bit"]),
+            S(variable="decoder_ands", groups=["port", "bit"]),
+            S(variable="dibufs", groups=["bit"]),
+            S(variable="dobufs", groups=["port", "bit"]),
+            S(variable="dobuf_diodes", groups=["port", "bit"]),
+            S(variable="fbufenbufs", groups=["port", "bit"]),
+            S(variable="ties", groups=["port", "bit"]),
+            S(variable="floatbufs", groups=["port", "byte", "bit"], group_rx_order=[2, 1, 3])
+        ])
 
-        # Grouped by Read Port
-        self.enbufs: List[Instance] = DD(1)
-        self.decoder_ands: List[List[Instance]] = DD(2)
-        self.dobufs: List[List[Instance]] = DD(2)
-        self.dobuf_diodes: List[List[Instance]] = DD(2)
-        self.a_diodes: List[List[Instance]] = DD(2)
-        self.abufs: List[List[Instance]] = DD(2)
-        self.fbufenbufs: List[List[Instance]] = DD(2)
-
-        self.ties: List[List[Instance]] = DD(2)
-        ## Grouped further: there are a couple of floatbufs per tie cell
-        self.floatbufs: List[List[List[Instance]]] = DD(3) 
-
-        m = NS()
-        r = self.regexes()
-        for instance in instances:
-            n = instance.getName()
-
-            if sarv(m, "slice_match", re.search(r.slice, n)):
-                i = int(m.slice_match[1])
-                raw_slices[i] = raw_slices.get(i) or []
-                raw_slices[i].append(instance)
-            elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
-                port, i = (int(m.decoder_and_match[1]), int(m.decoder_and_match[2]))
-                self.decoder_ands[port][i] = instance
-            elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
-                i = int(m.dibuf_match[1])
-                self.dibufs[i] = instance
-            elif sarv(m, "webuf_match", re.search(r.webuf, n)):
-                i = int(m.webuf_match[1])
-                self.webufs[i] = instance
-            elif sarv(m, "clkd_match", re.search(r.clk_diode, n)):
-                self.clk_diode = instance
-            elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
-                self.clkbuf = instance
-            elif sarv(m, "a_matches", re.search(r.a_diode, n)):
-                port, i = (int(m.a_matches[1]), int(m.a_matches[2]))
-                self.a_diodes[port][i] = instance
-            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                port, i = (int(m.abuf_match[1]), int(m.abuf_match[2]))
-                self.abufs[port][i] = instance
-            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                port = int(m.enbuf_match[1])
-                self.enbufs[port] = instance
-            elif sarv(m, "tie_match", re.search(r.tie, n)):
-                port, i = (int(m.tie_match[1]), int(m.tie_match[2]))
-                self.ties[port][i] = instance
-            elif sarv(m, "fbufenbuf_match", re.search(r.fbufenbuf, n)):
-                port, i = (int(m.fbufenbuf_match[1]), int(m.fbufenbuf_match[2]))
-                self.fbufenbufs[port][i] = instance
-            elif sarv(m, "floatbuf_match", re.search(r.floatbuf, n)):
-                byte, port, bit = (int(m.floatbuf_match[1]), int(m.floatbuf_match[2]), int(m.floatbuf_match[3]))
-                self.floatbufs[port][byte][bit] = instance
-            elif sarv(m, "dobuf_match", re.search(r.dobuf, n)):
-                port, i = (int(m.dobuf_match[1]), int(m.dobuf_match[2]))
-                self.dobufs[port][i] = instance
-            elif sarv(m, "dobufd_match", re.search(r.dobuf_diode, n)):
-                port, i = (int(m.dobufd_match[1]), int(m.dobufd_match[2]))
-                self.dobuf_diodes[port][i] = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+        self.dicts_to_lists()
 
         self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
-
-        self.process_dds()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         def place_horizontal_elements(start_row: int):
@@ -590,74 +451,36 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
 
 class HigherLevelPlaceable(LRPlaceable):
     def __init__(self, instances: List[Instance], block_size: int):
-        self.clk_diode: Instance = None
-        self.clkbuf: Instance = None
-
-        self.blocks: List[Union[Block, HigherLevelPlaceable]] = None
         raw_blocks: Dict[int, List[Instance]] = {}
+        def process_block(instance, block):
+            raw_blocks[block] = raw_blocks.get(block) or []
+            raw_blocks[block].append(instance)
 
-        self.domuxes: List[Mux] = None
         raw_domuxes: Dict[int, List[Instance]] = {}
-        
-        self.di_diodes: List[Instance] = DD(1)
-        self.dibufs: List[Instance] = DD(1)
-        self.webufs: List[Instance] = DD(1)
-        
-        # Grouped by Read Port
-        self.enbufs: List[Instance] = DD(1)
-        self.a_diodes: List[List[Instance]] = DD(2)
-        self.decoder_ands: List[List[Instance]] = DD(2)
-        self.abufs: List[List[Instance]] = DD(2)
+        def process_raw_domuxes(instance, domux):
+            raw_domuxes[domux] = raw_domuxes.get(domux) or []
+            raw_domuxes[domux].append(instance)
 
-        # --
-        m = NS()
-        r = self.regexes()
+        self.sieve(instances, [
+            S(variable=f"block{block_size}", groups=["block"], custom_behavior=process_block),
+            S(variable="domuxes", groups=["domux"], custom_behavior=process_raw_domuxes),
+            S(variable="clk_diode"),
+            S(variable="clkbuf"),
+            S(variable="di_diodes", groups=["bit"]),
+            S(variable="dibufs", groups=["bit"]),
+            S(variable="webufs", groups=["bit"]),
+            S(variable="enbufs", groups=["port"]),
+            S(variable="decoder_ands", groups=["port", "bit"]),
+            S(variable="abufs", groups=["port", "address_bit"]),
+            S(variable="a_diodes", groups=["port", "address_bit"])
+        ])
 
-        for instance in instances:
-            n = instance.getName()
-            if sarv(m, "block_match", re.search(getattr(r, str(block_size)), n)):
-                i = int(m.block_match[1])
-                raw_blocks[i] = raw_blocks.get(i) or []
-                raw_blocks[i].append(instance)
-            elif sarv(m, "domux_match", re.search(r.domux, n)):
-                port = int(m.domux_match[1])
-                raw_domuxes[port] = raw_domuxes.get(port) or []
-                raw_domuxes[port].append(instance)
-            elif sarv(m, "decoder_and_match", re.search(r.decoder_and, n)):
-                port, i = (int(m.decoder_and_match[1]), int(m.decoder_and_match[2]))
-                self.decoder_ands[port] = self.decoder_ands.get(port) or {}
-                self.decoder_ands[port][i] = instance
-            elif sarv(m, "did_match", re.search(r.di_diode, n)):
-                i = int(m.did_match[1])
-                self.di_diodes[i] = instance
-            elif sarv(m, "dibuf_match", re.search(r.dibuf, n)):
-                i = int(m.dibuf_match[1])
-                self.dibufs[i] = instance
-            elif sarv(m, "webuf_match", re.search(r.webuf, n)):
-                i = int(m.webuf_match[1])
-                self.webufs[i] = instance
-            elif sarv(m, "clkd_match", re.search(r.clk_diode, n)):
-                self.clk_diode = instance
-            elif sarv(m, "clkbuf_match", re.search(r.clkbuf, n)):
-                self.clkbuf = instance
-            elif sarv(m, "a_matches", re.search(r.a_diode, n)):
-                port, i = (int(m.a_matches[1]), int(m.a_matches[2]))
-                self.a_diodes[port][i] = instance
-            elif sarv(m, "abuf_match", re.search(r.abuf, n)):
-                port, i = (int(m.abuf_match[1]), int(m.abuf_match[2]))
-                self.abufs[port][i] = instance
-            elif sarv(m, "enbuf_match", re.search(r.enbuf, n)):
-                port = int(m.enbuf_match[1])
-                self.enbufs[port] = instance
-            else:
-                raise DataError("Unknown element in %s: %s" % (type(self).__name__, n))
+        self.dicts_to_lists()
 
         self.blocks = d2a({
             k: create_hierarchy(v, block_size) for k, v in  raw_blocks.items()
         })
         self.domuxes = d2a({ k: Mux(v) for k, v in raw_domuxes.items()})
-
-        self.process_dds()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         def symmetrically_placeable():

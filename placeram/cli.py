@@ -42,8 +42,6 @@ from . import data
 from .row import Row
 from .util import eprint
 from .reg_data import DFFRF
-from .placeable import override_regex_dict
-
 import os
 import re
 import traceback
@@ -205,7 +203,6 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
 
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
-    override_regex_dict(config.get("rx_overrides") or {})
 
     register_file = config.get("register_file") or False
 
