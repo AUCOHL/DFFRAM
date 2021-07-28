@@ -15,65 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .util import d2a, sarv
-from .util import DeepDictionary as DD
+from .util import d2a
 from .row import Row
-from .placeable import Placeable, DataError, RegExp
+from .placeable import Placeable, DataError
+from .common_data import *
 
 from opendbpy import dbInst as Instance
 
-import re
-import sys
 import math
-from types import SimpleNamespace as NS
-from functools import partial
-from typing import Callable, List, Dict, Union, TextIO
+from typing import Callable, List, Dict, Union
 from itertools import zip_longest
 
 # --
 
 P = Placeable
 S = Placeable.Sieve
-
-class Mux(Placeable):
-    """
-    Constraint: The number of selection buffers is necessarily == the number of bytes.
-    """
-    def __init__(self, instances: List[Instance]):
-        self.sieve(instances, [
-            S(variable="sel_diodes", groups=["line"]),
-            S(variable="selbufs", groups=["byte", "line"], group_rx_order=[2, 1]),
-            S(variable="muxes", groups=["byte", "bit"]),
-            S(variable="input_diodes", groups=["byte", "input", "bit"])
-        ])
-        self.dicts_to_lists()
-
-    def place(self, row_list: List[Row], start_row: int = 0):
-        current_row = start_row
-        r = row_list[current_row]
-
-        for line in self.sel_diodes:
-            r.place(line)
-
-        byte = len(self.muxes)
-        for i in range(byte):
-            for selbuf in self.selbufs[i]:
-                r.place(selbuf)
-            for mux in self.muxes[i]:
-                r.place(mux)
-
-        current_row += 1
-
-        if len(self.input_diodes):
-            r = row_list[current_row]
-
-            for i in range(byte):
-                for input in self.input_diodes[i]:
-                    for diode in input:
-                        r.place(diode)
-            current_row += 1
-
-        return current_row 
 
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
@@ -158,34 +114,6 @@ class Word(Placeable):
 
     def word_count(self):
         return 1
-
-class Decoder3x8(Placeable):
-    def __init__(self, instances: List[Instance]):
-        self.sieve(instances, [
-            S(variable="enbuf"),
-            S(variable="and_gates", groups=["gate"]),
-            S(variable="abufs", groups=["address_bit"])
-        ])
-        self.dicts_to_lists()
-
-    def place(self, row_list: List[Row], start_row: int = 0):
-        """
-        By placing this decoder, you agree that rows[start_row:start_row+7]
-        are at the sole mercy of this function.
-        """
-
-        ands_placeable = self.and_gates
-        buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
-
-        for i in range(8):
-            r = row_list[start_row + i]
-
-            r.place(ands_placeable[i])
-            buf = buffers_placeable[i]
-            if buf is not None:
-                r.place(buf)
-
-        return start_row + 8
 
 class Slice(Placeable): # A slice is defined as 8 words.
     def __init__(self, instances: List[Instance]):

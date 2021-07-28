@@ -1,8 +1,19 @@
+# Common
 Mux:
   selbufs: "\\bSEL(\\d+)BUF\\\\\\[(\\d+)\\\\\\]"
   muxes: "\\bM\\\\\\[(\\d+)\\\\\\]\\.MUX\\\\\\[(\\d+)\\\\\\]"
   input_diodes: "\\bM\\\\\\[(\\d+)\\\\\\]\\.DIODE_A(\\d+)MUX\\\\\\[(\\d+)\\\\\\]"
   sel_diodes: "\\bSEL_DIODE\\\\\\[(\\d+)\\\\\\]"
+Decoder2x4:
+  and_gates: "\\bAND(\\d+)\\b"
+Decoder3x8:
+  and_gates: "\\bAND(\\d+)\\b"
+  abufs: "\\bABUF\\\\\\[(\\d+)\\\\\\]"
+  enbuf: "\\bENBUF\\b"
+Decoder5x32:
+  decoders3x8: "\\bD(\\d+)\\b"
+  decoder2x4: "\\bD\\b"
+# 1RWNR
 Bit:
   store: "\\bSTORAGE\\b"
   obufs: "\\bOBUF(\\d+)\\b"
@@ -17,10 +28,6 @@ Word:
   clkbuf: "\\bCLKBUF\\b"
   selbufs: "\\bSEL(\\d+)BUF\\b"
   bytes: "\\bBYTE\\\\\\[(\\d+)\\\\\\]"
-Decoder3x8:
-  and_gates: "\\bAND(\\d+)\\b"
-  abufs: "\\bABUF\\\\\\[(\\d+)\\\\\\]"
-  enbuf: "\\bENBUF\\b"
 Slice:
   clkbuf: "\\bCLKBUF\\b"
   webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
@@ -55,3 +62,18 @@ HigherLevelPlaceable:
   abufs: "\\bA(\\d+)BUF\\\\\\[(\\d+)\\\\\\]"
   di_diodes: "\\bDIODE_DI\\\\\\[(\\d+)\\\\\\]"
   a_diodes: "\\bDIODE_A(\\d+)\\\\\\[(\\d+)\\\\\\]"
+# 2R1W
+RFWord:
+  clkgateand: "\\bCGAND\\b"
+  clkgates: "\\bCG\\\\\\[(\\d+)\\\\\\]"
+  invs: "\\bINV(\\d+)\\\\\\[(\\d+)\\\\\\]"
+  ffs: "\\bBIT\\\\\\[(\\d+)\\\\\\]\\.FF"
+  obufs: "\\bBIT\\\\\\[(\\d+)\\\\\\]\\.OBUF(\\d+)\\b"
+DFFRF:
+  words: "\\bREGF\\\\\\[(\\d+)\\\\\\]\\.RFW\\b"
+  decoders: "\\bDEC(\\d+)\\b"
+  rfw0_ties: "\\bRFW0\\.TIE\\\\\\[(\\d+)\\\\\\]"
+  rfw0_invs1: "\\bRFW0\\.INV1\\\\\\[(\\d+)\\\\\\]"
+  rfw0_invs2: "\\bRFW0\\.INV2\\\\\\[(\\d+)\\\\\\]"
+  rfw0_obufs1: "\\bRFW0\\.BIT\\\\\\[(\\d+)\\\\\\]\\.OBUF1\\b"
+  rfw0_obufs2: "\\bRFW0\\.BIT\\\\\\[(\\d+)\\\\\\]\\.OBUF2\\b"
