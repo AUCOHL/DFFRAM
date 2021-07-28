@@ -441,7 +441,7 @@ def route(build_folder, in_file, out_file):
         outputDRC:{build_folder}/drc
         threads:8
         verbose:1
-        OR_SEED:69
+        OR_SEED:70
         """))
 
     with open("%s/route.tcl" % build_folder, 'w') as f:

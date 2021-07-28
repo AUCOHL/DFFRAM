@@ -41,26 +41,24 @@ class RFWord(Placeable):
         self.dicts_to_lists()
 
     def place(self, row_list, start_row=0):
-        r = row_list[start_row]
+        r1 = row_list[start_row]
+        r2 = row_list[start_row + 1]
         word_width = 32
         for i in range(word_width): # 32
-            # TODO: Use middle placement
-            # to make the clkgateand an equal distance from all
-            # gates that need its output
-
-            if i % 8 == 0: # range(4) every 8 place an inv
+            if i % 8 == 0: # Per Byte
                 for invs in self.invs:
-                    r.place(invs[i//8])
-            if i == (word_width // 2): # 16 range(1)
-                r.place(self.clkgateand)
-            if i % 8 == 0: # range(4) every 8 place a clk gate
-                r.place(self.clkgates[i//8])
+                    r1.place(invs[i//8])
+                r1.place(self.clkgates[i//8])
 
-            r.place(self.ffs[i])
+            if i == (word_width // 2): # Just one, in the middle of the row (Optimize Routing)
+                r1.place(self.clkgateand)
+
+            r1.place(self.ffs[i])
             for obufs in self.obufs:
-                r.place(obufs[i])
+                r2.place(obufs[i])
+            Row.fill_rows(row_list, start_row, start_row + 2) # Keep both rows in x-lockstep
 
-        return start_row + 1
+        return start_row + 2
 
     def word_count(self):
         return 1
@@ -94,32 +92,30 @@ class DFFRF(Placeable): # 32 words
         self.decoders5x32 = d2a({k: Decoder5x32(v) for k, v in raw_decoders.items()})
 
     def place(self, row_list, start_row=0):
-        #    |      5x32 decoders placement          |  |
+        #    |      5x32 Decoder Placement           |  |
         #    |                                       |  |
         #    |                                       |  |
         #    V                                       V  V
-        #  { _ ====================================  ____   }
+        # {  _ ====================================  ____   }
         # 32 _ ====================================  ____  32
-        #  { D2 ==================================== D0 D1  }
+        # { D2 ====================================  D0 D1  }
 
-        # D2 placement
-        def width_rfw0():
-            tot_width = 0
+        def rfw0_placement_start(
+            x_start,
+            x_current,
+            x_end
+        ):
+            rfw0_width = 0
 
             for inverter in [*self.rfw0_invs1, *self.rfw0_invs2]:
-                tot_width += inverter.getMaster().getWidth()
+                rfw0_width += inverter.getMaster().getWidth()
             for atie in self.rfw0_ties:
-                tot_width += atie.getMaster().getWidth()
+                rfw0_width += atie.getMaster().getWidth()
             for anobuf in [*self.rfw0_obufs1,*self.rfw0_obufs2] :
-                tot_width += anobuf.getMaster().getWidth()
+                rfw0_width += anobuf.getMaster().getWidth()
 
-            return tot_width
-
-        def rfw0_placement_start(row_list, start_row,
-                                x_start, x_current,
-                                x_end):
             design_width = x_end - x_start
-            return x_current + ((design_width - width_rfw0()) // 2)
+            return (design_width - rfw0_width) // 2 + x_current
 
         def place_rfw0(row, start_loc):
             # RFWORD0 placement
@@ -141,14 +137,14 @@ class DFFRF(Placeable): # 32 words
             return row.x
 
 
+        # D2 placement
         self.decoders5x32[2].place(row_list, start_row, (32-4)//2, flip=True)
         row0_empty_space_1_start = row_list[start_row].x
         words_start_x = row0_empty_space_1_start
 
         current_row = start_row + 1
         for aword in self.words:
-            aword.place(row_list, current_row)
-            current_row += 1
+            current_row = aword.place(row_list, current_row)
 
         highest_row = current_row
         words_end_x = row_list[1].x
@@ -159,14 +155,18 @@ class DFFRF(Placeable): # 32 words
         # D1 placement
         self.decoders5x32[1].place(row_list, start_row, 20)
 
-        row0_empty_space_1_end = rfw0_placement_start(row_list, 0,
-                                    words_start_x,
-                                    row_list[0].x,
-                                    words_end_x)
-        Row.fill_row(row_list,
-                0,
-                row0_empty_space_1_start,
-                row0_empty_space_1_end)
+        row0_empty_space_1_end = rfw0_placement_start(
+            words_start_x,
+            row_list[0].x,
+            words_end_x
+        )
+
+        Row.fill_row(
+            row_list,
+            0,
+            row0_empty_space_1_start,
+            row0_empty_space_1_end
+        )
 
         row0 = row_list[0]
         rfw0_placement_end = place_rfw0(row0,
@@ -174,10 +174,12 @@ class DFFRF(Placeable): # 32 words
         row0_empty_space_2_start = rfw0_placement_end
 
 
-        Row.fill_row(row_list,
-                0,
-                row0_empty_space_2_start,
-                row0_empty_space_2_end)
+        Row.fill_row(
+            row_list,
+            0,
+            row0_empty_space_2_start,
+            row0_empty_space_2_end
+        )
 
         # Fill all empty spaces on edges
         Row.fill_rows(row_list, start_row, highest_row)
