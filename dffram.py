@@ -16,14 +16,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 try:
     import click
     import yaml
 except ImportError:
     print("You need to install click and pyyaml: python3 -m pip install click pyyaml")
-    exit(78)
+    exit(os.EX_CONFIG)
 
-import os
 import re
 import sys
 import math
@@ -562,7 +563,7 @@ def magic_drc(build_folder, design, def_file):
         errors = int(count_match[1])
     if errors != 0:
         print("Error: There are %i DRC errors. Check %s." % (errors, drc_report))
-        exit(65)
+        exit(os.EX_DATAERR)
 
 def lvs(build_folder, design, in_1, in_2, report):
     print("--- LVS ---")
@@ -679,7 +680,7 @@ def gds(build_folder, design, def_file, gds_file):
         errors = int(count_match[1])
     if errors != 0:
         print("Error: There are %i DRC errors. Check %s." % (errors, drc_report))
-        exit(65)
+        exit(os.EX_DATAERR)
     else:
         print("DRC successful.")
 
@@ -697,7 +698,7 @@ def gds(build_folder, design, def_file, gds_file):
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout):
-    global bb_used, last_def, last_image
+    global bb_used, last_def
 
     subprocess.run([
         "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."
@@ -712,7 +713,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     if not os.path.isdir(bb_dir):
         print("Looking for building blocks in :", bb_dir)
         print("Building blocks %s not found." % building_blocks)
-        exit(66)
+        exit(os.EX_NOINPUT)
 
     bb_used = os.path.join(bb_dir, "model.v")
     config_file = os.path.join(bb_dir, "config.yml")
@@ -723,7 +724,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         print("Invalid RAM size '%s'." % size)
-        exit(64)
+        exit(os.EX_USAGE)
 
     words = int(m[1])
     word_width = int(m[2])
@@ -732,11 +733,11 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     if os.getenv("FORCE_ACCEPT_SIZE") is None:
         if words not in config["counts"] or word_width not in config["widths"]:
             print("Size %s not supported by %s." % (size, building_blocks))
-            exit(64)
+            exit(os.EX_USAGE)
 
         if variant not in config["variants"]:
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
-            exit(64)
+            exit(os.EX_USAGE)
 
     wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
     variant_string = (("_%s" % variant) if variant is not None else "")
@@ -946,11 +947,11 @@ def main():
         print("A step has failed:", e)
         print(f"Quick invoke: {' '.join(e.cmd)}")
         cl()
-        exit(69)
+        exit(os.EX_UNAVAILABLE)
     except Exception:
         print("An unhandled exception has occurred.", traceback.format_exc())
         cl()
-        exit(69)
+        exit(os.EX_UNAVAILABLE)
 
 if __name__ == '__main__':
     main()

@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 try:
     import opendbpy as odb
 except:
@@ -24,25 +26,24 @@ except:
 
     openroad -python -m placeram [args]
     """)
-    exit(78)
+    exit(os.EX_CONFIG)
 
 try:
     import click
 except ImportError:
     print("You need to install click: python3 -m pip install click")
-    exit(78)
+    exit(os.EX_CONFIG)
 
 try:
     import yaml
 except ImportError:
-    print("You need to install pyyaml: python3 -m pip install pyyank")
-    exit(78)
+    print("You need to install pyyaml: python3 -m pip install pyyaml")
+    exit(os.EX_CONFIG)
 
 from . import data
 from .row import Row
 from .util import eprint
 from .reg_data import DFFRF
-import os
 import re
 import traceback
 
@@ -194,12 +195,12 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):
         eprint("Platform %s not found." % pdk)
-        exit(66)
+        exit(os.EX_NOINPUT)
 
     bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
     if not os.path.isdir(bb_dir):
         eprint("Building blocks %s not found." % building_blocks)
-        exit(66)
+        exit(os.EX_NOINPUT)
 
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
@@ -209,7 +210,7 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
         eprint("Invalid RAM size '%s'." % size)
-        exit(64)
+        exit(os.EX_USAGE)
     words = int(m[1])
     word_length = int(m[2])
     if words % 8 != 0 or words == 0:
