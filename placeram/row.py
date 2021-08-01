@@ -16,8 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from click.core import Option
 from opendbpy import dbRow, dbInst, dbSite
-from typing import List, Callable
+from typing import List, Callable, Optional
 
 import re
 import sys
@@ -97,26 +98,7 @@ class Row(object):
         return returnable
 
     @staticmethod
-    def fill_row(rows, row_idx, start_location, end_location):
-        r = rows[row_idx]
-        current_x = start_location
-        while current_x < end_location:
-            empty_space = end_location - current_x
-            fill_sizes_idx = 0
-            while fill_sizes_idx < len(Row.supported_fill_sizes) and Row.supported_fill_sizes[fill_sizes_idx] > empty_space//Row.sw:
-                fill_sizes_idx += 1
-
-            if empty_space // Row.sw < Row.supported_fill_sizes[-1]:
-                break
-            fill_cell = Row.create_fill(
-                    "fill_%i_%i" % (row_idx, r.fill_counter),
-                    Row.supported_fill_sizes[fill_sizes_idx])
-            r.fill_counter += 1
-            r.place(fill_cell, ignore_tap=True)
-            current_x = r.x
-
-    @staticmethod
-    def fill_rows(rows: List['Row'], from_index: int, to_index: int):
+    def fill_rows(rows: List['Row'], from_index: int, to_index: int, start_location: Optional[float] = None, end_location: Optional[float] = None):
         """
         from inclusive; to exclusive
         Fills from the last location that has a cell.
@@ -165,15 +147,20 @@ class Row(object):
             return fills
 
         max_sw = -1
-        for row_idx in range(from_index, to_index):
-            r = rows[row_idx]
-            width = r.x
-            width_sites = int(width / Row.sw)
-            max_sw = max(max_sw, width_sites)
+        if end_location is not None:
+            max_sw = end_location / Row.sw
+        else:
+            for row_idx in range(from_index, to_index):
+                r = rows[row_idx]
+                width = r.x
+                width_sites = int(width / Row.sw)
+                max_sw = max(max_sw, width_sites)
 
         for row_idx in range(from_index, to_index):
             r = rows[row_idx]
             width = r.x
+            if start_location is not None:
+                width = start_location
             width_sites = int(width / Row.sw)
 
             empty = max_sw - width_sites
@@ -183,3 +170,8 @@ class Row(object):
                 fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1
+
+                
+    @staticmethod
+    def fill_row(rows, row_idx, start_location, end_location):
+        Row.fill_rows(rows, row_idx, row_idx, start_location, end_location)

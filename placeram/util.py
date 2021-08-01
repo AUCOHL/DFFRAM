@@ -89,13 +89,3 @@ class DeepDictionary(collections.abc.MutableMapping):
                 vanilla_dict[key] = value
 
         return vanilla_dict
-
-
-def sarv(obj: SimpleNamespace, name: str, expr: T) -> T:
-    """
-    Set Attribute And Return Value
-
-    A workaround for := not being available below Python 3.8.
-    """
-    setattr(obj, name, expr)
-    return expr

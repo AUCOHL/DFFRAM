@@ -16,13 +16,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 try:
     import click
 except ImportError:
     print("You need to install click: python3 -m pip install click")
-    exit(78)
+    exit(os.EX_CONFIG)
 
-import os
 import re
 import time
 import pathlib
@@ -119,7 +120,7 @@ def main():
         RTL_openlane_flow()
     except Exception:
         print("An unhandled exception has occurred.", traceback.format_exc())
-        exit(69)
+        exit(os.EX_UNAVAILABLE)
 
 if __name__ == '__main__':
     main()
