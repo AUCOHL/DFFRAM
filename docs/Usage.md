@@ -23,7 +23,7 @@ export PDK_ROOT=/usr/local/pdk
 git clone https://github.com/Cloud-V/DFFRAM 
 cd DFFRAM
 python3 -m pip install -r requirements.txt
-./dffram.py -s 8x32 # you can choose from those sizes: 32x32, 128x32, 512x32, 1024x32, 2048x32  
+./dffram.py -s 8x32 # <8-2048>x<8-64>
 ```
 
 # Advanced
@@ -31,10 +31,10 @@ The compilation flow at a minimum needs two options: the building blocks and the
 
 ```sh
 export PDK_ROOT=/usr/local/pdk
-./dffram.py -b sky130A:ram -s 8x32
+./dffram.py -b sky130A:sky130_fd_sc_hd:ram -s 8x32
 ```
 
-The building block set `platform:name` corresponds to ./platform/\<pdk\>/BB/\<name\>/model.v. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
+The building block set `pdk:scl:name` corresponds to `./platforms/<pdk>/<scl>/_building_blocks/<name>/model.v`. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
 
 ## Options
 For a full list of options, please invoke:
@@ -55,4 +55,3 @@ FORCE_DESIGN_NAME|Design names are found based on the size. If you'd like to for
 # Appendices
 - [Appendix A: Using Opendbpy](./md/Using%20Opendbpy.md)
 - [Appendix B: How PlaceRAM Works](./md/How%20PlaceRAM%20Works.md)
-- [Appendix C: An Overview of the DFFRAM Flow](./md/Flow%20Overview.md)

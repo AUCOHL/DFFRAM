@@ -48,13 +48,7 @@ import re
 import traceback
 
 class Placer:
-    TAP_DISTANCE_MICRONS = 15
-
-    DECAP_CELL_RX = r"sky130_fd_sc_hd__decap_(\d+)"
-    FILL_CELL_RX = r"sky130_fd_sc_hd__fill_(\d+)"
-    TAP_CELL_RX = r"sky130_fd_sc_hd__tapvpwrvgnd_(\d+)"
-
-    def __init__(self, lef, tech_lef, df, word_count, word_width, register_file, fill_cell_data):
+    def __init__(self, lef, tech_lef, df, word_count, word_width, register_file, fill_cell_data, tap_distance):
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -67,20 +61,20 @@ class Placer:
 
         ## Extract the fill cells for later use
         ### We use decap cells to substitute fills wherever possible.
-        raw_fill_cells = list(filter(lambda x: re.match(Placer.FILL_CELL_RX, x.getName()), self.cells))
-        raw_decap_cells = list(filter(lambda x: re.match(Placer.DECAP_CELL_RX, x.getName()), self.cells))
-        raw_tap_cells = list(filter(lambda x: re.match(Placer.TAP_CELL_RX, x.getName()), self.cells))
+        raw_fill_cells = list(filter(lambda x: re.match(fill_cell_data['fill'], x.getName()), self.cells))
+        raw_decap_cells = list(filter(lambda x: re.match(fill_cell_data['decap'], x.getName()), self.cells))
+        raw_tap_cells = list(filter(lambda x: re.match(fill_cell_data['tap'], x.getName()), self.cells))
         self.fill_cells_by_sites = {}
         for cell in raw_fill_cells:
-            match_info = re.match(Placer.FILL_CELL_RX, cell.getName())
+            match_info = re.match(fill_cell_data['fill'], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_decap_cells:
-            match_info = re.match(Placer.DECAP_CELL_RX, cell.getName())
+            match_info = re.match(fill_cell_data['decap'], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_tap_cells:
-            match_info = re.match(Placer.TAP_CELL_RX, cell.getName())
+            match_info = re.match(fill_cell_data['tap'], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
 
@@ -99,9 +93,9 @@ class Placer:
             return odb.dbInst_create(self.block, fill_cell, name)
 
         self.micron_in_units = self.block.getDefUnits()
-        tap_distance = self.micron_in_units * Placer.TAP_DISTANCE_MICRONS
+        tap_distance = self.micron_in_units * tap_distance
 
-        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], tap_distance, create_fill, fill_cell_sizes, Placer.TAP_CELL_RX)
+        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], tap_distance, create_fill, fill_cell_sizes, fill_cell_data['tap'])
 
         if register_file:
             self.hierarchy = DFFRF(self.instances)
@@ -187,17 +181,17 @@ def check_readable(file):
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format '{width}x{height}')")
 @click.option('-n', '--write-density', required=False, help="File to print density to (in the format '{density}'- 0<=density<1)")
-@click.option('-b', '--building-blocks', default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option('-b', '--building-blocks', default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
 @click.argument('def_file', required=True, nargs=1)
 def cli(output, lef, tlef, size, represent, write_dimensions, write_density, building_blocks, def_file):
 
-    pdk, blocks = building_blocks.split(":")
+    pdk, scl, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):
         eprint("Platform %s not found." % pdk)
         exit(os.EX_NOINPUT)
 
-    bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
+    bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
         eprint("Building blocks %s not found." % building_blocks)
         exit(os.EX_NOINPUT)
@@ -218,12 +212,14 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
     if word_length % 8 != 0 or words == 0:
         eprint("WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected.")
 
+    tap_distance = config["tap_distance"]
+
     for input in [lef, tlef, def_file]:
         check_readable(input)
 
     fill_cell_data = yaml.load(open(fill_cells_file).read(), Loader=yaml.SafeLoader)
 
-    placer = Placer(lef, tlef, def_file, words, word_length, register_file, fill_cell_data)
+    placer = Placer(lef, tlef, def_file, words, word_length, register_file, fill_cell_data, tap_distance)
 
     if represent is not None:
         with open(represent, 'w') as f:

@@ -34,8 +34,7 @@ RAM_instantiation = """
 //`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
 //`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
 // // Temporary override: IcarusVerilog cannot read these for some reason ^
-`include "hd_primitives.v"
-`include "hd_functional.v"
+`include "sky130_fd_sc_hd.v"
 
 `include "{filename}"
 
@@ -119,8 +118,7 @@ RAM_instantiation_1RW1R = """
 //`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
 //`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
 // // Temporary override: IcarusVerilog cannot read these for some reason ^
-`include "hd_primitives.v"
-`include "hd_functional.v"
+`include "sky130_fd_sc_hd.v"
 
 `include "{filename}"
 
