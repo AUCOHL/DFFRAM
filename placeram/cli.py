@@ -181,17 +181,17 @@ def check_readable(file):
 @click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
 @click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format '{width}x{height}')")
 @click.option('-n', '--write-density', required=False, help="File to print density to (in the format '{density}'- 0<=density<1)")
-@click.option('-b', '--building-blocks', default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option('-b', '--building-blocks', default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
 @click.argument('def_file', required=True, nargs=1)
 def cli(output, lef, tlef, size, represent, write_dimensions, write_density, building_blocks, def_file):
 
-    pdk, blocks = building_blocks.split(":")
+    pdk, scl, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):
         eprint("Platform %s not found." % pdk)
         exit(os.EX_NOINPUT)
 
-    bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
+    bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
         eprint("Building blocks %s not found." % building_blocks)
         exit(os.EX_NOINPUT)

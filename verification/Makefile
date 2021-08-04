@@ -3,8 +3,8 @@ RCOUNT = 32
 RWIDTH = 32
 
 INCLUDE_PATHS=../platforms/sky130A/sky130_fd_sc_hd
-RTL_PATH=../platforms/sky130A/BB/ram/model.v
-RF_PATH=../platforms/sky130A/BB/rf/model.v
+RTL_PATH=../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/ram/model.v
+RF_PATH=../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/rf/model.v
 
 IVL_FLAGS= -DFUNCTIONAL $(addprefix -I ,$(INCLUDE_PATHS))
 DFFRF_TB=tb_DFFRF$(RCOUNT)x$(RWIDTH)

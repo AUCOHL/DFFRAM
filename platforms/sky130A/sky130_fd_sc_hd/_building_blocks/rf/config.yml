@@ -1,4 +1,3 @@
-lib: sky130_fd_sc_hd
 counts: [32]
 widths: [32]
 design_name_template: "DFFRF{variant}"

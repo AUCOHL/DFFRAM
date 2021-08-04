@@ -19,10 +19,9 @@
 /* `define     RCOUNT */
 /* `include `MODEL_FILEPATH */
 
-`include "hd_primitives.v"
-`include "hd_functional.v"
+`include "sky130_fd_sc_hd.v"
 
-`include "../platforms/sky130A/BB/rf/model.v"
+`include "../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/rf/model.v"
 
 
 module `tb_DFFRF_module(`RCOUNT, `RWIDTH);

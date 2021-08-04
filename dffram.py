@@ -188,9 +188,8 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
         f.write(env_vars)
     openlane("sta", f"{build_folder}/sta.tcl")
 
-bb_used = "BB.v"
 # Not true synthesis, just elaboration.
-def synthesis(design, synth_info, widths_supported, word_width_bytes, out_file):
+def synthesis(design, building_blocks, synth_info, widths_supported, word_width_bytes, out_file):
     print("--- Synthesis ---")
     chparam = ""
     if len(widths_supported) > 1:
@@ -201,7 +200,7 @@ def synthesis(design, synth_info, widths_supported, word_width_bytes, out_file):
         set vtop {design}
         set SCL $env(LIBERTY)
         read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-        read_verilog {bb_used}
+        read_verilog {building_blocks}
         {chparam}
         hierarchy -check -top {design}
         synth -top {design} -flatten
@@ -696,14 +695,16 @@ def gds(design, def_file, gds_file):
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
 @click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="Path to OpenPDKs PDK root")
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-b", "--building-blocks", default="sky130A:ram", help="Format <pdk>:<name>: Name of the building blocks to use.")
+@click.option("-b", "--building-blocks", default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
 @click.option("-C", "--clock-period", "clk_period", default=3, type=float, help="clk period for sta")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout):
-    global bb_used, last_def, build_folder, pdk, scl
+    global build_folder
+    global last_def
+    global pdk, scl
 
     subprocess.run([
         "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."
@@ -712,9 +713,9 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     if variant == "DEFAULT":
         variant = None
 
-    pdk, blocks = building_blocks.split(":")
+    pdk, scl, blocks = building_blocks.split(":")
 
-    bb_dir = os.path.join(".", "platforms", pdk, "BB", blocks)
+    bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
         print("Looking for building blocks in :", bb_dir)
         print("Building blocks %s not found." % building_blocks)
@@ -759,8 +760,6 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
 
     def i(ext=""):
         return "%s/%s%s" %(build_folder, design, ext)
-
-    scl = config["lib"]
 
     synth_info_path = os.path.join(".", "platforms", pdk, scl, "synth.yml")
     synth_info = yaml.safe_load(open(synth_info_path))
@@ -809,6 +808,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             "synthesis",
             lambda: synthesis(
                 design,
+                bb_used,
                 synth_info,
                 config["widths"],
                 word_width_bytes,
