@@ -50,7 +50,7 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          CLK_PERIOD=$(yq e '.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/clk_periods.yml)
+          CLK_PERIOD=$(yq e '.clk_periods.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/BB/ram/config.yml)
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
           -b sky130A:ram -v ${{ matrix.variant }} --to sta_1 --clock-period $CLK_PERIOD
           ! grep -l VIOLATED -r ./build/*/*.sta.rpt;
