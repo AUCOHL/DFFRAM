@@ -50,9 +50,9 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          CLK_PERIOD=$(yq e '.clk_periods.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/BB/ram/config.yml)
+          CLK_PERIOD=$(yq e '.clk_periods.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/sky130_fd_sc_hd/ram/config.yml)
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
-          -b sky130A:ram -v ${{ matrix.variant }} --to sta_1 --clock-period $CLK_PERIOD
+          -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }} --to sta_1 --clock-period $CLK_PERIOD
           ! grep -l VIOLATED -r ./build/*/*.sta.rpt;
   verify_models:
     name: Verify Models
@@ -112,7 +112,7 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:ram -v ${{ matrix.variant }}
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
   test_flow_rf:
     name: Test Flow (2R1W)
     runs-on: ubuntu-latest
@@ -130,4 +130,4 @@ jobs:
         env:
           PDK_ROOT: /tmp/pdklite
         run: |
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:rf -v ${{ matrix.variant }}
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}

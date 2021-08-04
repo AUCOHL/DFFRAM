@@ -57,7 +57,8 @@ The [`OpenLane/`](./OpenLane) folder will contain good known OpenLane configurat
 * `openlane/` (under construction) contains variants of the designs designed to be placed and routed using OpenLane, as well as RTL versions for comparison data.
 * `platforms/` contains PDK-specific files:
   * `<pdk-name>/`
-    * `BB/` contains a hierarchy of building blocks supported by the compiler.
+    * `<scl-name>/`
+      * `_building_blocks/` contains a hierarchy of building blocks supported by the compiler.
 * `placeram/` is the custom placer Python module.
 * `scripts/` has assisting scripts used by the flow.
 * `dffram.py` is the compilation flow going from building blocks to LVS.
