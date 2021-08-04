@@ -1,5 +1,5 @@
 # How PlaceRAM Works
-PlaceRAM is a Python 3.8+ script based on Opendbpy that places instances on an input floor plan.
+PlaceRAM is a Python 3.6+ script based on Opendbpy that places instances on an input floor plan.
 
 It is tied to a specific SRAM placement designs, but is designed pretty modularly so it can easily handle alterations to the design or similar designs for other PDKs.
 
@@ -13,42 +13,40 @@ The instance hierarchy has already been "flattened" by the time it's become a fl
     - SLICE\[0\].RAM8x32.WORD\[0\].W.B0.BIT\[0\].OBUF sky130_fd_sc_hd__ebufn_2 ;
 ```
 
-The sieve process mandates that the names of the various objects already be known. For example, see the following sieve:
+Using regular expressions, the components are filtered into various components using a sieving algorithm, shown as follows:
 
-```def
-    TOP
-    [SIEVE: SLICE]
-    [SIEVE: DEC] ; [SIEVE: WORD ]
+![A diagram of the sieve algorithm](../img/sieve_algorithm.png)
+
+The final hierarchy is returned as a tree-like structure of an abstract class `Placeable`, which also implements the sieve algorithm: to reconstruct the hierarchy, a placeable object would simply have to include this code in its constructor:
+
+
+```python
+S = Placeable.Sieve
+class Slice(Placeable):
+    def __init__(self, instances):
+        # [...]
+        self.sieve(instances, [
+            S(variable="words", groups=["word"], custom_behavior=process_word),
+            S(variable="decoders", groups=["port"], custom_behavior=process_decoder),
+            S(variable="clkbuf"),
+            S(variable="webufs", groups=["line"]),
+        ])
+        # [...]
 ```
 
-For example, let's look at the passing of `SLICE\[0\].RAM8x32.WEBUF\[0\]` through the sieve:
+Note that the order is significant, i.e., the largest subcomponents of a hierarchy should be first in a sieve. This is avoids some situations such as, for example, a clock buffer that is inside a word (with the name `WORD[0].CLKBUF`, for example) being mistakenly filtered by the `clkbuf` filter.
 
+The regular expressions for the sieves are retrieved from `./placeram/rx.yml`, so for example, the sieve above would use the following regular expressions:
 
-```def
-    SLICE\[0\].RAM8x32.WEBUF\[0\]
-
-    V
-
-    [SIEVE: SLICE] (Contains "SLICE". Proceed.)
-
-    [SIEVE: DEC] ; [SIEVE: WORD ]
-
-    ---
-    
-    [SIEVE: SLICE] > {SLICE\[0\].RAM8x32.WEBUF\[0\]} (Does not contain either DEC or WORD. Not passed to any internal objects.)
-
-    [SIEVE: DEC] ; [SIEVE: WORD ]
+```yaml
+Slice:
+  clkbuf: "\\bCLKBUF\\b"
+  webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
+  words: "\\bWORD\\\\\\[(\\d+)\\\\\\]"
+  decoders: "\\bDEC(\\d+)\\b"
 ```
 
-Typically, when using a sieve, you filter the larger components first. Perhaps a bit counterintuitively to that analog, the longer names actually go first. The items go through the sieve until they're where they're supposed to be. By the end, the components should be filtered as follows:
-
-```def
-    TOP > { DIBUF\[17\] }
-    [SIEVE: SLICE] > { SLICE\[0\].RAM8x32.WEBUF\[0\] }
-    [SIEVE: DEC] > { SLICE\[0\].RAM8x32.DEC.AND4 } ; [SIEVE: WORD] > { SLICE\[0\].RAM8x32.WORD\[0\].W.B0.BIT\[0\].OBUF }
-```
-
-The sieve is implemented as a series of object constructors in `data.py`. By the end, the hierarchy is returned as a tree-like structure of an abstract class `Placeable`, indicating that this object is placeable.
+The variables are stored in dictionaries which can be turned into arrays by invoking `self.dicts_to_lists()`. 
 
 ## B. Place
 At the heart of the placement is the `Row` object. It acts as a kind of wrapper for opendbpy rows, keeping track of the x value automatically as well as adding taps when required.
@@ -59,9 +57,9 @@ When placing a new instance, the algorithm is as follows.
 MAX_TAP_DISTANCE = 10
 
 ┌─────────────────┐
-│ Row              │
-│ Since Last Tap:  │    < (New Instance: Width 7)
-│ 3                │
+│ Row             │
+│ Since Last Tap: │    < (New Instance: Width 7)
+│ 3               │
 └─────────────────┘
 
 if incoming_cell_width + since_last_tap >= MAX_TAP_DISTANCE:
@@ -70,26 +68,6 @@ if incoming_cell_width + since_last_tap >= MAX_TAP_DISTANCE:
 ```
 
 In this manner, taps do not have to be considered in the general structure of the design.
-
-The `Row` object also offers a fill cells function, which achieves a square shape for a series of rows.
-
-```
--- Before this function --
-
-[A][B][C][D]
-[C][S]
-[F][X][N]
-[V]
-
--- After this function --
-
-[A][B][C][D]
-[C][S][ F  ]
-[F][X][N][F]
-[V][ F  ][F]
-
-( where [F] are fill rows of various widths. This function performs bin-packing so that the least amount of instances is used.)
-```
 
 Placement is handled by passing a list of rows to the `.place` method on `Placeable` objects. The method also recieves a starting row index and returns the current row index. Meaning that if a placeable object takes up 8 rows, it should return `start_row + 8`.
 
