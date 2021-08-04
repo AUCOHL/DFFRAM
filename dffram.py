@@ -912,7 +912,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                 try:
                     subprocess.run([
                         "open", "-a", "Preview",
-                        last_image
+                        image
                     ], check=True)
                     print("Opened last image in Preview.")
                 except:
