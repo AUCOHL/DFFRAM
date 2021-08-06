@@ -2,7 +2,7 @@ import os
 import re
 import sys
 import yaml
-from opendbpy import dbInst as Instance
+from opendb import dbInst as Instance
 from typing import List, Dict, Union, TextIO, Optional
 from types import SimpleNamespace
 

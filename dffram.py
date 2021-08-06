@@ -186,7 +186,7 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
             source "/openLANE_flow/scripts/sta.tcl"
         """
         f.write(env_vars)
-    openlane("sta", f"{build_folder}/sta.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/sta.tcl")
 
 # Not true synthesis, just elaboration.
 def synthesis(design, building_blocks, synth_info, widths_supported, word_width_bytes, out_file):
@@ -247,9 +247,8 @@ def floorplan(design, synth_info, wmargin_sites, hmargin_sites, width, height, i
         initialize_floorplan\\
             -die_area "0 0 {full_width} {full_height}"\\
             -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
-            -site unithd\\
-            -tracks {pdk_openlane_dir}/tracks.info
-        # source {track_file}
+            -site unithd
+        source {track_file}
         write_def {out_file}
         """)
 
@@ -257,7 +256,7 @@ def floorplan(design, synth_info, wmargin_sites, hmargin_sites, width, height, i
         f.write(f"""
         set -e
 
-        # python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_openlane_dir}/tracks.info -o {track_file}
+        python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_openlane_dir}/tracks.info -o {track_file}
         openroad {build_folder}/fp_init.tcl
         """)
 
@@ -271,7 +270,7 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, de
     unaltered = out_file + ".ref"
 
     openlane(
-        "python3", "-m", "placeram",
+        "openroad", "-python", "-m", "placeram",
         "--output", unaltered,
         "--lef", f"{pdk_lef_dir}/{scl}.lef",
         "--tech-lef", f"{pdk_tlef_dir}/{scl}.tlef",
@@ -310,7 +309,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
         openlane("openroad", f"{build_folder}/place_pins.tcl")
     else:
         openlane(
-            "python3",
+            "openroad", "-python",
             "/openLANE_flow/scripts/io_place.py",
             "--input-lef", f"{build_folder}/merged.lef",
             "--input-def", in_file,
@@ -422,7 +421,7 @@ def obs_route(metal_layer, width, height, in_file, out_file):
     global last_def
     print("--- Routing Obstruction Creation---")
     openlane(
-        "python3",
+        "openroad", "-python",
         "/openLANE_flow/scripts/add_def_obstructions.py",
         "--lef", f"{build_folder}/merged.lef",
         "--input-def", in_file,
@@ -455,14 +454,23 @@ def route(synth_info, in_file, out_file):
         read_liberty {pdk_liberty_dir}/{synth_info['typical']}
         read_lef {build_folder}/merged.lef
         read_def {in_file}
-        set ::env(GLB_RT_ALLOW_CONGESTION) "1"
+        set tech [[ord::get_db] getTech]
+        set grt_min_layer [[$tech findRoutingLayer $grt_min_layer_no] getName]
+        set grt_max_layer [[$tech findRoutingLayer $grt_max_layer_no] getName]
+        set grt_clk_min_layer [[$tech findRoutingLayer $grt_clk_min_layer_no] getName]
+        set grt_clk_max_layer [[$tech findRoutingLayer $grt_clk_max_layer_no] getName]
+        foreach layer_adjustment $global_routing_layer_adjustments {{
+            lassign $layer_adjustment layer adjustment
+            set_global_routing_layer_adjustment $layer $adjustment
+        }}
+        set_routing_layers\\
+            -signal $grt_min_layer-$grt_max_layer\\
+            -clock $grt_min_layer-$grt_max_layer
         global_route \\
             -guide_file {global_route_guide} \\
-            -layers $global_routing_layers \\
-            -clock_layers $global_routing_clock_layers \\
-            -unidirectional_routing \\
-            -overflow_iterations 100
-        tr::detailed_route_cmd {build_folder}/tr.param
+            -congestion_iterations 64\\
+            -allow_congestion
+        detailed_route -param {build_folder}/tr.param
         """)
 
     openlane("openroad", f"{build_folder}/route.tcl")
@@ -470,7 +478,7 @@ def route(synth_info, in_file, out_file):
 
 def spef_extract(def_file, spef_file=None):
     print("--- Extract SPEF ---")
-    openlane("python3", "/openLANE_flow/scripts/spef_extractor/main.py",
+    openlane("openroad", "-python", "/openLANE_flow/scripts/spef_extractor/main.py",
             "--def_file", def_file,
             "--lef_file", f"{build_folder}/merged.lef",
             "--wire_model", "L",
@@ -482,7 +490,7 @@ def add_pwr_gnd_pins(original_netlist,
     global last_def
     print("--- Adding power and ground pins to netlist ---")
 
-    openlane("python3", "/openLANE_flow/scripts/write_powered_def.py",
+    openlane("openroad", "-python", "/openLANE_flow/scripts/write_powered_def.py",
             "-d", def_file,
             "-l", f"{build_folder}/merged.lef",
             "--power-port", "VPWR",
@@ -745,7 +753,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
-    wmargin, hmargin = (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
+    wmargin, hmargin = (0,0) # (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
     variant_string = (("_%s" % variant) if variant is not None else "")
     design_name_template = config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
@@ -821,14 +829,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             "pdngen",
             lambda: pdngen(width, height, final_placement, pdn)
         ),
-        (
-            "obs_route",
-            lambda: obs_route(5, width, height, pdn, obstructed)
-        ),
+        # (
+        #     "obs_route",
+        #     lambda: obs_route(5, width, height, pdn, obstructed)
+        # ),
         (
             "routing",
             lambda: (
-                route(synth_info, obstructed, routed)
+                route(synth_info, pdn, routed)
             )
         ),
         (

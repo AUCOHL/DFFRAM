@@ -2,7 +2,7 @@
 First of all, start by importing the module:
 
 ```python
-import opendbpy as odb
+import opendb as odb
 ```
 
 ## Creating a database
