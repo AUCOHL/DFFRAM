@@ -126,7 +126,7 @@ def prep(local_pdk_root):
     pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, 'lib')
     pdk_lef_dir = os.path.join(pdk_ref_dir, scl, 'lef')
     pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, 'techlef')
-    pdk_openlane_dir = os.path.join(pdk_tech_dir, 'openlane', scl)
+    pdk_openlane_dir = os.path.join(pdk_tech_dir, 'openlane')
     pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
     merge_lefs_into()
@@ -256,7 +256,7 @@ def floorplan(design, synth_info, wmargin_sites, hmargin_sites, width, height, i
         f.write(f"""
         set -e
 
-        python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_openlane_dir}/tracks.info -o {track_file}
+        python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
         openroad {build_folder}/fp_init.tcl
         """)
 
@@ -396,6 +396,7 @@ def pdngen(width, height, in_file, out_file):
         connect {{
         {{ met1 met4 }}
         }}
+        pins {{ met4 }}
     }}
     """
 
@@ -439,7 +440,6 @@ def route(synth_info, in_file, out_file):
         f.write(textwrap.dedent(f"""\
         lef:{build_folder}/merged.lef
         def:{in_file}
-        output:{out_file}
         guide:{global_route_guide}
         outputguide:{build_folder}/dr.guide
         outputDRC:{build_folder}/drc
@@ -471,6 +471,7 @@ def route(synth_info, in_file, out_file):
             -congestion_iterations 64\\
             -allow_congestion
         detailed_route -param {build_folder}/tr.param
+        write_def {out_file}
         """)
 
     openlane("openroad", f"{build_folder}/route.tcl")
@@ -617,11 +618,10 @@ def antenna_check(def_file, out_file):
         set ::env(CURRENT_DEF) {def_file}
         read_lef $::env(MERGED_LEF_UNPADDED)
         read_def -order_wires {def_file}
-        check_antennas -path {build_folder}
+        check_antennas -report_file {out_file}
         # source /openLANE_flow/scripts/openroad/or_antenna_check.tcl
         """)
     openlane("openroad", f"{build_folder}/antenna_check.tcl")
-    openlane("mv", f"{build_folder}/antenna.rpt", out_file)
 
     antenna_report_str = open(out_file).read()
     net = ""
@@ -709,6 +709,7 @@ def gds(design, def_file, gds_file):
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
+@click.option("--base-build-dir", default="./build", help="Open the last def in Klayout. (Default: False)")
 def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout):
     global build_folder
     global last_def
@@ -829,14 +830,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             "pdngen",
             lambda: pdngen(width, height, final_placement, pdn)
         ),
-        # (
-        #     "obs_route",
-        #     lambda: obs_route(5, width, height, pdn, obstructed)
-        # ),
+        (
+            "obs_route",
+            lambda: obs_route(5, width, height, pdn, obstructed)
+        ),
         (
             "routing",
             lambda: (
-                route(synth_info, pdn, routed)
+                route(synth_info, obstructed, routed)
             )
         ),
         (

@@ -351,7 +351,8 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 for dobuf, diode in zip(dobufs, dobuf_diodes):
                     r.place(dobuf)
                     r.place(diode)
-                current_row += 1
+            
+            current_row += 1
 
             return current_row
         
