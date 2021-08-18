@@ -34,6 +34,8 @@ import textwrap
 import traceback
 import subprocess
 
+from scripts.python import sky130_hd_hack
+
 def rp(path):
     return os.path.realpath(path)
 
@@ -55,66 +57,6 @@ pdk_klayout_dir = ""
 pdk_magic_dir = ""
 pdk_openlane_dir = ""
 
-def merge_lefs_into(merged_filename="merged.lef"):
-    def pre_process_merged_lef(lef_lines):
-        def remove_line_containing(lef_lines, regex):
-            for lef_line in lef_lines:
-                match = re.search(regex, lef_line)
-                if match:
-                    lef_lines.remove(lef_line)
-            return lef_lines
-
-        def remove_version(lef_lines):
-            return remove_line_containing(lef_lines, r"(.*)VERSION(.*)")
-
-        def remove_nowireextensionatpin(lef_lines):
-            return remove_line_containing(lef_lines, r"(.*)NOWIREEXTENSIONATPIN(.*)")
-
-        def remove_dividerchar(lef_lines):
-            return remove_line_containing(lef_lines, r"(.*)DIVIDERCHAR(.*)")
-
-        def remove_busbitchars(lef_lines):
-            return remove_line_containing(lef_lines, r"(.*)BUSBITCHARS(.*)")
-
-        def remove_endlibrary(lef_lines):
-            return remove_line_containing(lef_lines, r"(.*)END( *)LIBRARY(.*)")
-        pre_processing_steps = [remove_version, remove_nowireextensionatpin,
-                                remove_dividerchar, remove_busbitchars,
-                                remove_endlibrary]
-        for apre_processing_step in pre_processing_steps:
-            lef_lines = apre_processing_step(lef_lines)
-
-        return lef_lines
-    
-    # Common header we only need one of
-    header = ["VERSION 5.7 ;\n",
-            "NOWIREEXTENSIONATPIN ON ;\n",
-            "DIVIDERCHAR \"/\" ;\n",
-            "BUSBITCHARS \"[]\" ;\n"]
-    # Common footer we only need one of
-    footer = ["END LIBRARY\n"]
-    merged_lef_lines = []
-    merged_lef_lines += header
-    # tlef
-    with open(os.path.abspath(os.path.join(pdk_tlef_dir, f'{scl}.tlef')), 'r') as tlef:
-        merged_lef_lines += tlef.readlines()
-
-    # lef
-
-    # for filename in os.listdir(pdk_lef_dir):
-    #     with open(os.path.abspath(os.path.join(pdk_lef_dir, filename)), 'r') as current_lef:
-    #         merged_lef_lines += current_lef.readlines()
-
-    with open(os.path.abspath(os.path.join(pdk_lef_dir, f'{scl}.lef')), 'r') as lef:
-        merged_lef_lines += lef.readlines()
-
-    merged_lef_lines = pre_process_merged_lef(merged_lef_lines)
-
-    # remove all footers and add just one at the end
-    merged_lef_lines = header + merged_lef_lines + footer
-    with open(os.path.join(build_folder, merged_filename), 'w') as merged_lef:
-        merged_lef.write(''.join(merged_lef_lines))
-
 def prep(local_pdk_root):
     global pdk, scl
     global pdk_root, pdk_tech_dir, pdk_ref_dir
@@ -129,7 +71,19 @@ def prep(local_pdk_root):
     pdk_openlane_dir = os.path.join(pdk_tech_dir, 'openlane')
     pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
-    merge_lefs_into()
+    openlane(
+        "openroad", "-python", "/openLANE_flow/scripts/mergeLef.py",
+        "-i", f"{pdk_tlef_dir}/{scl}.tlef", f"{pdk_lef_dir}/{scl}.lef",
+        "-o", f"{build_folder}/merged.lef"
+    )
+    if pdk == "sky130A":
+        sky130_hd_hack.process_lefs(lef=f"{pdk_lef_dir}/{scl}.lef", output_cells=f"{build_folder}/routing_cells.lef")
+
+        openlane(
+            "openroad", "-python", "/openLANE_flow/scripts/mergeLef.py",
+            "-i", f"{pdk_tlef_dir}/{scl}.tlef", f"{build_folder}/routing_cells.lef",
+            "-o", f"{build_folder}/routing_merged.lef"
+        )
 
 command_list = []
 def cl():
@@ -272,8 +226,8 @@ def placeram(in_file, out_file, size, building_blocks, dimensions=os.devnull, de
     openlane(
         "openroad", "-python", "-m", "placeram",
         "--output", unaltered,
-        "--lef", f"{pdk_lef_dir}/{scl}.lef",
         "--tech-lef", f"{pdk_tlef_dir}/{scl}.tlef",
+        "--lef", f"{pdk_lef_dir}/{scl}.lef",
         "--size", size,
         "--write-dimensions", dimensions,
         "--write-density", density,
@@ -296,7 +250,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
     global last_def
     print("--- Pin Placement ---")
 
-    if os.getenv("USE_AUTOPLACE") == "1":
+    if os.getenv("USE_IOPLACE") != "1":
         with open(f"{build_folder}/place_pins.tcl", "w") as f:
             f.write(f"""
             read_liberty {pdk_liberty_dir}/{synth_info['typical']}
@@ -438,7 +392,7 @@ def route(synth_info, in_file, out_file):
     with open(f"{build_folder}/tr.param", 'w') as f:
         # We use textwrap.dedent because tr.params does not take kindly to whitespace, at all
         f.write(textwrap.dedent(f"""\
-        lef:{build_folder}/merged.lef
+        lef:{build_folder}/routing_merged.lef
         def:{in_file}
         guide:{global_route_guide}
         outputguide:{build_folder}/dr.guide
@@ -452,7 +406,7 @@ def route(synth_info, in_file, out_file):
         f.write(f"""
         source ./platforms/{pdk}/{scl}/openroad.vars
         read_liberty {pdk_liberty_dir}/{synth_info['typical']}
-        read_lef {build_folder}/merged.lef
+        read_lef {build_folder}/routing_merged.lef
         read_def {in_file}
         set tech [[ord::get_db] getTech]
         set grt_min_layer [[$tech findRoutingLayer $grt_min_layer_no] getName]
@@ -599,7 +553,7 @@ def lvs(design, in_1, in_2, report):
 
     with open(f"{build_folder}/lvs.sh", "w") as f:
         f.write(f"""
-        +e
+        set +e
         magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < {build_folder}/lvs.tcl
         mv *.ext *.spice {build_folder}
         netgen -batch lvs "{build_folder}/{design}.spice {design}" "{in_2} {design}" -full
@@ -709,8 +663,8 @@ def gds(design, def_file, gds_file):
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
-@click.option("--base-build-dir", default="./build", help="Open the last def in Klayout. (Default: False)")
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout):
+@click.option("--base-build-dir", default="./build", help="Base build directory.")
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout, base_build_dir):
     global build_folder
     global last_def
     global pdk, scl
@@ -763,12 +717,12 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         "width_bytes": word_width_bytes,
         "variant": variant_string
     })
-    build_folder = "./build/%s_SIZE%i" % (design, word_width)
+    build_folder = f"{base_build_dir}/{design}_W{word_width}"
 
     ensure_dir(build_folder)
 
     def i(ext=""):
-        return "%s/%s%s" %(build_folder, design, ext)
+        return f"{build_folder}/{design}{ext}"
 
     synth_info_path = os.path.join(".", "platforms", pdk, scl, "synth.yml")
     synth_info = yaml.safe_load(open(synth_info_path))
