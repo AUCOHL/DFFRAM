@@ -57,6 +57,25 @@ pdk_klayout_dir = ""
 pdk_magic_dir = ""
 pdk_openlane_dir = ""
 
+def run_docker(image, args):
+    global command_list
+    cmd = [
+        "docker", "run",
+        "-v",  f"{pdk_root}:{pdk_root}",
+        "-v", f"{rp('.')}:/mnt/dffram",
+        "-w", "/mnt/dffram",
+        "-e", f"PDK_ROOT={pdk_root}",
+        "-e", f"PDKPATH={pdk_root}/{pdk}",
+        "-e", "LC_ALL=en_US.UTF-8",
+        "-e", "LANG=en_US.UTF-8"
+    ] + [image] + args
+    command_list.append(cmd)
+    subprocess.run(cmd, check=True)
+
+def openlane(*args_tuple):
+    args = list(args_tuple)
+    run_docker("efabless/openlane:2021.08.23_04.04.57", args)
+
 def prep(local_pdk_root):
     global pdk, scl
     global pdk_root, pdk_tech_dir, pdk_ref_dir
@@ -89,25 +108,6 @@ command_list = []
 def cl():
     with open("./command_list.log", "w") as f:
         f.write("\n".join([" ".join(cmd) for cmd in command_list]))
-
-def run_docker(image, args):
-    global command_list
-    cmd = [
-        "docker", "run",
-        "-v",  f"{pdk_root}:{pdk_root}",
-        "-v", f"{rp('.')}:/mnt/dffram",
-        "-w", "/mnt/dffram",
-        "-e", f"PDK_ROOT={pdk_root}",
-        "-e", f"PDKPATH={pdk_root}/{pdk}",
-        "-e", "LC_ALL=en_US.UTF-8",
-        "-e", "LANG=en_US.UTF-8"
-    ] + [image] + args
-    command_list.append(cmd)
-    subprocess.run(cmd, check=True)
-
-def openlane(*args_tuple):
-    args = list(args_tuple)
-    run_docker("dffram-env", args)
 
 def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
     print("--- Static Timing Analysis ---")
@@ -668,11 +668,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     global build_folder
     global last_def
     global pdk, scl
-
-    subprocess.run([
-        "docker", "build", "-t", "dffram-env", "-f", "dffram-env.Dockerfile", "."
-    ], check=True)
-
+    
     if variant == "DEFAULT":
         variant = None
 
