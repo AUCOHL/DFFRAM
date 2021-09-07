@@ -389,18 +389,6 @@ def route(synth_info, in_file, out_file):
     global last_def
     print("--- Route ---")
     global_route_guide = f"{build_folder}/gr.guide"
-    with open(f"{build_folder}/tr.param", 'w') as f:
-        # We use textwrap.dedent because tr.params does not take kindly to whitespace, at all
-        f.write(textwrap.dedent(f"""\
-        lef:{build_folder}/routing_merged.lef
-        def:{in_file}
-        guide:{global_route_guide}
-        outputguide:{build_folder}/dr.guide
-        outputDRC:{build_folder}/drc
-        threads:8
-        verbose:1
-        OR_SEED:70
-        """))
 
     with open(f"{build_folder}/route.tcl", 'w') as f:
         f.write(f"""
@@ -424,7 +412,13 @@ def route(synth_info, in_file, out_file):
             -guide_file {global_route_guide} \\
             -congestion_iterations 64\\
             -allow_congestion
-        detailed_route -param {build_folder}/tr.param
+        set_thread_count {os.getenv("ROUTING_CORES") or '4'}
+        detailed_route \\
+            -guide {global_route_guide} \\
+            -output_guide {build_folder}/dr.guide \\
+            -output_drc {build_folder}/dr.drc \\
+            -or_seed 70\\
+            -verbose 1
         write_def {out_file}
         """)
 
@@ -704,7 +698,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
-    wmargin, hmargin = (8, 2) # (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
+    wmargin, hmargin = (0, 0) # (8, 2) # (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
     variant_string = (("_%s" % variant) if variant is not None else "")
     design_name_template = config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
@@ -713,7 +707,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         "width_bytes": word_width_bytes,
         "variant": variant_string
     })
-    build_folder = f"{base_build_dir}/{design}_W{word_width}"
+    build_folder = f"{base_build_dir}/{size}_{variant or 'DEFAULT'}"
 
     ensure_dir(build_folder)
 
@@ -903,6 +897,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
 
     print("Done in %.2fs." % elapsed)
     cl()
+
 def main():
     try:
         flow()

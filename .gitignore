@@ -21,6 +21,7 @@ RTL/designs/*
 RTL/designs/*
 tb_RAM*x*.v
 build/
+benchmark_build/
 __pycache__
 *.ext
 support/
