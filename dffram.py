@@ -96,13 +96,8 @@ def prep(local_pdk_root):
         "-o", f"{build_folder}/merged.lef"
     )
     if pdk == "sky130A":
-        sky130_hd_hack.process_lefs(lef=f"{pdk_lef_dir}/{scl}.lef", output_cells=f"{build_folder}/routing_cells.lef")
-
-        openlane(
-            "openroad", "-python", "/openLANE_flow/scripts/mergeLef.py",
-            "-i", f"{pdk_tlef_dir}/{scl}.tlef", f"{build_folder}/routing_cells.lef",
-            "-o", f"{build_folder}/routing_merged.lef"
-        )
+        pathlib.Path(f"{build_folder}/route_only").mkdir(parents=True, exist_ok=True)
+        sky130_hd_hack.process_lefs(lef=f"{build_folder}/merged.lef", output_cells=f"{build_folder}/route_only/merged.lef")
 
 command_list = []
 def cl():
@@ -394,7 +389,7 @@ def route(synth_info, in_file, out_file):
         f.write(f"""
         source ./platforms/{pdk}/{scl}/openroad.vars
         read_liberty {pdk_liberty_dir}/{synth_info['typical']}
-        read_lef {build_folder}/routing_merged.lef
+        read_lef {build_folder}/route_only/merged.lef
         read_def {in_file}
         set tech [[ord::get_db] getTech]
         set grt_min_layer [[$tech findRoutingLayer $grt_min_layer_no] getName]
@@ -412,7 +407,7 @@ def route(synth_info, in_file, out_file):
             -guide_file {global_route_guide} \\
             -congestion_iterations 64\\
             -allow_congestion
-        set_thread_count {os.getenv("ROUTING_CORES") or '4'}
+        set_thread_count {os.getenv("ROUTING_CORES") or '2'}
         detailed_route \\
             -guide {global_route_guide} \\
             -output_guide {build_folder}/dr.guide \\
@@ -733,15 +728,23 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
     obstructed = i(".obs.def")
     routed = i(".routed.def")
     spef = i(".routed.spef")
-    lef_view = i(".lef")
-    lib_view = i(".lib")
     powered_def = i(".powered.def")
     norewrite_powered_netlist = i(".norewrite_powered.nl.v")
     powered_netlist = i(".powered.nl.v")
     antenna_report = i(".antenna.rpt")
     report = i(".rpt")
     drc_report = i(".drc.rpt")
-    gds_file = i(".gds")
+
+    products = f"{build_folder}/products"
+
+    ensure_dir(products)
+
+    def p(ext=""):
+        return f"{products}/{design}{ext}"
+
+    lef_view = p(".lef")
+    lib_view = p(".lib")
+    gds_file = p(".gds")
 
     width, height = 20000, 20000
 
@@ -883,7 +886,10 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                     ], check=True)
                     print("Opened last image in Windows.")
                 except:
-                    pass
+                    subprocess.run([
+                        "xdg-open",
+                        image
+                    ], check=True)
 
         if klayout:
             subprocess.Popen([
