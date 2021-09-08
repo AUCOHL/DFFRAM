@@ -886,10 +886,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                     ], check=True)
                     print("Opened last image in Windows.")
                 except:
-                    subprocess.run([
-                        "xdg-open",
-                        image
-                    ], check=True)
+                    try:
+                        # xdg-compatible
+                        subprocess.run([
+                            "xdg-open",
+                            image
+                        ], check=True)
+                    except:
+                        pass
 
         if klayout:
             subprocess.Popen([
