@@ -90,8 +90,8 @@ def run_designs(worker_count):
                 subprocess.check_call([
                     "python3",
                     "./dffram.py",
-                    "--variant", design['variant'],
-                    "--size", f"{design['count']}x{design['width']}",
+                    "--variant", design.variant,
+                    "--size", f"{design.count}x{design.width}",
                     "--base-build-dir", "./benchmark_build"
                 ], stdout=stdout, stderr=stderr)
 
