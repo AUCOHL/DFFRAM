@@ -120,7 +120,7 @@ def prep(local_pdk_root):
     global pdk_root, pdk_tech_dir, pdk_ref_dir
     global  pdk_liberty_dir, pdk_lef_dir, pdk_tlef_dir
     global pdk_klayout_dir, pdk_magic_dir, pdk_openlane_dir
-    pdk_root = os.path.abspath(local_pdk_root)
+    pdk_root = os.path.abspath(str(local_pdk_root))
     pdk_tech_dir = os.path.join(pdk_root, pdk, 'libs.tech')
     pdk_ref_dir = os.path.join(pdk_root, pdk, 'libs.ref')
     pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, 'lib')
