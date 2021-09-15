@@ -693,7 +693,7 @@ def gds(design, def_file, gds_file):
 @click.option("-t", "--to", default="gds", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
-@click.option("-p", "--pdk_root", required=os.getenv("PDK_ROOT") is not None, default=os.getenv("PDK_ROOT"), help="Path to OpenPDKs PDK root")
+@click.option("-p", "--pdk-root", required=os.getenv("PDK_ROOT") is None, default=os.getenv("PDK_ROOT"), help="Path to OpenPDKs PDK root")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-b", "--building-blocks", default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
 @click.option("-C", "--clock-period", "clk_period", default=3, type=float, help="clk period for sta")
