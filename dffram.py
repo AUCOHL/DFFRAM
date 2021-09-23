@@ -60,7 +60,7 @@ pdk_openlane_dir = ""
 def run_docker(image, args):
     global command_list
     cmd = [
-        "docker", "run",
+        "docker", "run", "--rm",
         "-v",  f"{pdk_root}:{pdk_root}",
         "-v", f"{rp('.')}:/mnt/dffram",
         "-w", "/mnt/dffram",
@@ -74,7 +74,7 @@ def run_docker(image, args):
 
 def openlane(*args_tuple):
     args = list(args_tuple)
-    run_docker("efabless/openlane:2021.08.23_04.04.57", args)
+    run_docker("efabless/openlane:2021.09.23_03.17.13", args)
 
 def prep(local_pdk_root):
     global pdk, scl
@@ -179,9 +179,11 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
         site_height = site_info["height"]
 
         wmargin = math.ceil(wmargin / site_width) * site_width
-        hmargin = math.ceil(wmargin / site_height) * site_height
+        hmargin = math.ceil(hmargin / site_height) * site_height
     else:
         pass
+
+    print(wmargin, hmargin)
 
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
@@ -351,6 +353,8 @@ def pdngen(width, height, in_file, out_file):
         }}
         pins {{ met4 }}
     }}
+
+    set pdngen::voltage_domains {{ CORE {{ primary_power VPWR primary_ground VGND }} }}
     """
 
     pdn_cfg_file = f"{build_folder}/pdn.cfg"
@@ -657,7 +661,7 @@ def gds(design, def_file, gds_file):
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-C", "--clock-period", default=3, type=float, help="clk period for sta")
-@click.option("-H", "--halo", default=0.2, type=float, help="Halo in microns")
+@click.option("-H", "--halo", default=2, type=float, help="Halo in microns")
 
 # Enable/Disable
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")

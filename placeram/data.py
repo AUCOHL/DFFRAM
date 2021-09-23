@@ -20,7 +20,7 @@ from .row import Row
 from .placeable import Placeable, DataError
 from .common_data import *
 
-from opendb import dbInst as Instance
+from odb import dbInst as Instance
 
 import math
 from typing import Callable, List, Dict, Union

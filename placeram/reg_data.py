@@ -21,7 +21,7 @@ from .util import d2a
 from .placeable import Placeable
 from .common_data import *
 
-from opendb import dbInst
+from odb import dbInst
 from typing import Dict, List
 Instance = dbInst
 
