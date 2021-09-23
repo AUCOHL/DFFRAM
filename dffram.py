@@ -170,14 +170,18 @@ def synthesis(design, building_blocks, synth_info, widths_supported, word_width_
     openlane("bash", f"{build_folder}/synth.sh")
 
 last_def = None
-def floorplan(design, synth_info, wmargin_sites, hmargin_sites, width, height, in_file, out_file):
+def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_file, site_info):
     global last_def
-    SITE_WIDTH=0.46
-    SITE_HEIGHT=2.72
     print("--- Floorplan ---")
 
-    wmargin = wmargin_sites * SITE_WIDTH
-    hmargin = hmargin_sites * SITE_HEIGHT
+    if site_info is not None:
+        site_width = site_info["width"]
+        site_height = site_info["height"]
+
+        wmargin = math.ceil(wmargin / site_width) * site_width
+        hmargin = math.ceil(wmargin / site_height) * site_height
+    else:
+        pass
 
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
@@ -265,8 +269,8 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
             "--config", pin_order_file,
             "--hor-layer", "4",
             "--ver-layer", "3",
-            "--ver-width-mult", "2",
-            "--hor-width-mult", "2",
+            "--ver-width-mult", "1",
+            "--hor-width-mult", "1",
             "--hor-extension", "-1",
             "--ver-extension", "-1",
             "--length", "2",
@@ -640,20 +644,27 @@ def gds(design, def_file, gds_file):
         print("DRC successful.")
 
 @click.command()
+# Execution Flow
 @click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="gds", help="End after this step")
 @click.option("--only", default=None, help="Only execute these comma;delimited;steps")
 @click.option("--skip", default=None, help="Skip these comma;delimited;steps")
+
+# Configuration
 @click.option("-p", "--pdk-root", required=os.getenv("PDK_ROOT") is None, default=os.getenv("PDK_ROOT"), help="Path to OpenPDKs PDK root")
-@click.option("-s", "--size", required=True, help="Size")
+@click.option("-O", "--output-dir", default="./build", help="Output directory.")
 @click.option("-b", "--building-blocks", default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
-@click.option("-C", "--clock-period", "clk_period", default=3, type=float, help="clk period for sta")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
+@click.option("-s", "--size", required=True, help="Size")
+@click.option("-C", "--clock-period", default=3, type=float, help="clk period for sta")
+@click.option("-H", "--halo", default=0.2, type=float, help="Halo in microns")
+
+# Enable/Disable
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
-@click.option("--base-build-dir", default="./build", help="Base build directory.")
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, variant, drc, image, klayout, base_build_dir):
+
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, halo, variant, drc, image, klayout, output_dir):
     global build_folder
     global last_def
     global pdk, scl
@@ -693,7 +704,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
-    wmargin, hmargin = (0, 0) # (8, 2) # (16, 2) # in sites # note that the minimum site width is tiiiinnnyyy
+    wmargin, hmargin = (halo, halo) # Microns
     variant_string = (("_%s" % variant) if variant is not None else "")
     design_name_template = config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
@@ -702,7 +713,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
         "width_bytes": word_width_bytes,
         "variant": variant_string
     })
-    build_folder = f"{base_build_dir}/{size}_{variant or 'DEFAULT'}"
+    build_folder = f"{output_dir}/{size}_{variant or 'DEFAULT'}"
 
     ensure_dir(build_folder)
 
@@ -711,6 +722,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
 
     synth_info_path = os.path.join(".", "platforms", pdk, scl, "synth.yml")
     synth_info = yaml.safe_load(open(synth_info_path))
+
+    site_info_path = os.path.join(".", "platforms", pdk, scl, "site.yml")
+    site_info = None
+    try:
+        site_info = yaml.safe_load(open(site_info_path).read())
+    except FileNotFoundError:
+        if halo != 0.0:
+            print(f"Note: {site_info_path} does not exist. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools.")
 
     prep(pdk_root)
 
@@ -751,10 +770,10 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
 
     def placement(in_width, in_height):
         nonlocal width, height
-        floorplan(design, synth_info, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
+        floorplan(design, synth_info, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan, site_info)
         placeram(initial_floorplan, initial_placement, size, building_blocks, dimensions=dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        floorplan(design, synth_info, wmargin, hmargin, width, height, netlist, final_floorplan)
+        floorplan(design, synth_info, wmargin, hmargin, width, height, netlist, final_floorplan, site_info)
         placeram(final_floorplan, no_pins_placement, size, building_blocks, density=density_file)
         place_pins(design, synth_info, no_pins_placement, final_placement, pin_order_file)
         verify_placement(design, synth_info, final_placement)
@@ -771,7 +790,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
                 netlist
             )
         ),
-        ("sta_1", lambda: sta(design, netlist, synth_info, clk_period)),
+        ("sta_1", lambda: sta(design, netlist, synth_info, clock_period)),
         ("placement", lambda: placement(width, height)),
         (
             "pdngen",
@@ -798,7 +817,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clk_period, varia
             "sta_2",
             lambda: (
                 spef_extract(routed, spef),
-                sta(design, netlist, synth_info, clk_period, spef)
+                sta(design, netlist, synth_info, clock_period, spef)
             )
         ),
         (

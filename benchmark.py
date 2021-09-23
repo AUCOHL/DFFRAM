@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Adapted from OpenLane by Donn.
 #
 # Copyright 2020 Efabless Corporation
@@ -92,7 +93,7 @@ def run_designs(worker_count):
                     "./dffram.py",
                     "--variant", design.variant,
                     "--size", f"{design.count}x{design.width}",
-                    "--base-build-dir", "./benchmark_build"
+                    "--output-dir", "./benchmark_build"
                 ], stdout=stdout, stderr=stderr)
 
                 print(f"Finished {design.tag}: Density {design.get_density('./benchmark_build')}.")

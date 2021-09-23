@@ -62,9 +62,6 @@ try:
 
     layout_options.keep_other_cells = True
 
-    # extra_lefs = ["./build/32x32_DEFAULT/merged.lef"]
-    # extra_lefs = [os.path.abspath(p) for p in extra_lefs]
-
     layout_options = tech.load_layout_options
     layout_options.lefdef_config.macro_resolution_mode = 1
 
