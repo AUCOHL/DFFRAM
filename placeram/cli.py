@@ -19,7 +19,7 @@
 import os
 
 try:
-    import opendbpy as odb
+    import odb
 except:
     print("""
     placeram needs to be inside OpenROAD:

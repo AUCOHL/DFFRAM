@@ -17,7 +17,7 @@
 # limitations under the License.
 
 from click.core import Option
-from opendbpy import dbRow, dbInst, dbSite
+from odb import dbRow, dbInst, dbSite
 from typing import List, Callable, Optional
 
 import re

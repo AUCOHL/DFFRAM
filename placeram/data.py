@@ -20,7 +20,7 @@ from .row import Row
 from .placeable import Placeable, DataError
 from .common_data import *
 
-from opendbpy import dbInst as Instance
+from odb import dbInst as Instance
 
 import math
 from typing import Callable, List, Dict, Union
@@ -351,7 +351,8 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 for dobuf, diode in zip(dobufs, dobuf_diodes):
                     r.place(dobuf)
                     r.place(diode)
-                current_row += 1
+            
+            current_row += 1
 
             return current_row
         

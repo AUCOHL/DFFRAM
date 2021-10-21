@@ -17,10 +17,13 @@ jobs:
           sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          mkdir -p /usr/local/pdk/sky130A
+          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Verify
-        env:
-          PDK_ROOT: /tmp/pdklite
         run: |
           cd verification
           for SIZE in $(cat ./.github/workflows/sizes.txt); do
@@ -45,10 +48,13 @@ jobs:
           sudo chmod +x /usr/bin/yq
       - name: Get PDK
         run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          mkdir -p /usr/local/pdk/sky130A
+          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run Verification
-        env:
-          PDK_ROOT: /tmp/pdklite
         run: |
           CLK_PERIOD=$(yq e '.clk_periods.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/sky130_fd_sc_hd/_building_blocks/ram/config.yml)
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
@@ -70,10 +76,13 @@ jobs:
           sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          mkdir -p /usr/local/pdk/sky130A
+          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run Verification
-        env:
-          PDK_ROOT: /tmp/pdklite
         run: |
           export PATTERN=tb_RAM${{ matrix.size }}
           cd verification/
@@ -107,10 +116,13 @@ jobs:
         uses: actions/checkout@v2
       - name: Get PDK
         run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          mkdir -p /usr/local/pdk/sky130A
+          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run
-        env:
-          PDK_ROOT: /tmp/pdklite
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
   test_flow_rf:
@@ -125,9 +137,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Get PDK
         run: |
-          git clone -q --depth 1 https://github.com/olofk/pdklite /tmp/pdklite
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          mkdir -p /usr/local/pdk/sky130A
+          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run
-        env:
-          PDK_ROOT: /tmp/pdklite
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}

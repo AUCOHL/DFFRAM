@@ -20,7 +20,7 @@ from .row import Row
 from .util import d2a
 from .placeable import Placeable
 
-from opendbpy import dbInst
+from odb import dbInst
 Instance = dbInst
 
 from typing import List
