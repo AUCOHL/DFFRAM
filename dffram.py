@@ -661,7 +661,7 @@ def gds(design, def_file, gds_file):
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-C", "--clock-period", default=3, type=float, help="clk period for sta")
-@click.option("-H", "--halo", default=2, type=float, help="Halo in microns")
+@click.option("-H", "--halo", default=2.5, type=float, help="Halo in microns")
 
 # Enable/Disable
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
