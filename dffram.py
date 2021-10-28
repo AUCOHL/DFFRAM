@@ -74,7 +74,7 @@ def run_docker(image, args):
 
 def openlane(*args_tuple):
     args = list(args_tuple)
-    run_docker("efabless/openlane:2021.09.23_03.17.13", args)
+    run_docker("efabless/openlane:2021.10.25_20.35.00", args)
 
 def prep(local_pdk_root):
     global pdk, scl
@@ -91,7 +91,7 @@ def prep(local_pdk_root):
     pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
     openlane(
-        "openroad", "-python", "/openLANE_flow/scripts/mergeLef.py",
+        "openroad", "-python", "/openlane/scripts/mergeLef.py",
         "-i", f"{pdk_tlef_dir}/{scl}.tlef", f"{pdk_lef_dir}/{scl}.lef",
         "-o", f"{build_folder}/merged.lef"
     )
@@ -118,6 +118,13 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
             
 
         env_vars = f"""
+            set ::env(SCRIPTS_DIR) /openlane/scripts
+            set ::env(PDK) "sky130A"
+            set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
+            set ::env(STD_CELL_LIBRARY_OPT) "sky130_fd_sc_hd"
+            source "/openlane/configuration/synthesis.tcl"
+            source "{pdk_openlane_dir}/config.tcl"
+            set ::env(ESTIMATE_PL_PARASITICS) 1
             set ::env(MERGED_LEF_UNPADDED) {build_folder}/merged.lef
             set ::env(SYNTH_DRIVING_CELL) "{synth_info['sta_driving_cell']}"
             set ::env(SYNTH_DRIVING_CELL_PIN) "{synth_info['sta_driving_cell_pin']}"
@@ -128,11 +135,13 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
             set ::env(CLOCK_PERIOD) "{clk_period}"
             set ::env(LIB_FASTEST) {pdk_liberty_dir}/{synth_info['fast']}
             set ::env(LIB_SLOWEST) {pdk_liberty_dir}/{synth_info['slow']}
+            set ::env(LIB_SYNTH_COMPLETE) {pdk_liberty_dir}/{synth_info['typical']}
             set ::env(CURRENT_NETLIST) {netlist}
             set ::env(DESIGN_NAME) {design}
-            set ::env(BASE_SDC_FILE) /openLANE_flow/scripts/base.sdc
+            set ::env(CURRENT_SDC) /openlane/scripts/base.sdc
             {spef_var}
-            source "/openLANE_flow/scripts/sta.tcl"
+            set ::env(CURRENT_DEF) 0
+            source "/openlane/scripts/openroad/or_sta.tcl"
         """
         f.write(env_vars)
     openlane("openroad", "-exit", f"{build_folder}/sta.tcl")
@@ -211,7 +220,7 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
         f.write(f"""
         set -e
 
-        python3 /openLANE_flow/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
+        python3 /openlane/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
         openroad {build_folder}/fp_init.tcl
         """)
 
@@ -265,7 +274,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
     else:
         openlane(
             "openroad", "-python",
-            "/openLANE_flow/scripts/io_place.py",
+            "/openlane/scripts/io_place.py",
             "--input-lef", f"{build_folder}/merged.lef",
             "--input-def", in_file,
             "--config", pin_order_file,
@@ -380,7 +389,7 @@ def obs_route(metal_layer, width, height, in_file, out_file):
     print("--- Routing Obstruction Creation---")
     openlane(
         "openroad", "-python",
-        "/openLANE_flow/scripts/add_def_obstructions.py",
+        "/openlane/scripts/add_def_obstructions.py",
         "--lef", f"{build_folder}/merged.lef",
         "--input-def", in_file,
         "--obstructions",
@@ -430,7 +439,7 @@ def route(synth_info, in_file, out_file):
 
 def spef_extract(def_file, spef_file=None):
     print("--- Extract SPEF ---")
-    openlane("openroad", "-python", "/openLANE_flow/scripts/spef_extractor/main.py",
+    openlane("openroad", "-python", "/openlane/scripts/spef_extractor/main.py",
             "--def_file", def_file,
             "--lef_file", f"{build_folder}/merged.lef",
             "--wire_model", "L",
@@ -442,7 +451,7 @@ def add_pwr_gnd_pins(original_netlist,
     global last_def
     print("--- Adding power and ground pins to netlist ---")
 
-    openlane("openroad", "-python", "/openLANE_flow/scripts/write_powered_def.py",
+    openlane("openroad", "-python", "/openlane/scripts/write_powered_def.py",
             "-d", def_file,
             "-l", f"{build_folder}/merged.lef",
             "--power-port", "VPWR",
@@ -510,7 +519,7 @@ def magic_drc(design, def_file):
             set ::env(magic_result_file_tag) {def_file}
             set ::env(CURRENT_DEF) {def_file}
             set ::env(DESIGN_NAME) {design}
-            source /openLANE_flow/scripts/magic/drc.tcl
+            source /openlane/scripts/magic/drc.tcl
         """)
     openlane("magic",
             "-dnull",
@@ -570,7 +579,7 @@ def antenna_check(def_file, out_file):
         read_lef $::env(MERGED_LEF_UNPADDED)
         read_def -order_wires {def_file}
         check_antennas -report_file {out_file}
-        # source /openLANE_flow/scripts/openroad/or_antenna_check.tcl
+        # source /openlane/scripts/openroad/or_antenna_check.tcl
         """)
     openlane("openroad", f"{build_folder}/antenna_check.tcl")
 
@@ -621,14 +630,14 @@ def gds(design, def_file, gds_file):
         export MAGIC_DRC_USE_GDS=1
         export RESULTS_DIR=.
 
-        cat /openLANE_flow/scripts/magic/mag_gds.tcl > ./gds.tcl
+        cat /openlane/scripts/magic/mag_gds.tcl > ./gds.tcl
         sed -i "s/def read \$::env(CURRENT_DEF)/def read \$::env(CURRENT_DEF) -labels/" ./gds.tcl
         sed -i "s/exit 0/feedback save .\/magic\/feedback.txt; exit 0/" ./gds.tcl
 
         echo "Streaming out GDSII..."
         magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < ./gds.tcl
         echo "Running GDS DRC..."
-        magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < /openLANE_flow/scripts/magic/drc.tcl
+        magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < /openlane/scripts/magic/drc.tcl
         """)
 
     

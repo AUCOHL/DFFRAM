@@ -53,10 +53,10 @@ def run_docker(image, args, pdk_path, interactive=False):
         "docker", "run",
         "-tiv" if interactive else "-v",
         "%s:/mnt/dffram" % rp(".."),
-        "-v", "%s:/openLANE_flow/designs" % rp("designs"),
+        "-v", "%s:/openlane/designs" % rp("designs"),
         "-v", "%s:/pdks" % rp(pdk_path),
         "-e", "PDK_ROOT=%s" % "/pdks",
-        "-w", "/openLANE_flow",
+        "-w", "/openlane",
     ] + [image] + args, check=True)
 
 def openlane(*args_tuple, pdk_path, interactive=False):
