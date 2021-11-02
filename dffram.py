@@ -179,21 +179,9 @@ def synthesis(design, building_blocks, synth_info, widths_supported, word_width_
     openlane("bash", f"{build_folder}/synth.sh")
 
 last_def = None
-def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_file, site_info):
+def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_file):
     global last_def
     print("--- Floorplan ---")
-
-    if site_info is not None:
-        site_width = site_info["width"]
-        site_height = site_info["height"]
-
-        wmargin = math.ceil(wmargin / site_width) * site_width
-        hmargin = math.ceil(hmargin / site_height) * site_height
-    else:
-        pass
-
-    print(wmargin, hmargin)
-
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
 
@@ -260,7 +248,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
     global last_def
     print("--- Pin Placement ---")
 
-    if os.getenv("USE_IOPLACE") != "1":
+    if os.getenv("OR_PIN_PLACE") == "1":
         with open(f"{build_folder}/place_pins.tcl", "w") as f:
             f.write(f"""
             read_liberty {pdk_liberty_dir}/{synth_info['typical']}
@@ -287,8 +275,6 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
             "--length", "2",
             "-o", out_file
         )
-
-
 
     last_def = out_file
 
@@ -384,16 +370,20 @@ def pdngen(width, height, in_file, out_file):
         f.write(pdn_tcl)
     openlane("openroad", f"{build_folder}/pdn.tcl")
 
-def obs_route(metal_layer, width, height, in_file, out_file):
+def obs_route(metal_layer, width, height, wmargin, hmargin, in_file, out_file):
     global last_def
     print("--- Routing Obstruction Creation---")
+
+    full_width = width + 2 * wmargin
+    full_height = height + 2 * hmargin
+
     openlane(
         "openroad", "-python",
         "/openlane/scripts/add_def_obstructions.py",
         "--lef", f"{build_folder}/merged.lef",
         "--input-def", in_file,
         "--obstructions",
-        f"met{metal_layer} 0 0 {width} {height}",
+        f"met{metal_layer} 0 0 {full_width} {full_height}",
         "--output", out_file)
     last_def = out_file
 
@@ -718,6 +708,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, hal
             exit(os.EX_USAGE)
 
     wmargin, hmargin = (halo, halo) # Microns
+
     variant_string = (("_%s" % variant) if variant is not None else "")
     design_name_template = config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(**{
@@ -743,6 +734,16 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, hal
     except FileNotFoundError:
         if halo != 0.0:
             print(f"Note: {site_info_path} does not exist. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools.")
+
+    # Normalize margins in terms of minimum units
+    if site_info is not None:
+        site_width = site_info["width"]
+        site_height = site_info["height"]
+
+        wmargin = math.ceil(wmargin / site_width) * site_width
+        hmargin = math.ceil(hmargin / site_height) * site_height
+    else:
+        pass
 
     prep(pdk_root)
 
@@ -783,10 +784,10 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, hal
 
     def placement(in_width, in_height):
         nonlocal width, height
-        floorplan(design, synth_info, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan, site_info)
+        floorplan(design, synth_info, wmargin, hmargin, in_width, in_height, netlist, initial_floorplan)
         placeram(initial_floorplan, initial_placement, size, building_blocks, dimensions=dimensions_file)
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        floorplan(design, synth_info, wmargin, hmargin, width, height, netlist, final_floorplan, site_info)
+        floorplan(design, synth_info, wmargin, hmargin, width, height, netlist, final_floorplan)
         placeram(final_floorplan, no_pins_placement, size, building_blocks, density=density_file)
         place_pins(design, synth_info, no_pins_placement, final_placement, pin_order_file)
         verify_placement(design, synth_info, final_placement)
@@ -811,7 +812,7 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, hal
         ),
         (
             "obs_route",
-            lambda: obs_route(5, width, height, pdn, obstructed)
+            lambda: obs_route(5, width, height, wmargin, hmargin, pdn, obstructed)
         ),
         (
             "routing",
