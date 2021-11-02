@@ -76,7 +76,7 @@ class Row(object):
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
 
-        if re.match(Row.tap_rx, instance.getName()):
+        if re.match(Row.tap_rx, instance.getMaster().getName()):
             self.since_last_tap = 0
         else:
             self.since_last_tap += width
