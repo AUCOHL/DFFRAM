@@ -650,13 +650,13 @@ def gds(design, def_file, gds_file):
 # Execution Flow
 @click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
 @click.option("-t", "--to", default="gds", help="End after this step")
-@click.option("--only", default=None, help="Only execute these comma;delimited;steps")
-@click.option("--skip", default=None, help="Skip these comma;delimited;steps")
+@click.option("--only", default=None, help="Only execute these semicolon;delimited;steps")
+@click.option("--skip", default=None, help="Skip these semicolon;delimited;steps")
 
 # Configuration
 @click.option("-p", "--pdk-root", required=os.getenv("PDK_ROOT") is None, default=os.getenv("PDK_ROOT"), help="Path to OpenPDKs PDK root")
 @click.option("-O", "--output-dir", default="./build", help="Output directory.")
-@click.option("-b", "--building-blocks", default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
+@click.option("-b", "--building-blocks", default="sky130A:sky130_fd_sc_hd:ram", help="Format {pdk}:{scl}:{name} : ID of the building blocks to use.")
 @click.option("-v", "--variant", default=None, help="Use design variants (such as 1RW1R)")
 @click.option("-s", "--size", required=True, help="Size")
 @click.option("-C", "--clock-period", default=3, type=float, help="clk period for sta")
@@ -929,10 +929,14 @@ def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, hal
                         pass
 
         if klayout:
+            env = os.environ.copy()
+            env["LAYOUT"] = last_def
+            env["PDK"] = pdk
             subprocess.Popen([
                 "klayout",
-                last_def,
-            ])
+                "-rm",
+                last_def
+            ], env=env)
 
     elapsed = time.time() - start
 

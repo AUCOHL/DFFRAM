@@ -41,24 +41,7 @@ class RFWord(Placeable):
         self.dicts_to_lists()
 
     def place(self, row_list, start_row=0):
-        r1 = row_list[start_row]
-        r2 = row_list[start_row + 1]
-        word_width = 32
-        for i in range(word_width): # 32
-            if i % 8 == 0: # Per Byte
-                for invs in self.invs:
-                    r1.place(invs[i//8])
-                r1.place(self.clkgates[i//8])
-
-            if i == (word_width // 2): # Just one, in the middle of the row (Optimize Routing)
-                r1.place(self.clkgateand)
-
-            r1.place(self.ffs[i])
-            for obufs in self.obufs:
-                r2.place(obufs[i])
-            Row.fill_rows(row_list, start_row, start_row + 2) # Keep both rows in x-lockstep
-
-        return start_row + 2
+        raise Exception("Register file words cannot be placed solo as the bits have to be in lockstep.")
 
     def word_count(self):
         return 1
@@ -79,19 +62,19 @@ class DFFRF(Placeable): # 32 words
         self.sieve(instances, [            
             S(variable="decoders", groups=["decoder"], custom_behavior=process_decoder),
             S(variable="words", groups=["word"], custom_behavior=process_word),
-            S(variable="rfw0_ties", groups=["bit"]),
-            S(variable="rfw0_invs1", groups=["bit"]),
-            S(variable="rfw0_invs2", groups=["bit"]),
+            S(variable="rfw0_ties", groups=["nibble"]),
+            S(variable="rfw0_invs1", groups=["byte"]),
+            S(variable="rfw0_invs2", groups=["byte"]),
             S(variable="rfw0_obufs1", groups=["bit"]),
             S(variable="rfw0_obufs2", groups=["bit"]),
         ])
 
         self.dicts_to_lists()
 
-        self.words = d2a({k: RFWord(v) for k, v in raw_words.items()})
-        self.decoders5x32 = d2a({k: Decoder5x32(v) for k, v in raw_decoders.items()})
+        self.words: List[RFWord] = d2a({k: RFWord(v) for k, v in raw_words.items()})
+        self.decoders5x32: List[Decoder5x32] = d2a({k: Decoder5x32(v) for k, v in raw_decoders.items()})
 
-    def place(self, row_list, start_row=0):
+    def place(self, rows, start_row: int = 0):
         #    |      5x32 Decoder Placement           |  |
         #    |                                       |  |
         #    |                                       |  |
@@ -99,91 +82,64 @@ class DFFRF(Placeable): # 32 words
         # {  _ ====================================  ____   }
         # 32 _ ====================================  ____  32
         # { D2 ====================================  D0 D1  }
-
-        def rfw0_placement_start(
-            x_start,
-            x_current,
-            x_end
-        ):
-            rfw0_width = 0
-
-            for inverter in [*self.rfw0_invs1, *self.rfw0_invs2]:
-                rfw0_width += inverter.getMaster().getWidth()
-            for atie in self.rfw0_ties:
-                rfw0_width += atie.getMaster().getWidth()
-            for anobuf in [*self.rfw0_obufs1,*self.rfw0_obufs2] :
-                rfw0_width += anobuf.getMaster().getWidth()
-
-            design_width = x_end - x_start
-            return (design_width - rfw0_width) // 2 + x_current
-
-        def place_rfw0(row, start_loc):
-            # RFWORD0 placement
-            # Should center this row
-            # get width of the design and then put equal
-            # distance around this row both on left and right
-
-            start_row = 0
-            row.x = start_loc
-
-            for i in range(32):
-                if i % 8 == 0: # range(4)
-                    row.place(self.rfw0_invs1[i//8])
-                    row.place(self.rfw0_invs2[i//8])
-                if i % 4 == 0: # range(8)
-                    row.place(self.rfw0_ties[i//4])
-                row.place(self.rfw0_obufs1[i])
-                row.place(self.rfw0_obufs2[i])
-            return row.x
-
+        word_rows = 32 * 2 - 2 + 1 # word 0 only needs one row
+        word_width = 32
 
         # D2 placement
-        self.decoders5x32[2].place(row_list, start_row, (32-4)//2, flip=True)
-        row0_empty_space_1_start = row_list[start_row].x
-        words_start_x = row0_empty_space_1_start
+        self.decoders5x32[2].place(rows, start_row, (32-4)//2, flip=True)
 
-        current_row = start_row + 1
-        for aword in self.words:
-            current_row = aword.place(row_list, current_row)
+        Row.fill_rows(rows, start_row, start_row + word_rows - 1)
 
-        highest_row = current_row
-        words_end_x = row_list[1].x
-        row0_empty_space_2_end = words_end_x
+        # This loop places each column of bits on the same general X-position
+        # to make routing easier.
+        
+        for bit in range(0, word_width):
+            byte = bit // 8
+            nibble = bit // 4
+            current_row = start_row
+
+            row = rows[current_row]
+
+            if bit % 8 == 0:
+                row.place(self.rfw0_invs1[byte])
+                row.place(self.rfw0_invs2[byte])
+
+            if bit % 4 == 0:
+                row.place(self.rfw0_ties[nibble])
+
+            row.place(self.rfw0_obufs1[bit])
+            row.place(self.rfw0_obufs2[bit])
+
+            current_row += 1
+
+            for word in self.words:
+                row0 = rows[current_row]
+                row1 = rows[current_row + 1]
+
+                if bit % 8 == 0: # Per Byte
+                    for inverter_set in word.invs:
+                        row0.place(inverter_set[bit//8])
+                    row0.place(word.clkgates[bit//8])
+
+                if bit == (word_width // 2):
+                    row0.place(word.clkgateand)
+
+                row0.place(word.ffs[bit])
+                for obufs in word.obufs:
+                    row1.place(obufs[bit])
+
+                current_row += 2
+
+            Row.fill_rows(rows, start_row, current_row)
+
 
         # D0 placement
-        self.decoders5x32[0].place(row_list, start_row, 4)
+        self.decoders5x32[0].place(rows, start_row, 4)
         # D1 placement
-        self.decoders5x32[1].place(row_list, start_row, 20)
+        self.decoders5x32[1].place(rows, start_row, 20)
 
-        row0_empty_space_1_end = rfw0_placement_start(
-            words_start_x,
-            row_list[0].x,
-            words_end_x
-        )
-
-        Row.fill_row(
-            row_list,
-            0,
-            row0_empty_space_1_start,
-            row0_empty_space_1_end
-        )
-
-        row0 = row_list[0]
-        rfw0_placement_end = place_rfw0(row0,
-                                        row0_empty_space_1_end)
-        row0_empty_space_2_start = rfw0_placement_end
-
-
-        Row.fill_row(
-            row_list,
-            0,
-            row0_empty_space_2_start,
-            row0_empty_space_2_end
-        )
-
-        # Fill all empty spaces on edges
-        Row.fill_rows(row_list, start_row, highest_row)
-        return highest_row
+        Row.fill_rows(rows, start_row, current_row)
+        return current_row
 
     def word_count(self):
         return 32
