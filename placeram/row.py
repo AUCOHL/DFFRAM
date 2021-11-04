@@ -22,6 +22,7 @@ from typing import List, Callable, Optional
 
 import re
 import sys
+import math
 import traceback
 
 class Row(object):
@@ -76,7 +77,7 @@ class Row(object):
         instance.setLocation(self.x, self.y)
         instance.setPlacementStatus("PLACED")
 
-        if re.match(Row.tap_rx, instance.getName()):
+        if re.match(Row.tap_rx, instance.getMaster().getName()):
             self.since_last_tap = 0
         else:
             self.since_last_tap += width
@@ -98,7 +99,7 @@ class Row(object):
         return returnable
 
     @staticmethod
-    def fill_rows(rows: List['Row'], from_index: int, to_index: int, start_location: Optional[float] = None, end_location: Optional[float] = None):
+    def fill_rows(rows: List['Row'], from_index: int, to_index: int):
         """
         from inclusive; to exclusive
         Fills from the last location that has a cell.
@@ -147,31 +148,22 @@ class Row(object):
             return fills
 
         max_sw = -1
-        if end_location is not None:
-            max_sw = end_location / Row.sw
-        else:
-            for row_idx in range(from_index, to_index):
-                r = rows[row_idx]
-                width = r.x
-                width_sites = int(width / Row.sw)
-                max_sw = max(max_sw, width_sites)
+        for row_idx in range(from_index, to_index):
+            r = rows[row_idx]
+            width = r.x
+            width_sites = int(width / Row.sw)
+            max_sw = max(max_sw, width_sites)
 
         for row_idx in range(from_index, to_index):
             r = rows[row_idx]
             width = r.x
-            if start_location is not None:
-                width = start_location
             width_sites = int(width / Row.sw)
 
             empty = max_sw - width_sites
 
             fills = pack(empty, Row.supported_fill_sizes)
+            # print(f"{from_index}->{to_index}::{row_idx}: {fills}")
             for fill in fills:
                 fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1
-
-                
-    @staticmethod
-    def fill_row(rows, row_idx, start_location, end_location):
-        Row.fill_rows(rows, row_idx, row_idx, start_location, end_location)
