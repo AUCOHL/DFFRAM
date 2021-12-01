@@ -481,7 +481,7 @@ def write_ram_lef(design, in_file, out_file):
         lef read {build_folder}/merged.lef
         def read {in_file}
         load {design} -dereference
-        lef write {out_file}
+        lef write {out_file} -hide
         """)
 
     openlane("magic",
