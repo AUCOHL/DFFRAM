@@ -57,24 +57,44 @@ pdk_klayout_dir = ""
 pdk_magic_dir = ""
 pdk_openlane_dir = ""
 
-def run_docker(image, args):
-    global command_list
-    cmd = [
-        "docker", "run", "--rm",
-        "-v",  f"{pdk_root}:{pdk_root}",
-        "-v", f"{rp('.')}:/mnt/dffram",
-        "-w", "/mnt/dffram",
-        "-e", f"PDK_ROOT={pdk_root}",
-        "-e", f"PDKPATH={pdk_root}/{pdk}",
-        "-e", "LC_ALL=en_US.UTF-8",
-        "-e", "LANG=en_US.UTF-8"
-    ] + [image] + args
-    command_list.append(cmd)
-    subprocess.run(cmd, check=True)
+openlane_root_dir = f"/openlane"
+use_docker = True
 
-def openlane(*args_tuple):
+compatible_openlane_version = open(os.path.join(os.path.dirname(__file__), "openlane_version")).read()
+
+def openlane(*args_tuple, **kwargs):
+    global command_list
     args = list(args_tuple)
-    run_docker("efabless/openlane:2021.10.25_20.35.00", args)
+    if use_docker:
+        cmd = [
+            "docker", "run", "--rm",
+            "-v",  f"{pdk_root}:{pdk_root}",
+            "-v", f"{rp('.')}:/mnt/dffram",
+            "-w", "/mnt/dffram",
+            "-e", f"PDK_ROOT={pdk_root}",
+            "-e", f"PDKPATH={pdk_root}/{pdk}",
+            "-e", "LC_ALL=en_US.UTF-8",
+            "-e", "LANG=en_US.UTF-8"
+        ] + [f"efabless/openlane:{compatible_openlane_version}"] + args
+        command_list.append(cmd)
+        subprocess.run(cmd, check=True)
+    else:
+        env = os.environ.copy()
+        env["OPENLANE_ROOT"] = openlane_root_dir
+        cmd = []
+
+        # Check if OpenLane has been installed locally
+        ol_install_env_file = os.path.join(openlane_root_dir, "install", "env.tcl")
+        if os.path.exists(ol_install_env_file):
+            env["ENV_FILE"] = ol_install_env_file
+            cmd += [
+                "tclsh",
+                "./scripts/tcl/ol_local_run.tcl"
+            ]
+
+        cmd += args
+        command_list.append(cmd)
+        subprocess.run(cmd, check=True, env=env, **kwargs)
 
 def prep(local_pdk_root):
     global pdk, scl
@@ -91,7 +111,7 @@ def prep(local_pdk_root):
     pdk_klayout_dir = os.path.join(pdk_tech_dir, 'klayout')
     pdk_magic_dir = os.path.join(pdk_tech_dir, 'magic')
     openlane(
-        "openroad", "-python", "/openlane/scripts/mergeLef.py",
+        "openroad", "-python", f"{openlane_root_dir}/scripts/mergeLef.py",
         "-i", f"{pdk_tlef_dir}/{scl}.tlef", f"{pdk_lef_dir}/{scl}.lef",
         "-o", f"{build_folder}/merged.lef"
     )
@@ -118,11 +138,11 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
             
 
         env_vars = f"""
-            set ::env(SCRIPTS_DIR) /openlane/scripts
+            set ::env(SCRIPTS_DIR) {openlane_root_dir}/scripts
             set ::env(PDK) "sky130A"
             set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
             set ::env(STD_CELL_LIBRARY_OPT) "sky130_fd_sc_hd"
-            source "/openlane/configuration/synthesis.tcl"
+            source "{openlane_root_dir}/configuration/synthesis.tcl"
             source "{pdk_openlane_dir}/config.tcl"
             set ::env(ESTIMATE_PL_PARASITICS) 1
             set ::env(MERGED_LEF_UNPADDED) {build_folder}/merged.lef
@@ -138,10 +158,11 @@ def sta(design, netlist, synth_info, clk_period=3, spef_file=None):
             set ::env(LIB_SYNTH_COMPLETE) {pdk_liberty_dir}/{synth_info['typical']}
             set ::env(CURRENT_NETLIST) {netlist}
             set ::env(DESIGN_NAME) {design}
-            set ::env(CURRENT_SDC) /openlane/scripts/base.sdc
+            set ::env(CURRENT_SDC) {openlane_root_dir}/scripts/base.sdc
             {spef_var}
             set ::env(CURRENT_DEF) 0
-            source "/openlane/scripts/openroad/or_sta.tcl"
+            set ::env(RUN_STANDALONE) 1
+            source "{openlane_root_dir}/scripts/openroad/sta.tcl"
         """
         f.write(env_vars)
     openlane("openroad", "-exit", f"{build_folder}/sta.tcl")
@@ -208,8 +229,8 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
         f.write(f"""
         set -e
 
-        python3 /openlane/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
-        openroad {build_folder}/fp_init.tcl
+        python3 {openlane_root_dir}/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
+        openroad -exit {build_folder}/fp_init.tcl
         """)
 
     openlane("bash", f"{build_folder}/fp_init.sh")
@@ -258,11 +279,11 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
             write_def {out_file}
             """)
 
-        openlane("openroad", f"{build_folder}/place_pins.tcl")
+        openlane("openroad", "-exit", f"{build_folder}/place_pins.tcl")
     else:
         openlane(
             "openroad", "-python",
-            "/openlane/scripts/io_place.py",
+            f"{openlane_root_dir}/scripts/io_place.py",
             "--input-lef", f"{build_folder}/merged.lef",
             "--input-def", in_file,
             "--config", pin_order_file,
@@ -291,7 +312,7 @@ def verify_placement(design, synth_info, in_file):
         }}
         puts "Placement successful."
         """)
-    openlane("openroad", f"{build_folder}/verify.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/verify.tcl")
 
 def create_image(in_file, width=256,height=256):
     print("--- Create Image ---")
@@ -368,7 +389,7 @@ def pdngen(width, height, in_file, out_file):
 
     with open(f"{build_folder}/pdn.tcl", 'w') as f:
         f.write(pdn_tcl)
-    openlane("openroad", f"{build_folder}/pdn.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/pdn.tcl")
 
 def obs_route(metal_layer, width, height, wmargin, hmargin, in_file, out_file):
     global last_def
@@ -379,7 +400,7 @@ def obs_route(metal_layer, width, height, wmargin, hmargin, in_file, out_file):
 
     openlane(
         "openroad", "-python",
-        "/openlane/scripts/add_def_obstructions.py",
+        f"{openlane_root_dir}/scripts/add_def_obstructions.py",
         "--lef", f"{build_folder}/merged.lef",
         "--input-def", in_file,
         "--obstructions",
@@ -419,17 +440,16 @@ def route(synth_info, in_file, out_file):
             -guide {global_route_guide} \\
             -output_guide {build_folder}/dr.guide \\
             -output_drc {build_folder}/dr.drc \\
-            -or_seed 70\\
             -verbose 1
         write_def {out_file}
         """)
 
-    openlane("openroad", f"{build_folder}/route.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/route.tcl")
     last_def = out_file
 
 def spef_extract(def_file, spef_file=None):
     print("--- Extract SPEF ---")
-    openlane("openroad", "-python", "/openlane/scripts/spef_extractor/main.py",
+    openlane("openroad", "-python", f"{openlane_root_dir}/scripts/spef_extractor/main.py",
             "--def_file", def_file,
             "--lef_file", f"{build_folder}/merged.lef",
             "--wire_model", "L",
@@ -441,7 +461,7 @@ def add_pwr_gnd_pins(original_netlist,
     global last_def
     print("--- Adding power and ground pins to netlist ---")
 
-    openlane("openroad", "-python", "/openlane/scripts/write_powered_def.py",
+    openlane("openroad", "-python", f"{openlane_root_dir}/scripts/write_powered_def.py",
             "-d", def_file,
             "-l", f"{build_folder}/merged.lef",
             "--power-port", "VPWR",
@@ -459,8 +479,7 @@ def add_pwr_gnd_pins(original_netlist,
         write_verilog -include_pwr_gnd {out_file1}
         """)
 
-    openlane("openroad",
-            f"{build_folder}/write_pwr_gnd_verilog.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/write_pwr_gnd_verilog.tcl")
 
     with open(f"{build_folder}/rewrite_netlist.tcl", 'w') as f:
         f.write(f"""
@@ -489,7 +508,7 @@ def write_ram_lef(design, in_file, out_file):
             "-noconsole",
             "-rcfile",
             f"{pdk_magic_dir}/{pdk}.magicrc",
-            f"{build_folder}/write_lef.tcl")
+            f"{build_folder}/write_lef.tcl", stdin=open("/dev/null"))
 
 def write_ram_lib(design, netlist, libfile):
     print("--- Write LIB view of the RAM Module ---")
@@ -509,14 +528,16 @@ def magic_drc(design, def_file):
             set ::env(magic_result_file_tag) {def_file}
             set ::env(CURRENT_DEF) {def_file}
             set ::env(DESIGN_NAME) {design}
-            source /openlane/scripts/magic/drc.tcl
+            set ::env(drc_prefix) {build_folder}/{design}.drc
+            set ::env(finishing_results) {build_folder}
+            source {openlane_root_dir}/scripts/magic/drc.tcl
         """)
     openlane("magic",
             "-dnull",
             "-noconsole",
             "-rcfile",
             f"{pdk_magic_dir}/{pdk}.magicrc",
-            f"{build_folder}/drc.tcl")
+            f"{build_folder}/drc.tcl", stdin=open("/dev/null"))
     drc_report = "%s.drc" % def_file
     drc_report_str = open(drc_report).read()
     count = r"COUNT:\s*(\d+)"
@@ -569,9 +590,9 @@ def antenna_check(def_file, out_file):
         read_lef $::env(MERGED_LEF_UNPADDED)
         read_def -order_wires {def_file}
         check_antennas -report_file {out_file}
-        # source /openlane/scripts/openroad/or_antenna_check.tcl
+        # source {openlane_root_dir}/scripts/openroad/antenna_check.tcl
         """)
-    openlane("openroad", f"{build_folder}/antenna_check.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/antenna_check.tcl")
 
     antenna_report_str = open(out_file).read()
     net = ""
@@ -612,22 +633,22 @@ def gds(design, def_file, gds_file):
         export DESIGN_NAME={design}
         export CURRENT_DEF={def_file_rel}
         export CURRENT_GDS={gds_file_rel}
-        export magic_report_file_tag={gds_file_rel}
-        export magic_result_file_tag={gds_file_noext}
         export MAGIC_PAD=0
         export MAGIC_ZEROIZE_ORIGIN=1
         export MAGIC_GENERATE_GDS=1
         export MAGIC_DRC_USE_GDS=1
         export RESULTS_DIR=.
+        export finishing_results={build_folder}
+        export drc_prefix={design}.drc
 
-        cat /openlane/scripts/magic/mag_gds.tcl > ./gds.tcl
+        cat {openlane_root_dir}/scripts/magic/mag_gds.tcl > ./gds.tcl
         sed -i "s/def read \$::env(CURRENT_DEF)/def read \$::env(CURRENT_DEF) -labels/" ./gds.tcl
         sed -i "s/exit 0/feedback save .\/magic\/feedback.txt; exit 0/" ./gds.tcl
 
         echo "Streaming out GDSII..."
         magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < ./gds.tcl
         echo "Running GDS DRC..."
-        magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < /openlane/scripts/magic/drc.tcl
+        magic -rcfile {pdk_magic_dir}/{pdk}.magicrc -noconsole -dnull < {openlane_root_dir}/scripts/magic/drc.tcl
         """)
 
     
@@ -666,11 +687,18 @@ def gds(design, def_file, gds_file):
 @click.option("--drc/--no-drc", default=True, help="Perform DRC on latest generated def file. (Default: True)")
 @click.option("--image/--no-image", default=False, help="Create an image using Klayout. (Default: False)")
 @click.option("--klayout/--no-klayout", default=False, help="Open the last def in Klayout. (Default: False)")
+@click.option("--openlane-dir", default=None, help="Use this OpenLane directory. If this option is not provided, A known-good Docker image will be used. (Default: None)")
 
-def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, halo, variant, drc, image, klayout, output_dir):
+def flow(frm, to, only, pdk_root, skip, size, building_blocks, clock_period, halo, variant, drc, image, klayout, output_dir, openlane_dir):
     global build_folder
     global last_def
     global pdk, scl
+    global openlane_root_dir
+    global use_docker
+
+    if openlane_dir is not None:
+        openlane_root_dir = openlane_dir
+        use_docker = False
     
     if variant == "DEFAULT":
         variant = None

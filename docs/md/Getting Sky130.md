@@ -6,12 +6,7 @@ export PDK_ROOT=/usr/local/pdk
 make pdk
 ```
 
-Another option is to get a pre-built:
-
-```sh
-export PDK_ROOT=$(realpath ~/pdklite)
-git clone --depth 1 https://github.com/olofk/pdklite $PDK_ROOT
-```
+Another option is to get a pre-built from https://github.com/Cloud-V/sky130-builds/releases: folow the instructions there.
 
 I would really recommend adding whichever you exported as `PDK_ROOT` to your shell's profile.
 

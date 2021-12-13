@@ -5,17 +5,24 @@ DFFRAM is based around two Python modules: `dffram` and `placeram`.
 
 `placeram` is a custom placer using OpenROAD's Python interface. It places DFFRAM RAM/RF designs in a predetermined structure to avoid a lengthy and inefficient manual placement process for RAM. Unlike `dffram.py`, `placeram` runs in a Docker container to avoid mandating an OpenROAD dependency (which is huge.)
 
-# Dependencies
-* A Unix-like Operating System
-  * Use the Windows Subsystem for Linux on Windows (which I use)
-* The Skywater 130nm PDK
-  * See [Getting Sky130](./md/Getting%20Sky130.md)
-* Docker Container
-* Python 3.6+ with PIP
-  * PIP packages `click` and `pyyaml`: `python3 -m pip install click pyyaml`
+# Requirements
+- A UNIX/Unix-like Operating System
+- Python 3.6+ with PIP
+- Click, Pyyaml: python3 -m pip install pyyaml click
+- The Google/Skywater 130nm PDK
+  - See [Getting Sky130](./md/Getting%20Sky130.md)
 
-## Recommended
-* Klayout (to view the final result)
+## Docker (Recommended)
+- Docker 19.03.12+
+- Klayout (optional, to view things)
+
+## Dockerless
+- An OpenLane Dockerless Install
+  - Check `./openlane_version` for the version you should be using.
+  - Check [here](https://github.com/The-OpenROAD-Project/OpenLane/blob/master/docs/source/local_installs.md) for more about OpenLane Dockerless installs.
+- Tclsh 8.6+
+
+When invoking ./dffram.py, you'll have to add `--openlane-dir=<path/to/your/openlane/folder>` to all invocations.
 
 # Basic
 ```sh
