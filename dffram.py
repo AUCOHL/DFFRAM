@@ -300,7 +300,7 @@ def create_image(in_file, width=256,height=256):
         "xvfb-run", "-a", "klayout", "-z",
         "-rd", f"input_layout={in_file}",
         "-rd", f"extra_lefs={build_folder}/merged.lef",
-        "-rd", f"tech_file={pdk_klayout_dir}/{pdk}.lyt"
+        "-rd", f"tech_file={pdk_klayout_dir}/{pdk}.lyt",
         "-rd", f"width={width}",
         "-rd", f"height={height}",
         "-rm", "./scripts/klayout/scrot_layout.py"
