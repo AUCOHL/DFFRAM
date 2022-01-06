@@ -449,6 +449,18 @@ def openlane_harden(
     help="default clk period for sta",
 )
 @click.option("-H", "--halo", default=2.5, type=float, help="Halo in microns")
+@click.option(
+    "--horizontal-halo",
+    default=0.0,
+    type=float,
+    help="Horizontal halo in microns (overrides generic halo)",
+)
+@click.option(
+    "--vertical-halo",
+    default=0.0,
+    type=float,
+    help="Vertical halo in microns (overrides generic halo)",
+)
 
 # Enable/Disable
 @click.option(
@@ -466,6 +478,8 @@ def flow(
     building_blocks,
     default_clock_period,
     halo,
+    horizontal_halo,
+    vertical_halo,
     variant,
     klayout,
     output_dir,
@@ -473,6 +487,12 @@ def flow(
     global build_folder
     global last_def
     global pdk, scl
+
+    if horizontal_halo == 0.0:
+        horizontal_halo = halo
+
+    if vertical_halo == 0.0:
+        vertical_halo = halo
 
     if variant == "DEFAULT":
         variant = None
@@ -513,7 +533,7 @@ def flow(
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
-    wmargin, hmargin = (halo, halo)  # Microns
+    wmargin, hmargin = (horizontal_halo, vertical_halo)  # Microns
 
     variant_string = ("_%s" % variant) if variant is not None else ""
     design_name_template = config["design_name_template"]
@@ -543,7 +563,7 @@ def flow(
     try:
         site_info = yaml.safe_load(open(site_info_path).read())
     except FileNotFoundError:
-        if halo != 0.0:
+        if horizontal_halo != 0.0 or vertical_halo != 0.0:
             print(
                 f"Note: {site_info_path} does not exist. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
             )
