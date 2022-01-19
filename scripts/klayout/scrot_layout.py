@@ -1,4 +1,3 @@
-
 # Taken from OpenLane. Modified by Donn.
 # For use with Klayout only.
 
@@ -23,29 +22,29 @@ import os
 import math
 
 
-WIDTH = 2048 # math.ceil(float(width) * 10)
-HEIGHT = 2048 # math.ceil(float(height) * 10)
+WIDTH = 2048  # math.ceil(float(width) * 10)
+HEIGHT = 2048  # math.ceil(float(height) * 10)
 app = pya.Application.instance()
 
 try:
     win = app.main_window()
 
     # Load technology file
-    print('[INFO] Reading tech file: ' + str(tech_file))
+    print("[INFO] Reading tech file: " + str(tech_file))
     tech = pya.Technology()
     tech.load(tech_file)
 
     layoutOptions = tech.load_layout_options
 
     # Load def file in the main window
-    print('[INFO] Reading layout file: ' + str(input_layout))
+    print("[INFO] Reading layout file: " + str(input_layout))
     extra_lef_list = [os.path.realpath(lef) for lef in str(extra_lefs).split(";")]
-    print('[INFO] Reading extra lef files: ' + str(extra_lef_list))
+    print("[INFO] Reading extra lef files: " + str(extra_lef_list))
     layoutOptions.lefdef_config.lef_files = extra_lef_list
     cell_view = win.load_layout(input_layout, layoutOptions, 0)
     layout_view = cell_view.view()
 
-    layout_view.load_layer_props(os.path.splitext(tech_file)[0]+'.lyp')
+    layout_view.load_layer_props(os.path.splitext(tech_file)[0] + ".lyp")
 
     layout_view.max_hier()
     # layout_view.clear_layers()
@@ -63,8 +62,8 @@ try:
 
         li.next()
 
-    print("[INFO] Writing out PNG screenshot '{0}'".format(input_layout+".png"))
-    layout_view.save_image(input_layout+".png", WIDTH, HEIGHT)
+    print("[INFO] Writing out PNG screenshot '{0}'".format(input_layout + ".png"))
+    layout_view.save_image(input_layout + ".png", WIDTH, HEIGHT)
     print("[INFO] PNG written.")
     app.exit(0)
 except Exception as e:

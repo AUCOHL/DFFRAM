@@ -18,13 +18,14 @@
 
 import sys
 import collections
-from types import SimpleNamespace
-from typing import Any, Dict, List, TypeVar
+from typing import Dict, List, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
 
 def d2a(d: Dict[int, T], depth=1) -> List:
     """
@@ -37,20 +38,20 @@ def d2a(d: Dict[int, T], depth=1) -> List:
     [['mary', 'had', 'a', 'little', 'lamb'], ['little', 'lamb']]
     """
     as_list = list(d.items())
-    if (depth > 1):
+    if depth > 1:
         for i, (key, value) in enumerate(as_list):
-            as_list[i] = (key, d2a(value, depth=depth-1))            
-        
+            as_list[i] = (key, d2a(value, depth=depth - 1))
+
     as_list.sort(key=lambda x: x[0])
     return list(map(lambda x: x[1], as_list))
 
+
 class DeepDictionary(collections.abc.MutableMapping):
-    def __init__(self):
-        pass
-    
     def __init__(self, depth=1, *args, **kwargs):
         if depth < 1:
-            raise ValueError("cannot initialize deep dictionary of a depth less than one")
+            raise ValueError(
+                "cannot initialize deep dictionary of a depth less than one"
+            )
         self.depth = depth
         self.store = dict()
         self.update(dict(*args, **kwargs))
@@ -60,7 +61,7 @@ class DeepDictionary(collections.abc.MutableMapping):
         if get_result is None:
             if (self.depth - 1) < 1:
                 raise KeyError("access exceeded depth of deep dictionary")
-            self.store[key] = DeepDictionary(depth=self.depth-1)
+            self.store[key] = DeepDictionary(depth=self.depth - 1)
         return self.store[key]
 
     def __setitem__(self, key, value):
@@ -71,7 +72,7 @@ class DeepDictionary(collections.abc.MutableMapping):
 
     def __iter__(self):
         return iter(self.store)
-    
+
     def __len__(self):
         return len(self.store)
 
@@ -84,7 +85,7 @@ class DeepDictionary(collections.abc.MutableMapping):
         vanilla_dict = {}
         for key, value in self.store.items():
             if isinstance(value, DeepDictionary):
-                vanilla_dict[key] = value.vanilla(depth-1)
+                vanilla_dict[key] = value.vanilla(depth - 1)
             else:
                 vanilla_dict[key] = value
 

@@ -26,6 +26,7 @@ except ImportError:
 
 import re
 
+
 def remove_mcon_from_port(lef: str):
     final = []
     # states:
@@ -34,7 +35,7 @@ def remove_mcon_from_port(lef: str):
     #   1 -> in port: END -> 0, LAYER mcon ; -> 2
     #   2 -> in layer mcon LAYER -> 1, END -> 0, else do not print
     state = -1
-    
+
     macro_start_rx = re.compile(r"^\s*MACRO\s+sky130_fd_sc_hd__dlclkp_1\s*$")
     macro_end_rx = re.compile(r"^\s*END\s+sky130_fd_sc_hd__dlclkp_1\s*$")
     port_rx = re.compile(r"^\s*PORT\s*$")
@@ -70,13 +71,16 @@ def remove_mcon_from_port(lef: str):
 
     return "\n".join(final)
 
+
 def process_lefs(lef, output_cells):
     with open(output_cells, "w") as f:
         input_str = open(lef).read()
         f.write(remove_mcon_from_port(input_str))
 
 
-@click.command(help="A hack for sky130_fd_sc_hd-based designs to route properly with current versions of OpenROAD.")
+@click.command(
+    help="A hack for sky130_fd_sc_hd-based designs to route properly with current versions of OpenROAD."
+)
 @click.option("-l", "--lef", required=True)
 @click.option("-C", "--output-cells", required=True)
 def main(lef, output_cells):

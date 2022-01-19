@@ -20,12 +20,14 @@ import os
 
 try:
     import odb
-except:
-    print("""
-    placeram needs to be inside OpenROAD:
+except ImportError:
+    print(
+        """
+        placeram needs to be inside OpenROAD:
 
-    openroad -python -m placeram [args]
-    """)
+        openroad -python -m placeram [args]
+        """
+    )
     exit(os.EX_CONFIG)
 
 try:
@@ -47,8 +49,19 @@ from .reg_data import DFFRF
 import re
 import traceback
 
+
 class Placer:
-    def __init__(self, lef, tech_lef, df, word_count, word_width, register_file, fill_cell_data, tap_distance):
+    def __init__(
+        self,
+        lef,
+        tech_lef,
+        df,
+        word_count,
+        word_width,
+        register_file,
+        fill_cell_data,
+        tap_distance,
+    ):
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
@@ -61,20 +74,26 @@ class Placer:
 
         ## Extract the fill cells for later use
         ### We use decap cells to substitute fills wherever possible.
-        raw_fill_cells = list(filter(lambda x: re.match(fill_cell_data['fill'], x.getName()), self.cells))
-        raw_decap_cells = list(filter(lambda x: re.match(fill_cell_data['decap'], x.getName()), self.cells))
-        raw_tap_cells = list(filter(lambda x: re.match(fill_cell_data['tap'], x.getName()), self.cells))
+        raw_fill_cells = list(
+            filter(lambda x: re.match(fill_cell_data["fill"], x.getName()), self.cells)
+        )
+        raw_decap_cells = list(
+            filter(lambda x: re.match(fill_cell_data["decap"], x.getName()), self.cells)
+        )
+        raw_tap_cells = list(
+            filter(lambda x: re.match(fill_cell_data["tap"], x.getName()), self.cells)
+        )
         self.fill_cells_by_sites = {}
         for cell in raw_fill_cells:
-            match_info = re.match(fill_cell_data['fill'], cell.getName())
+            match_info = re.match(fill_cell_data["fill"], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_decap_cells:
-            match_info = re.match(fill_cell_data['decap'], cell.getName())
+            match_info = re.match(fill_cell_data["decap"], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_tap_cells:
-            match_info = re.match(fill_cell_data['tap'], cell.getName())
+            match_info = re.match(fill_cell_data["tap"], cell.getName())
             site_count = int(match_info[1])
             self.fill_cells_by_sites[site_count] = cell
 
@@ -95,11 +114,18 @@ class Placer:
         self.micron_in_units = self.block.getDefUnits()
         tap_distance = self.micron_in_units * tap_distance
 
-        self.rows = Row.from_odb(self.block.getRows(), self.sites[0], tap_distance, create_fill, fill_cell_sizes, fill_cell_data['tap'])
+        self.rows = Row.from_odb(
+            self.block.getRows(),
+            self.sites[0],
+            tap_distance,
+            create_fill,
+            fill_cell_sizes,
+            fill_cell_data["tap"],
+        )
 
         if register_file:
             self.hierarchy = DFFRF(self.instances)
-        else: 
+        else:
             self.hierarchy = data.create_hierarchy(self.instances, word_count)
 
         self.fill_cell_data = fill_cell_data
@@ -112,7 +138,7 @@ class Placer:
         print(f"Placing across {len(self.rows)} rows...")
         last_row = self.hierarchy.place(self.rows)
         print(f"Placement concluded with {last_row} rows...")
-        Row.fill_rows(self.rows, 0,  last_row)
+        Row.fill_rows(self.rows, 0, last_row)
 
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
@@ -122,7 +148,7 @@ class Placer:
 
         self.core_width = width_units / self.micron_in_units
 
-        height_units = self.rows[last_row-1].ymax - self.rows[0].y
+        height_units = self.rows[last_row - 1].ymax - self.rows[0].y
 
         self.core_height = height_units / self.micron_in_units
 
@@ -135,17 +161,22 @@ class Placer:
                 if re.match(rx, master_name) is not None:
                     type = incoming_type
                     break
-            if not type in ["nonfiller"]:
+            if type not in ["nonfiller"]:
                 continue
             width = master.getWidth() / self.micron_in_units
             height = master.getHeight() / self.micron_in_units
             logical_area += width * height
 
-        eprint("Placement concluded with core area of %fµm x %fµm." % (self.core_width, self.core_height))
+        eprint(
+            "Placement concluded with core area of %fµm x %fµm."
+            % (self.core_width, self.core_height)
+        )
 
-        die_area = self.block.getDieArea().area() / (self.micron_in_units * self.micron_in_units)
-        
-        self.density = (logical_area / die_area)
+        die_area = self.block.getDieArea().area() / (
+            self.micron_in_units * self.micron_in_units
+        )
+
+        self.density = logical_area / die_area
         eprint("Density: %.2f%%" % (self.density * 100))
         eprint("Done.")
 
@@ -155,7 +186,7 @@ class Placer:
     def write_width_height(self, dimensions_file):
         try:
             with open(dimensions_file, "w") as f:
-                f.write(str(self.core_width)+'x'+str(self.core_height))
+                f.write(str(self.core_width) + "x" + str(self.core_height))
             return True
         except Exception:
             return False
@@ -170,20 +201,51 @@ class Placer:
 
 
 def check_readable(file):
-    with open(file, 'r') as f:
+    with open(file, "r"):
         pass
 
+
 @click.command()
-@click.option('-o', '--output', required=True)
-@click.option('-l', '--lef', required=True)
-@click.option('-t', '--tech-lef', "tlef", required=True)
-@click.option('-s', '--size', required=True, help="RAM Size (ex. 8x32, 16x32…)")
-@click.option('-r', '--represent', required=False, help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)")
-@click.option('-d', '--write-dimensions', required=False, help="File to print final width and height to (in the format '{width}x{height}')")
-@click.option('-n', '--write-density', required=False, help="File to print density to (in the format '{density}'- 0<=density<1)")
-@click.option('-b', '--building-blocks', default="sky130A:sky130_fd_sc_hd:ram", help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.")
-@click.argument('def_file', required=True, nargs=1)
-def cli(output, lef, tlef, size, represent, write_dimensions, write_density, building_blocks, def_file):
+@click.option("-o", "--output", required=True)
+@click.option("-l", "--lef", required=True)
+@click.option("-t", "--tech-lef", "tlef", required=True)
+@click.option("-s", "--size", required=True, help="RAM Size (ex. 8x32, 16x32…)")
+@click.option(
+    "-r",
+    "--represent",
+    required=False,
+    help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)",
+)
+@click.option(
+    "-d",
+    "--write-dimensions",
+    required=False,
+    help="File to print final width and height to (in the format '{width}x{height}')",
+)
+@click.option(
+    "-n",
+    "--write-density",
+    required=False,
+    help="File to print density to (in the format '{density}'- 0<=density<1)",
+)
+@click.option(
+    "-b",
+    "--building-blocks",
+    default="sky130A:sky130_fd_sc_hd:ram",
+    help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.",
+)
+@click.argument("def_file", required=True, nargs=1)
+def cli(
+    output,
+    lef,
+    tlef,
+    size,
+    represent,
+    write_dimensions,
+    write_density,
+    building_blocks,
+    def_file,
+):
 
     pdk, scl, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
@@ -208,9 +270,13 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
     words = int(m[1])
     word_length = int(m[2])
     if words % 8 != 0 or words == 0:
-        eprint("WARNING: Word count must be a non-zero multiple of 8. Results may be unexpected.")
+        eprint(
+            "WARNING: Word count must be a non-zero multiple of 8. Results may be unexpected."
+        )
     if word_length % 8 != 0 or words == 0:
-        eprint("WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected.")
+        eprint(
+            "WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected."
+        )
 
     tap_distance = config["tap_distance"]
 
@@ -219,10 +285,19 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
 
     fill_cell_data = yaml.load(open(fill_cells_file).read(), Loader=yaml.SafeLoader)
 
-    placer = Placer(lef, tlef, def_file, words, word_length, register_file, fill_cell_data, tap_distance)
+    placer = Placer(
+        lef,
+        tlef,
+        def_file,
+        words,
+        word_length,
+        register_file,
+        fill_cell_data,
+        tap_distance,
+    )
 
     if represent is not None:
-        with open(represent, 'w') as f:
+        with open(represent, "w") as f:
             placer.represent(f)
 
     placer.place()
@@ -246,6 +321,7 @@ def cli(output, lef, tlef, size, represent, write_dimensions, write_density, bui
         eprint("Wrote density to %s." % write_dimensions)
 
     eprint("Done.")
+
 
 def main():
     try:

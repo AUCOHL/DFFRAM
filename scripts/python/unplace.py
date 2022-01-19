@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import traceback
+
 try:
     import click
     import yaml
@@ -28,9 +29,19 @@ except ImportError:
     print("You need to install click and pyyaml: python3 -m pip install click pyyaml")
     exit(os.EX_CONFIG)
 
+
 @click.command()
-@click.option("-p", "--platform", required=True, help="PDK/Platform to use, e.g. sky130A")
-@click.option("-o", "--output", "output_file", default="/dev/stdout", help="Output file", show_default=True)
+@click.option(
+    "-p", "--platform", required=True, help="PDK/Platform to use, e.g. sky130A"
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_file",
+    default="/dev/stdout",
+    help="Output file",
+    show_default=True,
+)
 @click.argument("input_file", required=True)
 def unplace(platform, output_file, input_file):
     dn = os.path.dirname
@@ -52,25 +63,30 @@ def unplace(platform, output_file, input_file):
         exit(os.EX_NOINPUT)
 
     output_str = input_str
-    
+
     replaced = 0
     for rx in rx_list:
         frx = fr"({rx})\s*\+\s*PLACED\s*\(\s*\d+\s*\d+\s*\)\s*\w+"
         output_str, replacements = re.subn(frx, r"\1", output_str)
         replaced += replacements
 
-
     with open(output_file, "w") as f:
         f.write(output_str)
 
     print(f"Done. Unplaced {replaced} instances.", file=sys.stderr)
 
+
 def main():
     try:
         unplace()
     except Exception:
-        print("An unhandled exception has occurred.", traceback.format_exc(), file=sys.stderr)
+        print(
+            "An unhandled exception has occurred.",
+            traceback.format_exc(),
+            file=sys.stderr,
+        )
         exit(os.EX_UNAVAILABLE)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

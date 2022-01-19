@@ -15,15 +15,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from click.core import Option
 from odb import dbRow, dbInst, dbSite
-from typing import List, Callable, Optional
+from typing import List, Callable
 
 import re
-import sys
-import math
-import traceback
+
 
 class Row(object):
     sw: float = None
@@ -63,12 +59,15 @@ class Row(object):
     def width(self):
         return self.x - self.xmin
 
-    def tap(self, width: float=0):
+    def tap(self, width: float = 0):
         if self.since_last_tap + width > Row.tap_distance:
-            self.place(Row.create_fill("tap_%i_%i" % (self.ordinal, self.tap_counter), 1), ignore_tap=True)
+            self.place(
+                Row.create_fill("tap_%i_%i" % (self.ordinal, self.tap_counter), 1),
+                ignore_tap=True,
+            )
             self.tap_counter += 1
 
-    def place(self, instance: dbInst, ignore_tap: bool =False):
+    def place(self, instance: dbInst, ignore_tap: bool = False):
         width = instance.getMaster().getWidth()
         if not ignore_tap:
             self.tap(width)
@@ -85,7 +84,14 @@ class Row(object):
         self.cell_counter += 1
 
     @staticmethod
-    def from_odb(rows: List[dbRow], regular_site: dbSite, max_tap_distance: float, create_fill: Callable[[str, int], dbInst], supported_fill_sizes: List[int], tap_cell_rx: str):
+    def from_odb(
+        rows: List[dbRow],
+        regular_site: dbSite,
+        max_tap_distance: float,
+        create_fill: Callable[[str, int], dbInst],
+        supported_fill_sizes: List[int],
+        tap_cell_rx: str,
+    ):
         Row.sw, Row.sh = (regular_site.getWidth(), regular_site.getHeight())
         Row.tap_distance = max_tap_distance
 
@@ -99,7 +105,7 @@ class Row(object):
         return returnable
 
     @staticmethod
-    def fill_rows(rows: List['Row'], from_index: int, to_index: int):
+    def fill_rows(rows: List["Row"], from_index: int, to_index: int):
         """
         from inclusive; to exclusive
         Fills from the last location that has a cell.
@@ -130,10 +136,10 @@ class Row(object):
                 # Always start with a tap.
                 fills.append(1)
                 current -= 1
-            
+
             while current > 0:
                 current_fill = fill_sizes[tracker]
-                current_width = (current_fill * Row.sw)
+                current_width = current_fill * Row.sw
                 while current >= current_fill:
                     if since_last_tap + current_width > Row.tap_distance:
                         fills.append(1)
@@ -164,6 +170,8 @@ class Row(object):
             fills = pack(empty, Row.supported_fill_sizes)
             # print(f"{from_index}->{to_index}::{row_idx}: {fills}")
             for fill in fills:
-                fill_cell = Row.create_fill("fill_%i_%i" % (row_idx, r.fill_counter), fill)
+                fill_cell = Row.create_fill(
+                    "fill_%i_%i" % (row_idx, r.fill_counter), fill
+                )
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1

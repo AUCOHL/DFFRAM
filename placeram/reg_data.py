@@ -19,60 +19,78 @@
 from .row import Row
 from .util import d2a
 from .placeable import Placeable
-from .common_data import *
+from .common_data import Decoder5x32
 
 from odb import dbInst
 from typing import Dict, List
+
 Instance = dbInst
 
 P = Placeable
 S = Placeable.Sieve
 
+
 class RFWord(Placeable):
     def __init__(self, instances):
-        self.sieve(instances, [
-            S(variable="clkgateand"),
-            S(variable="ffs", groups=["bit"]),
-            S(variable="clkgates", groups=["ports"]),
-            S(variable="obufs", groups=["ports", "bit"], group_rx_order=[2, 1]),
-            S(variable="invs", groups=["ports", "address_bit"])
-        ])
-        
+        self.sieve(
+            instances,
+            [
+                S(variable="clkgateand"),
+                S(variable="ffs", groups=["bit"]),
+                S(variable="clkgates", groups=["ports"]),
+                S(variable="obufs", groups=["ports", "bit"], group_rx_order=[2, 1]),
+                S(variable="invs", groups=["ports", "address_bit"]),
+            ],
+        )
+
         self.dicts_to_lists()
 
     def place(self, row_list, start_row=0):
-        raise Exception("Register file words cannot be placed solo as the bits have to be in lockstep.")
+        raise Exception(
+            "Register file words cannot be placed solo as the bits have to be in lockstep."
+        )
 
     def word_count(self):
         return 1
 
 
-class DFFRF(Placeable): # 32 words
+class DFFRF(Placeable):  # 32 words
     def __init__(self, instances):
         raw_words: Dict[int, List[Instance]] = {}
+
         def process_word(instance, word):
             raw_words[word] = raw_words.get(word) or []
             raw_words[word].append(instance)
 
         raw_decoders: Dict[int, List[Instance]] = {}
+
         def process_decoder(instance, decoder):
             raw_decoders[decoder] = raw_decoders.get(decoder) or []
             raw_decoders[decoder].append(instance)
 
-        self.sieve(instances, [            
-            S(variable="decoders", groups=["decoder"], custom_behavior=process_decoder),
-            S(variable="words", groups=["word"], custom_behavior=process_word),
-            S(variable="rfw0_ties", groups=["nibble"]),
-            S(variable="rfw0_invs1", groups=["byte"]),
-            S(variable="rfw0_invs2", groups=["byte"]),
-            S(variable="rfw0_obufs1", groups=["bit"]),
-            S(variable="rfw0_obufs2", groups=["bit"]),
-        ])
+        self.sieve(
+            instances,
+            [
+                S(
+                    variable="decoders",
+                    groups=["decoder"],
+                    custom_behavior=process_decoder,
+                ),
+                S(variable="words", groups=["word"], custom_behavior=process_word),
+                S(variable="rfw0_ties", groups=["nibble"]),
+                S(variable="rfw0_invs1", groups=["byte"]),
+                S(variable="rfw0_invs2", groups=["byte"]),
+                S(variable="rfw0_obufs1", groups=["bit"]),
+                S(variable="rfw0_obufs2", groups=["bit"]),
+            ],
+        )
 
         self.dicts_to_lists()
 
         self.words: List[RFWord] = d2a({k: RFWord(v) for k, v in raw_words.items()})
-        self.decoders5x32: List[Decoder5x32] = d2a({k: Decoder5x32(v) for k, v in raw_decoders.items()})
+        self.decoders5x32: List[Decoder5x32] = d2a(
+            {k: Decoder5x32(v) for k, v in raw_decoders.items()}
+        )
 
     def place(self, rows, start_row: int = 0):
         #    |      5x32 Decoder Placement           |  |
@@ -82,17 +100,17 @@ class DFFRF(Placeable): # 32 words
         # {  _ ====================================  ____   }
         # 32 _ ====================================  ____  32
         # { D2 ====================================  D0 D1  }
-        word_rows = 32 * 2 - 2 + 1 # word 0 only needs one row
+        word_rows = 32 * 2 - 2 + 1  # word 0 only needs one row
         word_width = 32
 
         # D2 placement
-        self.decoders5x32[2].place(rows, start_row, (32-4)//2, flip=True)
+        self.decoders5x32[2].place(rows, start_row, (32 - 4) // 2, flip=True)
 
         Row.fill_rows(rows, start_row, start_row + word_rows - 1)
 
         # This loop places each column of bits on the same general X-position
         # to make routing easier.
-        
+
         for bit in range(0, word_width):
             byte = bit // 8
             nibble = bit // 4
@@ -116,10 +134,10 @@ class DFFRF(Placeable): # 32 words
                 row0 = rows[current_row]
                 row1 = rows[current_row + 1]
 
-                if bit % 8 == 0: # Per Byte
+                if bit % 8 == 0:  # Per Byte
                     for inverter_set in word.invs:
-                        row0.place(inverter_set[bit//8])
-                    row0.place(word.clkgates[bit//8])
+                        row0.place(inverter_set[bit // 8])
+                    row0.place(word.clkgates[bit // 8])
 
                 if bit == (word_width // 2):
                     row0.place(word.clkgateand)
@@ -131,7 +149,6 @@ class DFFRF(Placeable): # 32 words
                 current_row += 2
 
             Row.fill_rows(rows, start_row, current_row)
-
 
         # D0 placement
         self.decoders5x32[0].place(rows, start_row, 4)

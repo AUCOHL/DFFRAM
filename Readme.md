@@ -1,5 +1,5 @@
 # DFFRAM Compiler
-![CI Badge](https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![CI Badge](https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main) [![Slack Invite](https://img.shields.io/badge/Community-Skywater%20PDK%20Slack-ff69b4?logo=slack)](https://invite.skywater.tools)  [![code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Standard Cell Library based Memory Compiler using DFF/Latch cells.
 
@@ -54,7 +54,7 @@ The [`OpenLane/`](./OpenLane) folder will contain good known OpenLane configurat
 ## File Structure
 * `.github` contains files for GitHub actions.
 * `docs/` contains documentation (😮)
-* `openlane/` (under construction) contains variants of the designs designed to be placed and routed using OpenLane, as well as RTL versions for comparison data.
+* `rtl/` contains RTL RAM file generators for benchmarking and comparison purposes.
 * `platforms/` contains PDK-specific files:
   * `<pdk-name>/`
     * `<scl-name>/`

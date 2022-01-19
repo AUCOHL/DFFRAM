@@ -18,7 +18,7 @@
 from .util import d2a
 from .row import Row
 from .placeable import Placeable, DataError
-from .common_data import *
+from .common_data import Decoder3x8, Mux
 
 from odb import dbInst as Instance
 
@@ -31,12 +31,12 @@ from itertools import zip_longest
 P = Placeable
 S = Placeable.Sieve
 
+
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
-        self.sieve(instances, [
-            S(variable="store"),
-            S(variable="obufs", groups=["port"])
-        ])
+        self.sieve(
+            instances, [S(variable="store"), S(variable="obufs", groups=["port"])]
+        )
 
         self.dicts_to_lists()
 
@@ -49,21 +49,26 @@ class Bit(Placeable):
 
         return start_row
 
+
 class Byte(Placeable):
     def __init__(self, instances: List[Instance]):
         raw_bits: Dict[int, List[Instance]] = {}
+
         def process_bit(instance, bit):
             raw_bits[bit] = raw_bits.get(bit) or []
             raw_bits[bit].append(instance)
 
-        self.sieve(instances, [
-            S(variable="bits", groups=["bit"], custom_behavior=process_bit),
-            S(variable="clockgate"),
-            S(variable="cgand"),
-            S(variable="clkinv"),
-            S(variable="clkdiode"),
-            S(variable="selinvs", groups=["line"]),
-        ])
+        self.sieve(
+            instances,
+            [
+                S(variable="bits", groups=["bit"], custom_behavior=process_bit),
+                S(variable="clockgate"),
+                S(variable="cgand"),
+                S(variable="clkinv"),
+                S(variable="clkdiode"),
+                S(variable="selinvs", groups=["line"]),
+            ],
+        )
 
         self.dicts_to_lists()
         self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
@@ -84,18 +89,23 @@ class Byte(Placeable):
 
         return start_row
 
+
 class Word(Placeable):
     def __init__(self, instances: List[Instance]):
         raw_bytes: Dict[int, List[Instance]] = {}
+
         def process_byte(instance, byte):
             raw_bytes[byte] = raw_bytes.get(byte) or []
             raw_bytes[byte].append(instance)
 
-        self.sieve(instances, [
-            S(variable="bytes", groups=["byte"], custom_behavior=process_byte),
-            S(variable="clkbuf"),
-            S(variable="selbufs", groups=["port"])
-        ])
+        self.sieve(
+            instances,
+            [
+                S(variable="bytes", groups=["byte"], custom_behavior=process_byte),
+                S(variable="clkbuf"),
+                S(variable="selbufs", groups=["port"]),
+            ],
+        )
 
         self.dicts_to_lists()
         self.bytes = d2a({k: Byte(v) for k, v in raw_bytes.items()})
@@ -115,24 +125,34 @@ class Word(Placeable):
     def word_count(self):
         return 1
 
-class Slice(Placeable): # A slice is defined as 8 words.
+
+class Slice(Placeable):  # A slice is defined as 8 words.
     def __init__(self, instances: List[Instance]):
         raw_words: Dict[int, List[Instance]] = {}
+
         def process_word(instance, word):
             raw_words[word] = raw_words.get(word) or []
             raw_words[word].append(instance)
 
         raw_decoders: Dict[int, List[Instance]] = {}
+
         def process_decoder(instance, decoder):
             raw_decoders[decoder] = raw_decoders.get(decoder) or []
             raw_decoders[decoder].append(instance)
 
-        self.sieve(instances, [
-            S(variable="words", groups=["word"], custom_behavior=process_word),
-            S(variable="decoders", groups=["port"], custom_behavior=process_decoder),
-            S(variable="clkbuf"),
-            S(variable="webufs", groups=["line"]),
-        ])
+        self.sieve(
+            instances,
+            [
+                S(variable="words", groups=["word"], custom_behavior=process_word),
+                S(
+                    variable="decoders",
+                    groups=["port"],
+                    custom_behavior=process_decoder,
+                ),
+                S(variable="clkbuf"),
+                S(variable="webufs", groups=["line"]),
+            ],
+        )
 
         self.dicts_to_lists()
 
@@ -203,7 +223,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
         for decoder in vertical_right:
             current_row = decoder.place(row_list, start_row)
 
-        #Row.fill_rows(row_list, start_row, current_row)
+        # Row.fill_rows(row_list, start_row, current_row)
         final_rows.append(current_row)
 
         # Epilogue
@@ -214,6 +234,7 @@ class Slice(Placeable): # A slice is defined as 8 words.
     def word_count(self):
         return 8
 
+
 class LRPlaceable(Placeable):
     """
     A Placeable that can have some of its elements placed in left & right columns.
@@ -221,7 +242,15 @@ class LRPlaceable(Placeable):
     This is to make the design more routable.
     """
 
-    def lrplace(self, row_list: List[Row], start_row: int, addresses: int, common: List[Instance], port_elements: List[str], place_horizontal_elements: Callable) -> int:
+    def lrplace(
+        self,
+        row_list: List[Row],
+        start_row: int,
+        addresses: int,
+        common: List[Instance],
+        port_elements: List[str],
+        place_horizontal_elements: Callable,
+    ) -> int:
         # Prologue. Split vertical elements into left and right columns
         chunks = []
         common = list(filter(lambda x: x, common))
@@ -230,7 +259,7 @@ class LRPlaceable(Placeable):
 
         i = 0
         while i < len(common):
-            chunks.append(common[i: i + per_chunk])
+            chunks.append(common[i : i + per_chunk])
             i += per_chunk
 
         vertical_left = []
@@ -253,7 +282,7 @@ class LRPlaceable(Placeable):
                 column += chunks[i // 2]
             target.append(column)
             right = not right
-        
+
         final_rows = []
 
         # Act 1. Place Left Vertical Elements
@@ -273,7 +302,7 @@ class LRPlaceable(Placeable):
         # Act 2. Place Horizontal Elements
         current_row = place_horizontal_elements(start_row)
 
-        #Row.fill_rows(row_list, start_row, current_row)
+        # Row.fill_rows(row_list, start_row, current_row)
 
         final_rows.append(current_row)
 
@@ -289,32 +318,41 @@ class LRPlaceable(Placeable):
 
         # Epilogue
         max_row = max(*final_rows)
-        #Row.fill_rows(row_list, start_row, max_row)
+        # Row.fill_rows(row_list, start_row, max_row)
         return max_row
 
-class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
+
+class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
     def __init__(self, instances: List[Instance]):
         raw_slices: Dict[int, List[Instance]] = {}
+
         def process_slice(instance, slice):
             raw_slices[slice] = raw_slices.get(slice) or []
             raw_slices[slice].append(instance)
 
-        self.sieve(instances, [
-            S(variable="slices", groups=["slice"], custom_behavior=process_slice),
-            S(variable="clk_diode"),
-            S(variable="clkbuf"),
-            S(variable="webufs", groups=["bit"]),
-            S(variable="enbufs", groups=["port"]),
-            S(variable="a_diodes", groups=["port", "address_bit"]),
-            S(variable="abufs", groups=["port", "address_bit"]),
-            S(variable="decoder_ands", groups=["port", "bit"]),
-            S(variable="dibufs", groups=["bit"]),
-            S(variable="dobufs", groups=["port", "bit"]),
-            S(variable="dobuf_diodes", groups=["port", "bit"]),
-            S(variable="fbufenbufs", groups=["port", "bit"]),
-            S(variable="ties", groups=["port", "bit"]),
-            S(variable="floatbufs", groups=["port", "byte", "bit"], group_rx_order=[2, 1, 3])
-        ])
+        self.sieve(
+            instances,
+            [
+                S(variable="slices", groups=["slice"], custom_behavior=process_slice),
+                S(variable="clk_diode"),
+                S(variable="clkbuf"),
+                S(variable="webufs", groups=["bit"]),
+                S(variable="enbufs", groups=["port"]),
+                S(variable="a_diodes", groups=["port", "address_bit"]),
+                S(variable="abufs", groups=["port", "address_bit"]),
+                S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="dibufs", groups=["bit"]),
+                S(variable="dobufs", groups=["port", "bit"]),
+                S(variable="dobuf_diodes", groups=["port", "bit"]),
+                S(variable="fbufenbufs", groups=["port", "bit"]),
+                S(variable="ties", groups=["port", "bit"]),
+                S(
+                    variable="floatbufs",
+                    groups=["port", "byte", "bit"],
+                    group_rx_order=[2, 1, 3],
+                ),
+            ],
+        )
 
         self.dicts_to_lists()
 
@@ -341,7 +379,7 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                     r.place(tie)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
-            
+
             current_row += 1
 
             for port in range(port_count):
@@ -351,70 +389,74 @@ class Block(LRPlaceable): # A block is defined as 4 slices (32 words)
                 for dobuf, diode in zip(dobufs, dobuf_diodes):
                     r.place(dobuf)
                     r.place(diode)
-            
+
             current_row += 1
 
             return current_row
-        
+
         return self.lrplace(
             row_list=row_list,
             start_row=start_row,
             addresses=len(self.abufs),
-            common=[
-                self.clk_diode,
-                self.clkbuf,
-                *self.webufs
-            ],
-            port_elements=[
-                "enbufs",
-                "a_diodes",
-                "abufs",
-                "decoder_ands",
-                "fbufenbufs"
-            ],
-            place_horizontal_elements=place_horizontal_elements
+            common=[self.clk_diode, self.clkbuf, *self.webufs],
+            port_elements=["enbufs", "a_diodes", "abufs", "decoder_ands", "fbufenbufs"],
+            place_horizontal_elements=place_horizontal_elements,
         )
 
     def word_count(self):
         return 32
 
+
 class HigherLevelPlaceable(LRPlaceable):
     def __init__(self, instances: List[Instance], block_size: int):
         raw_blocks: Dict[int, List[Instance]] = {}
+
         def process_block(instance, block):
             raw_blocks[block] = raw_blocks.get(block) or []
             raw_blocks[block].append(instance)
 
         raw_domuxes: Dict[int, List[Instance]] = {}
+
         def process_raw_domuxes(instance, domux):
             raw_domuxes[domux] = raw_domuxes.get(domux) or []
             raw_domuxes[domux].append(instance)
 
-        self.sieve(instances, [
-            S(variable=f"block{block_size}", groups=["block"], custom_behavior=process_block),
-            S(variable="domuxes", groups=["domux"], custom_behavior=process_raw_domuxes),
-            S(variable="clk_diode"),
-            S(variable="clkbuf"),
-            S(variable="di_diodes", groups=["bit"]),
-            S(variable="dibufs", groups=["bit"]),
-            S(variable="webufs", groups=["bit"]),
-            S(variable="enbufs", groups=["port"]),
-            S(variable="decoder_ands", groups=["port", "bit"]),
-            S(variable="abufs", groups=["port", "address_bit"]),
-            S(variable="a_diodes", groups=["port", "address_bit"])
-        ])
+        self.sieve(
+            instances,
+            [
+                S(
+                    variable=f"block{block_size}",
+                    groups=["block"],
+                    custom_behavior=process_block,
+                ),
+                S(
+                    variable="domuxes",
+                    groups=["domux"],
+                    custom_behavior=process_raw_domuxes,
+                ),
+                S(variable="clk_diode"),
+                S(variable="clkbuf"),
+                S(variable="di_diodes", groups=["bit"]),
+                S(variable="dibufs", groups=["bit"]),
+                S(variable="webufs", groups=["bit"]),
+                S(variable="enbufs", groups=["port"]),
+                S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="abufs", groups=["port", "address_bit"]),
+                S(variable="a_diodes", groups=["port", "address_bit"]),
+            ],
+        )
 
         self.dicts_to_lists()
 
-        self.blocks = d2a({
-            k: create_hierarchy(v, block_size) for k, v in  raw_blocks.items()
-        })
-        self.domuxes = d2a({ k: Mux(v) for k, v in raw_domuxes.items()})
+        self.blocks = d2a(
+            {k: create_hierarchy(v, block_size) for k, v in raw_blocks.items()}
+        )
+        self.domuxes = d2a({k: Mux(v) for k, v in raw_domuxes.items()})
 
     def place(self, row_list: List[Row], start_row: int = 0):
         def symmetrically_placeable():
             return self.word_count() > 128
-        
+
         current_row = start_row
 
         def place_horizontal_elements(start_row: int):
@@ -446,7 +488,6 @@ class HigherLevelPlaceable(LRPlaceable):
                 for block in self.blocks:
                     current_row = block.place(row_list, current_row)
 
-
             for domux in self.domuxes:
                 current_row = domux.place(row_list, current_row)
 
@@ -458,19 +499,15 @@ class HigherLevelPlaceable(LRPlaceable):
             addresses=len(self.domuxes),
             common=[
                 *([self.clkbuf, self.clk_diode] if self.clkbuf is not None else []),
-                *self.webufs
+                *self.webufs,
             ],
-            port_elements=[
-                "enbufs",
-                "abufs",
-                "a_diodes",
-                "decoder_ands"
-            ],
-            place_horizontal_elements=place_horizontal_elements
+            port_elements=["enbufs", "abufs", "a_diodes", "decoder_ands"],
+            place_horizontal_elements=place_horizontal_elements,
         )
 
     def word_count(self):
         return len(self.blocks) * (self.blocks[0].word_count())
+
 
 def create_hierarchy(instances, word_count):
     hierarchy = None
@@ -489,8 +526,10 @@ def create_hierarchy(instances, word_count):
 
             𝒇(𝒙) = 32 * 4 ^ ⌈log2(𝒙 / 128) / 2⌉
         """
+
         def f(x):
             return 32 * (4 ** math.ceil(math.log2(x / 128) / 2))
+
         block_size = f(word_count)
         hierarchy = HigherLevelPlaceable(instances, block_size)
     return hierarchy

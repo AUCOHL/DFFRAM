@@ -26,6 +26,7 @@ import pathlib
 
 import click
 
+
 class Design(object):
     def __init__(self, count, width, variant):
         self.count = count
@@ -34,7 +35,9 @@ class Design(object):
 
     @staticmethod
     def from_yaml_object(yaml_object):
-        return Design(yaml_object['count'], yaml_object['width'], yaml_object['variant'])
+        return Design(
+            yaml_object["count"], yaml_object["width"], yaml_object["variant"]
+        )
 
     @staticmethod
     def get_all():
@@ -42,12 +45,11 @@ class Design(object):
 
         gha = yaml.safe_load(gha_string)
 
-        jobs = gha['jobs']
-        test_flow = jobs['test_flow']
-        designs = test_flow['strategy']['matrix']['include']
+        jobs = gha["jobs"]
+        test_flow = jobs["test_flow"]
+        designs = test_flow["strategy"]["matrix"]["include"]
 
         return [Design.from_yaml_object(design) for design in designs]
-
 
     @property
     def size(self):
@@ -58,19 +60,28 @@ class Design(object):
         return f"{self.size}_{self.variant}"
 
     def get_density(self, build_folder):
-        density_file = glob.glob(os.path.join(build_folder, self.tag, "*.density.txt"))[0]
+        density_file = glob.glob(os.path.join(build_folder, self.tag, "*.density.txt"))[
+            0
+        ]
         density = float(open(density_file).read())
         return density
+
 
 @click.group()
 def start():
     pass
 
-@click.command('run_designs')
-@click.option("-w", "--worker-count", required=not os.getenv("WORKERS"), default=os.getenv("WORKERS"))
+
+@click.command("run_designs")
+@click.option(
+    "-w",
+    "--worker-count",
+    required=not os.getenv("WORKERS"),
+    default=os.getenv("WORKERS"),
+)
 def run_designs(worker_count):
     worker_count = int(worker_count)
-    
+
     designs = Design.get_all()
 
     q = queue.Queue()
@@ -88,21 +99,29 @@ def run_designs(worker_count):
             stdout = open(os.path.join(build_folder, "stdout.log"), "w")
             stderr = open(os.path.join(build_folder, "stderr.log"), "w")
             try:
-                subprocess.check_call([
-                    "python3",
-                    "./dffram.py",
-                    "--variant", design.variant,
-                    "--size", f"{design.count}x{design.width}",
-                    "--output-dir", "./benchmark_build"
-                ], stdout=stdout, stderr=stderr)
+                subprocess.check_call(
+                    [
+                        "python3",
+                        "./dffram.py",
+                        "--variant",
+                        design.variant,
+                        "--size",
+                        f"{design.count}x{design.width}",
+                        "--output-dir",
+                        "./benchmark_build",
+                    ],
+                    stdout=stdout,
+                    stderr=stderr,
+                )
 
-                print(f"Finished {design.tag}: Density {design.get_density('./benchmark_build')}.")
-            except:
+                print(
+                    f"Finished {design.tag}: Density {design.get_density('./benchmark_build')}."
+                )
+            except Exception:
                 print(f"Failed {design.tag}.")
 
             stdout.close()
             stderr.close()
-
 
     worker_threads = []
     for i in range(worker_count):
@@ -110,11 +129,13 @@ def run_designs(worker_count):
         worker_threads[i].start()
 
     for i in range(worker_count):
-        while worker_threads[i].is_alive() == True:
+        while worker_threads[i].is_alive():
             worker_threads[i].join(100)
         print(f"Exiting thread {i}...")
 
+
 start.add_command(run_designs)
+
 
 @click.command("compile_densities")
 def compile_densities():
@@ -123,7 +144,8 @@ def compile_densities():
         print("tag,density", file=f)
         for design in designs:
             print(f"{design.tag},{design.get_density('./benchmark_build')}", file=f)
-    
+
+
 start.add_command(compile_densities)
 
 if __name__ == "__main__":

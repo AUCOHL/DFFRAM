@@ -48,11 +48,7 @@ try:
     use_explicitly_listed_lefs = explicitly_listed_lefs_raw is not None
 
     tech_file_path = os.path.join(
-        pdk_root,
-        pdk_name,
-        "libs.tech",
-        "klayout",
-        f"{pdk_name}.lyt"
+        pdk_root, pdk_name, "libs.tech", "klayout", f"{pdk_name}.lyt"
     )
 
     tech = pya.Technology()

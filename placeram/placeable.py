@@ -4,17 +4,19 @@ import sys
 import yaml
 from odb import dbInst as Instance
 from typing import List, Dict, Union, TextIO, Optional
-from types import SimpleNamespace
 
 from .row import Row
 from .util import d2a, DeepDictionary
 
+
 def dbInst__repr__(self):
     return f"<dbInst {self.getMaster().getName()} {self.getName()}>"
+
 
 Instance.__repr__ = dbInst__repr__
 
 RegExp = str
+
 
 class Placeable(object):
     RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
@@ -25,7 +27,13 @@ class Placeable(object):
         return Placeable.RegexDictionary[self.__class__.__name__]
 
     class Sieve(object):
-        def __init__(self, variable: str, groups: List[str] = [], group_rx_order=None, custom_behavior=None):
+        def __init__(
+            self,
+            variable: str,
+            groups: List[str] = [],
+            group_rx_order=None,
+            custom_behavior=None,
+        ):
             self.variable = variable
             self.groups = groups
             self.groups_rx_order = group_rx_order or list(range(1, len(groups) + 1))
@@ -33,14 +41,14 @@ class Placeable(object):
 
     def sieve(self, instances: List[Instance], sieves: List[Sieve]):
         regexes = self.regex_dict()
-        compiled_regexes = { k: re.compile(v) for k, v in regexes.items() }
+        compiled_regexes = {k: re.compile(v) for k, v in regexes.items()}
         for sieve in sieves:
             depth = len(sieve.groups)
             if depth == 0:
                 self.__dict__[sieve.variable] = None
             else:
                 self.__dict__[sieve.variable] = DeepDictionary(depth)
-        
+
         for instance in instances:
             n = instance.getName()
             found = False
@@ -67,7 +75,7 @@ class Placeable(object):
                     accessible = self.__dict__[sieve.variable]
                     for access in access_order:
                         accessible = accessible[access]
-                    
+
                     accessible[last_access] = instance
                 break
             if not found:
@@ -96,10 +104,7 @@ class Placeable(object):
 
     @staticmethod
     def represent_instance(
-        name: str,
-        instance: Instance,
-        tab_level: int,
-        file: TextIO = sys.stderr
+        name: str, instance: Instance, tab_level: int, file: TextIO = sys.stderr
     ):
         """
         Writes textual representation of an instance to `file`.
@@ -113,10 +118,10 @@ class Placeable(object):
     @staticmethod
     def represent_array(
         name: str,
-        array: List['Representable'],
+        array: List["Representable"],
         tab_level: int,
         file: TextIO = sys.stderr,
-        header: Optional[str] = None
+        header: Optional[str] = None,
     ):
         """
         Writes textual representation of a list of 'representables' to `file`.
@@ -142,7 +147,9 @@ class Placeable(object):
 
     ra = represent_array
 
-Representable = Union[Instance, 'Placeable',  List['Representable']]
+
+Representable = Union[Instance, "Placeable", List["Representable"]]
+
 
 class DataError(Exception):
     pass
