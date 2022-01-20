@@ -86,12 +86,12 @@ def run_docker(image, args):
         + args
     )
     command_list.append(cmd)
-    subprocess.run(cmd, check=True)
+    subprocess.check_call(cmd)
 
 
 def openlane(*args_tuple):
     args = list(args_tuple)
-    run_docker("efabless/openlane:2021.10.25_20.35.00", args)
+    run_docker("efabless/openlane:2022.01.13_01.51.43", args)
 
 
 def prep(local_pdk_root):
@@ -206,7 +206,7 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
         set -e
 
         python3 /openlane/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
-        openroad {build_folder}/fp_init.tcl
+        openroad -exit {build_folder}/fp_init.tcl
         """
         )
 
@@ -277,7 +277,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
                 """
             )
 
-        openlane("openroad", f"{build_folder}/place_pins.tcl")
+        openlane("openroad", "-exit", f"{build_folder}/place_pins.tcl")
     else:
         openlane(
             "openroad",
@@ -285,14 +285,12 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
             "/openlane/scripts/io_place.py",
             "--input-lef",
             f"{build_folder}/merged.lef",
-            "--input-def",
-            in_file,
             "--config",
             pin_order_file,
             "--hor-layer",
-            "4",
+            "met3",
             "--ver-layer",
-            "3",
+            "met2",
             "--ver-width-mult",
             "1",
             "--hor-width-mult",
@@ -305,6 +303,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
             "2",
             "-o",
             out_file,
+            in_file,
         )
 
     last_def = out_file
@@ -318,17 +317,19 @@ def verify_placement(design, synth_info, in_file):
             read_liberty {pdk_liberty_dir}/{synth_info['typical']}
             read_lef {build_folder}/merged.lef
             read_def {in_file}
-            if [check_placement -verbose] {{
+            if {{[catch check_placement -verbose]}} {{
                 puts "Placement failed: Check placement returned a nonzero value."
                 exit 65
             }}
             puts "Placement successful."
             """
         )
-    openlane("openroad", f"{build_folder}/verify.tcl")
+    openlane("openroad", "-exit", f"{build_folder}/verify.tcl")
 
 
-def openlane_harden(design, clock_period, final_netlist, final_placement):
+def openlane_harden(
+    design, clock_period, final_netlist, final_placement, products_path
+):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
     ensure_dir(design_ol_dir)
@@ -340,6 +341,10 @@ def openlane_harden(design, clock_period, final_netlist, final_placement):
     placement_basename = os.path.basename(final_placement)
     current_def = f"{design_ol_dir}/{placement_basename}"
     shutil.copy(final_placement, current_def)
+
+    shutil.copy(
+        "./scripts/openlane/interactive.tcl", f"{design_ol_dir}/interactive.tcl"
+    )
 
     if pdk == "sky130A":
         sky130_hd_hack.process_lefs(
@@ -353,21 +358,22 @@ def openlane_harden(design, clock_period, final_netlist, final_placement):
         f.write(
             f"""
             set ::env(DESIGN_NAME) "{design}"
-            
+
             set ::env(CLOCK_PORT) "CLK"
             set ::env(CLOCK_PERIOD) "{clock_period}"
 
-            set ::env(GLB_RT_MAXLAYER) 5
+            set ::env(LEC_ENABLE) "1"
+            set ::env(FP_WELLTAP_CELL) "sky130_fd_sc_hd__tap*"
 
-            set ::env(CURRENT_NETLIST) "$::env(DESIGN_DIR)/{netlist_basename}"
-            set ::env(CURRENT_DEF) "$::env(DESIGN_DIR)/{placement_basename}"
-            set ::env(CURRENT_SDC) "$::env(BASE_SDC_FILE)"
+            set ::env(CELL_PAD) "0"
+            set ::env(FILL_INSERTION) "0"
+            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
+            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
+            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) "0"
+            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
-            set ::env(CELL_PAD) 0
-            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) 0
-            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) 0
-            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) 0
-            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) 0
+            set ::env(RT_MAX_LAYER) "met4"
+            set ::env(GLB_RT_ALLOW_CONGESTION) "1"
 
             set ::env(CELLS_LEF) "$::env(DESIGN_DIR)/cells.lef"
 
@@ -375,12 +381,31 @@ def openlane_harden(design, clock_period, final_netlist, final_placement):
 
             set ::env(DIODE_INSERTION_STRATEGY) "0"
 
-            
+            set ::env(ROUTING_CORES) {os.getenv('ROUTING_CORES') or subprocess.check_output(['nproc']).decode('utf8').strip()}
+
+            set ::env(DESIGN_IS_CORE) "0"
+            set ::env(FP_PDN_CORE_RING) "0"
+
+            set ::env(PRODUCTS_PATH) "{products_path}"
+
+            set ::env(INITIAL_NETLIST) "$::env(DESIGN_DIR)/{netlist_basename}"
+            set ::env(INITIAL_DEF) "$::env(DESIGN_DIR)/{placement_basename}"
+            set ::env(INITIAL_SDC) "$::env(BASE_SDC_FILE)"
+
+            set ::env(LVS_CONNECT_BY_LABEL) "1"
+
+            set ::env(QUIT_ON_TIMING_VIOLATIONS) "0"
             """
         )
 
     openlane(
-        "tclsh", "/openlane/flow.tcl", "-design", design_ol_dir, "-from", "routing"
+        "tclsh",
+        "/openlane/flow.tcl",
+        "-design",
+        design_ol_dir,
+        "-it",
+        "-file",
+        f"{design_ol_dir}/interactive.tcl",
     )
 
 
@@ -412,7 +437,14 @@ def openlane_harden(design, clock_period, final_netlist, final_placement):
     "-v", "--variant", default=None, help="Use design variants (such as 1RW1R)"
 )
 @click.option("-s", "--size", required=True, help="Size")
-@click.option("-C", "--clock-period", default=3, type=float, help="clk period for sta")
+@click.option(
+    "-C",
+    "--clock-period",
+    "default_clock_period",
+    default=3,
+    type=float,
+    help="default clk period for sta",
+)
 @click.option("-H", "--halo", default=2.5, type=float, help="Halo in microns")
 
 # Enable/Disable
@@ -429,7 +461,7 @@ def flow(
     skip,
     size,
     building_blocks,
-    clock_period,
+    default_clock_period,
     halo,
     variant,
     klayout,
@@ -487,6 +519,9 @@ def flow(
         }
     )
     build_folder = f"{output_dir}/{size}_{variant or 'DEFAULT'}"
+
+    clock_periods = config["clock_periods"]
+    clock_period = clock_periods.get(f"{words}") or default_clock_period
 
     ensure_dir(build_folder)
 
@@ -587,7 +622,9 @@ def flow(
         ("placement", lambda: placement(width, height)),
         (
             "openlane_harden",
-            lambda: openlane_harden(design, clock_period, netlist, final_placement),
+            lambda: openlane_harden(
+                design, clock_period, netlist, final_placement, products
+            ),
         ),
     ]
 

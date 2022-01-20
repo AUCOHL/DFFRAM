@@ -25,3 +25,4 @@ support/
 /c2w
 /*.def
 *.log
+*.cvcrc
