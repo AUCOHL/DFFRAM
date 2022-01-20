@@ -20,7 +20,7 @@ jobs:
             echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
             sudo mkdir -p /usr/local/pdk
             sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
             mkdir -p /usr/local/pdk/sky130A
             tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Verify
@@ -30,36 +30,6 @@ jobs:
                 export PATTERN=tb_RAM$SIZE
                 /bin/bash -c "make lint"
             done
-  sta:
-    name: STA on All Models (incl. Synthesis)
-    runs-on: ubuntu-latest
-    strategy:
-        matrix:
-          count: ["8", "32", "128"] #, "256", "1024", "2048"]
-          width: ["32"]
-          variant: ["DEFAULT", "1RW1R"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Get IcarusVerilog
-        run: |
-            sudo apt-get install -y iverilog
-            sudo wget https://github.com/mikefarah/yq/releases/download/v4.2.0/yq_linux_amd64 -O /usr/bin/yq
-            sudo chmod +x /usr/bin/yq
-      - name: Get PDK
-        run: |
-            echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-            sudo mkdir -p /usr/local/pdk
-            sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
-            mkdir -p /usr/local/pdk/sky130A
-            tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
-      - name: Run Verification
-        run: |
-            CLK_PERIOD=$(yq e '.clk_periods.${{ matrix.count }}x${{ matrix.width }}' ./platforms/sky130A/sky130_fd_sc_hd/_building_blocks/ram/config.yml)
-            ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} \
-            -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }} --to sta_1 --clock-period $CLK_PERIOD
-            ! grep -l VIOLATED -r ./build/*/*.sta.rpt;
   verify_models:
     name: Verify Models
     runs-on: ubuntu-latest
@@ -79,7 +49,7 @@ jobs:
             echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
             sudo mkdir -p /usr/local/pdk
             sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
             mkdir -p /usr/local/pdk/sky130A
             tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run Verification
@@ -120,7 +90,7 @@ jobs:
             echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
             sudo mkdir -p /usr/local/pdk
             sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
             mkdir -p /usr/local/pdk/sky130A
             tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run
@@ -142,7 +112,7 @@ jobs:
           echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
           sudo mkdir -p /usr/local/pdk
           sudo chown $USER:$USER /usr/local/pdk
-          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-13e0611f6a27fd6e601f8fe207773233f4f3883f/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
+          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
           mkdir -p /usr/local/pdk/sky130A
           tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Run

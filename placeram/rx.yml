@@ -13,6 +13,7 @@ Decoder3x8:
 Decoder5x32:
   decoders3x8: "\\bD(\\d+)\\b"
   decoder2x4: "\\bD\\b"
+  tie: "\\bTIE\\b"
 # 1RWNR
 Bit:
   store: "\\bSTORAGE\\b"
