@@ -137,16 +137,17 @@ def synthesis(
     if len(widths_supported) > 1:
         chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
     with open(f"{build_folder}/synth.tcl", "w") as f:
+        print(design)
         f.write(
             f"""
             yosys -import
-            set vtop {design}
-            set SCL $env(LIBERTY)
+            set SCL {pdk_liberty_dir}/{synth_info['typical']}
             read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
             read_verilog {building_blocks}
             {chparam}
             hierarchy -check -top {design}
-            synth -top {design} -flatten
+            synth -flatten
+            yosys rename -top {design}
             opt_clean -purge
             splitnets
             opt_clean -purge
@@ -156,15 +157,7 @@ def synthesis(
             """
         )
 
-    with open(f"{build_folder}/synth.sh", "w") as f:
-        f.write(
-            f"""
-        export LIBERTY={pdk_liberty_dir}/{synth_info['typical']}
-        yosys {build_folder}/synth.tcl
-        """
-        )
-
-    openlane("bash", f"{build_folder}/synth.sh")
+    openlane("yosys", f"{build_folder}/synth.tcl")
 
 
 last_def = None
