@@ -141,6 +141,7 @@ class Decoder5x32(Placeable):
         self.sieve(
             instances,
             [
+                S(variable="tie"),
                 S(variable="decoder2x4", custom_behavior=process_d2x4_element),
                 S(
                     variable="decoders3x8",
@@ -150,12 +151,15 @@ class Decoder5x32(Placeable):
             ],
         )
 
-        # No point in calling dicts_to_lists if its all custom behavior anyway
+        self.dicts_to_lists()
 
         self.decoders3x8 = d2a({k: Decoder3x8(v) for k, v in raw_d3x8.items()})
         self.decoder2x4 = Decoder2x4(raw_d2x4)
 
     def place(self, row_list, start_row=0, decoder2x4_start_row=0, flip=False):
+        r = row_list[start_row]
+        r.place(self.tie)
+
         if flip:
             self.decoder2x4.place(row_list, decoder2x4_start_row)
             for idx in range(len(self.decoders3x8)):

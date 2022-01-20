@@ -468,6 +468,10 @@ def flow(
         variant = None
 
     pdk, scl, blocks = building_blocks.split(":")
+    pdk = pdk or "sky130A"
+    scl = scl or "sky130_fd_sc_hd"
+    blocks = blocks or "ram"
+    building_blocks = f"{pdk}:{scl}:{blocks}"
 
     bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
