@@ -30,13 +30,38 @@ P = Placeable
 S = Placeable.Sieve
 
 
+class Bit(Placeable):
+    def __init__(self, instances: List[Instance]):
+        self.sieve(
+            instances, [S(variable="store"), S(variable="obufs", groups=["port"])]
+        )
+
+        self.dicts_to_lists()
+
+    def place(self, row_list: List[Row], start_row: int = 0):
+        r = row_list[start_row]
+
+        r.place(self.store)
+        for obuf in self.obufs:
+            r.place(obuf)
+
+        return start_row
+
+
 class RFWord(Placeable):
     def __init__(self, instances):
+
+        raw_bits: Dict[int, List[Instance]] = {}
+
+        def process_bit(instance, bit):
+            raw_bits[bit] = raw_bits.get(bit) or []
+            raw_bits[bit].append(instance)
+
         self.sieve(
             instances,
             [
+                S(variable="bit", groups=["bit"], custom_behavior=process_bit),
                 S(variable="clkgateand"),
-                S(variable="ffs", groups=["bit"]),
                 S(variable="clkgates", groups=["ports"]),
                 S(variable="obufs", groups=["ports", "bit"], group_rx_order=[2, 1]),
                 S(variable="invs", groups=["ports", "address_bit"]),
@@ -44,11 +69,18 @@ class RFWord(Placeable):
         )
 
         self.dicts_to_lists()
+        self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
 
     def place(self, row_list, start_row=0):
         raise Exception(
             "Register file words cannot be placed solo as the bits have to be in lockstep."
         )
+
+    def word_width(self):
+
+        # we do the filteration proccess on the netlist to get bits for a word
+        # so we wanna iterate on the list to count the number of ffs/bits and return the word count
+        return len(self.bits)
 
     def word_count(self):
         return 1
@@ -101,7 +133,7 @@ class DFFRF(Placeable):  # 32 words
         # 32 _ ====================================  ____  32
         # { D2 ====================================  D0 D1  }
         word_rows = 32 * 2 - 2 + 1  # word 0 only needs one row
-        word_width = 32
+        word_width = self.words[0].word_width
 
         # D2 placement
         self.decoders5x32[2].place(rows, start_row, (32 - 4) // 2, flip=True)
