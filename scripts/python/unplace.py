@@ -66,7 +66,7 @@ def unplace(platform, output_file, input_file):
 
     replaced = 0
     for rx in rx_list:
-        frx = fr"({rx})\s*\+\s*PLACED\s*\(\s*\d+\s*\d+\s*\)\s*\w+"
+        frx = rf"({rx})\s*\+\s*PLACED\s*\(\s*\d+\s*\d+\s*\)\s*\w+"
         output_str, replacements = re.subn(frx, r"\1", output_str)
         replaced += replacements
 
