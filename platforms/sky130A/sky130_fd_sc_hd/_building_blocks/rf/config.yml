@@ -1,5 +1,5 @@
 counts: [32]
-widths: [32]
+widths: [8,16,32,64,128,256]
 design_name_template: "DFFRF{variant}"
 register_file: true
 tap_distance: 15
