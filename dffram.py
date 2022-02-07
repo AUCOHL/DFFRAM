@@ -130,12 +130,22 @@ def cl():
 
 # Not true synthesis, just elaboration.
 def synthesis(
-    design, building_blocks, synth_info, widths_supported, word_width_bytes, out_file
+    design,
+    building_blocks,
+    synth_info,
+    widths_supported,
+    word_width_bytes,
+    out_file,
+    word_width,
+    blocks,
 ):
     print("--- Synthesis ---")
     chparam = ""
     if len(widths_supported) > 1:
-        chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
+        if blocks == "rf":
+            chparam = "catch { chparam -set WSIZE %i %s }" % (word_width, design)
+        else:
+            chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
     with open(f"{build_folder}/synth.tcl", "w") as f:
         print(design)
         f.write(
@@ -613,7 +623,14 @@ def flow(
         (
             "synthesis",
             lambda: synthesis(
-                design, bb_used, synth_info, config["widths"], word_width_bytes, netlist
+                design,
+                bb_used,
+                synth_info,
+                config["widths"],
+                word_width_bytes,
+                netlist,
+                word_width,
+                blocks,
             ),
         ),
         ("placement", lambda: placement(width, height)),
