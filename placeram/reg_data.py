@@ -51,16 +51,16 @@ class Bit(Placeable):
 class RFWord(Placeable):
     def __init__(self, instances):
 
-        raw_bits: Dict[int, List[Instance]] = {}
+        self.raw_bits: Dict[int, List[Instance]] = {}
 
         def process_bit(instance, bit):
-            raw_bits[bit] = raw_bits.get(bit) or []
-            raw_bits[bit].append(instance)
+            self.raw_bits[bit] = self.raw_bits.get(bit) or []
+            self.raw_bits[bit].append(instance)
 
         self.sieve(
             instances,
             [
-                S(variable="bit", groups=["bit"], custom_behavior=process_bit),
+                S(variable="ffs", groups=["bit"], custom_behavior=process_bit),
                 S(variable="clkgateand"),
                 S(variable="clkgates", groups=["ports"]),
                 S(variable="obufs", groups=["ports", "bit"], group_rx_order=[2, 1]),
@@ -69,7 +69,6 @@ class RFWord(Placeable):
         )
 
         self.dicts_to_lists()
-        self.bits = d2a({k: Bit(v) for k, v in raw_bits.items()})
 
     def place(self, row_list, start_row=0):
         raise Exception(
@@ -77,10 +76,7 @@ class RFWord(Placeable):
         )
 
     def word_width(self):
-
-        # we do the filteration proccess on the netlist to get bits for a word
-        # so we wanna iterate on the list to count the number of ffs/bits and return the word count
-        return len(self.bits)
+        return len(self.raw_bits)
 
     def word_count(self):
         return 1
@@ -133,7 +129,7 @@ class DFFRF(Placeable):  # 32 words
         # 32 _ ====================================  ____  32
         # { D2 ====================================  D0 D1  }
         word_rows = 32 * 2 - 2 + 1  # word 0 only needs one row
-        word_width = self.words[0].word_width
+        word_width = self.words[0].word_width()
 
         # D2 placement
         self.decoders5x32[2].place(rows, start_row, (32 - 4) // 2, flip=True)
