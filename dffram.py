@@ -457,7 +457,7 @@ def openlane_harden(
     help="Open the last def in Klayout. (Default: False)",
 )
 @click.option(
-    "-H", "--min-height", default=None, type=float, help="Die Area Height in microns"
+    "-H", "--min-height", default=0.0, type=float, help="Die Area Height in microns"
 )
 def flow(
     frm,
