@@ -456,6 +456,9 @@ def openlane_harden(
     default=False,
     help="Open the last def in Klayout. (Default: False)",
 )
+@click.option(
+    "-H", "--min-height", default=None, type=float, help="Die Area Height in microns"
+)
 def flow(
     frm,
     to,
@@ -469,11 +472,11 @@ def flow(
     variant,
     klayout,
     output_dir,
+    min_height,
 ):
     global build_folder
     global last_def
     global pdk, scl
-
     if variant == "DEFAULT":
         variant = None
 
@@ -597,6 +600,8 @@ def flow(
             dimensions=dimensions_file,
         )
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        if height < min_height:
+            height = min_height
         floorplan(
             design,
             synth_info,
