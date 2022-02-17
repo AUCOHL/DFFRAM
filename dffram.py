@@ -648,7 +648,7 @@ def flow(
     build_folder = f"{output_dir}/{size}_{variant or 'DEFAULT'}"
 
     clock_periods = config["clock_periods"]
-    clock_period = clock_periods.get(f"{words}") or default_clock_period
+    clock_period = clock_periods.get(f"{words}x{word_width}") or default_clock_period
 
     ensure_dir(build_folder)
 
