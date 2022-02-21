@@ -231,7 +231,7 @@ module WORD #( parameter    USE_LATCH=0,
     wire CLK_buf;
     wire SEL0_buf;
 
-    sky130_fd_sc_hd__clkbuf_1 CLKBUF (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_4 CLKBUF (.X(CLK_buf), .A(CLK));
     sky130_fd_sc_hd__clkbuf_2 SEL0BUF (.X(SEL0_buf), .A(SEL0));
     generate
         genvar i;
@@ -257,7 +257,7 @@ module WORD_1RW1R #( parameter  USE_LATCH=1,
     wire CLK_buf;
     sky130_fd_sc_hd__clkbuf_2 SEL0BUF (.X(SEL0_buf), .A(SEL0));
     sky130_fd_sc_hd__clkbuf_2 SEL1BUF (.X(SEL1_buf), .A(SEL1));
-    sky130_fd_sc_hd__clkbuf_1 CLKBUF (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_4 CLKBUF (.X(CLK_buf), .A(CLK));
     generate
         genvar i;
             for(i=0; i<WSIZE; i=i+1) begin : BYTE
@@ -556,7 +556,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     (* keep = "true" *)
     sky130_fd_sc_hd__diode_2    DIODE_CLK            (.DIODE(CLK));
 `endif
-    sky130_fd_sc_hd__clkbuf_4   CLKBUF               (.X(CLK_buf), .A(CLK));
+    sky130_fd_sc_hd__clkbuf_16   CLKBUF               (.X(CLK_buf), .A(CLK));
 
     sky130_fd_sc_hd__clkbuf_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     sky130_fd_sc_hd__clkbuf_2   EN0BUF                (.X(EN0_buf),  .A(EN0));
