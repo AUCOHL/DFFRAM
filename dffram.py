@@ -176,7 +176,19 @@ full_width = 0
 full_height = 0
 
 
-def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_file):
+def floorplan(
+    design,
+    synth_info,
+    wmargin,
+    hmargin,
+    width,
+    height,
+    in_file,
+    out_file,
+    min_height,
+    min_height_flag,
+    site_height,
+):
     global full_width, full_height, last_def
     print("--- Floorplan ---")
     full_width = width + (wmargin * 2)
@@ -186,6 +198,13 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
     hpm = height + hmargin
 
     track_file = f"{build_folder}/tracks.tcl"
+
+    if min_height_flag:
+        full_width = width + (wmargin * 2)
+        full_height = min_height + (hmargin * 2)
+        hmargin = full_height / 2 - height / 2
+        hmargin = math.ceil(hmargin / site_height) * site_height
+        hpm = height + hmargin
 
     with open(f"{build_folder}/fp_init.tcl", "w") as f:
         f.write(
@@ -448,7 +467,7 @@ def openlane_harden(
     type=float,
     help="default clk period for sta",
 )
-@click.option("-H", "--halo", default=2.5, type=float, help="Halo in microns")
+@click.option("--halo", default=2.5, type=float, help="Halo in microns")
 @click.option(
     "--horizontal-halo",
     default=0.0,
@@ -460,6 +479,9 @@ def openlane_harden(
     default=0.0,
     type=float,
     help="Vertical halo in microns (overrides generic halo)",
+)
+@click.option(
+    "-H", "--min-height", default=0.0, type=float, help="Die Area Height in microns"
 )
 
 # Enable/Disable
@@ -483,6 +505,7 @@ def flow(
     variant,
     klayout,
     output_dir,
+    min_height,
 ):
     global build_folder
     global last_def
@@ -598,7 +621,8 @@ def flow(
     width, height = 20000, 20000
 
     def placement(in_width, in_height):
-        nonlocal width, height
+        nonlocal width, height, hmargin, wmargin
+        min_height_flag = False
         floorplan(
             design,
             synth_info,
@@ -608,6 +632,9 @@ def flow(
             in_height,
             netlist,
             initial_floorplan,
+            min_height,
+            min_height_flag,
+            site_height,
         )
         placeram(
             initial_floorplan,
@@ -617,6 +644,9 @@ def flow(
             dimensions=dimensions_file,
         )
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        if height < min_height:
+            min_height_flag = True
+
         floorplan(
             design,
             synth_info,
@@ -626,6 +656,9 @@ def flow(
             height,
             netlist,
             final_floorplan,
+            min_height,
+            min_height_flag,
+            site_height,
         )
         placeram(
             final_floorplan,
