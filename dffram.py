@@ -176,7 +176,19 @@ full_width = 0
 full_height = 0
 
 
-def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_file):
+def floorplan(
+    design,
+    synth_info,
+    wmargin,
+    hmargin,
+    width,
+    height,
+    in_file,
+    out_file,
+    min_height,
+    min_height_flag,
+    site_height,
+):
     global full_width, full_height, last_def
     print("--- Floorplan ---")
     full_width = width + (wmargin * 2)
@@ -186,6 +198,13 @@ def floorplan(design, synth_info, wmargin, hmargin, width, height, in_file, out_
     hpm = height + hmargin
 
     track_file = f"{build_folder}/tracks.tcl"
+
+    if min_height_flag:
+        full_width = width + (wmargin * 2)
+        full_height = min_height + (hmargin * 2)
+        hmargin = full_height / 2 - height / 2
+        hmargin = math.ceil(hmargin / site_height) * site_height
+        hpm = height + hmargin
 
     with open(f"{build_folder}/fp_init.tcl", "w") as f:
         f.write(
@@ -448,7 +467,22 @@ def openlane_harden(
     type=float,
     help="default clk period for sta",
 )
-@click.option("-H", "--halo", default=2.5, type=float, help="Halo in microns")
+@click.option("--halo", default=2.5, type=float, help="Halo in microns")
+@click.option(
+    "--horizontal-halo",
+    default=0.0,
+    type=float,
+    help="Horizontal halo in microns (overrides generic halo)",
+)
+@click.option(
+    "--vertical-halo",
+    default=0.0,
+    type=float,
+    help="Vertical halo in microns (overrides generic halo)",
+)
+@click.option(
+    "-H", "--min-height", default=0.0, type=float, help="Die Area Height in microns"
+)
 
 # Enable/Disable
 @click.option(
@@ -466,13 +500,22 @@ def flow(
     building_blocks,
     default_clock_period,
     halo,
+    horizontal_halo,
+    vertical_halo,
     variant,
     klayout,
     output_dir,
+    min_height,
 ):
     global build_folder
     global last_def
     global pdk, scl
+
+    if horizontal_halo == 0.0:
+        horizontal_halo = halo
+
+    if vertical_halo == 0.0:
+        vertical_halo = halo
 
     if variant == "DEFAULT":
         variant = None
@@ -513,7 +556,7 @@ def flow(
             print("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
-    wmargin, hmargin = (halo, halo)  # Microns
+    wmargin, hmargin = (horizontal_halo, vertical_halo)  # Microns
 
     variant_string = ("_%s" % variant) if variant is not None else ""
     design_name_template = config["design_name_template"]
@@ -543,7 +586,7 @@ def flow(
     try:
         site_info = yaml.safe_load(open(site_info_path).read())
     except FileNotFoundError:
-        if halo != 0.0:
+        if horizontal_halo != 0.0 or vertical_halo != 0.0:
             print(
                 f"Note: {site_info_path} does not exist. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
             )
@@ -578,7 +621,8 @@ def flow(
     width, height = 20000, 20000
 
     def placement(in_width, in_height):
-        nonlocal width, height
+        nonlocal width, height, hmargin, wmargin
+        min_height_flag = False
         floorplan(
             design,
             synth_info,
@@ -588,6 +632,9 @@ def flow(
             in_height,
             netlist,
             initial_floorplan,
+            min_height,
+            min_height_flag,
+            site_height,
         )
         placeram(
             initial_floorplan,
@@ -597,6 +644,9 @@ def flow(
             dimensions=dimensions_file,
         )
         width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
+        if height < min_height:
+            min_height_flag = True
+
         floorplan(
             design,
             synth_info,
@@ -606,6 +656,9 @@ def flow(
             height,
             netlist,
             final_floorplan,
+            min_height,
+            min_height_flag,
+            site_height,
         )
         placeram(
             final_floorplan,
