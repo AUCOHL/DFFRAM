@@ -141,11 +141,15 @@ module OUTREG #(parameter WIDTH=32)
 
     wire [BYTE_CNT-1:0] CLKBUF;
     
-    sky130_fd_sc_hd__clkbuf_4 Do_CLKBUF [BYTE_CNT-1:0] (.X(CLKBUF), .A(CLK) ); 
+    sky130_fd_sc_hd__clkbuf_4 Do_CLKBUF [BYTE_CNT-1:0] (.X(CLKBUF), .A(CLK) );
     
     generate
         genvar i;
         for(i=0; i<BYTE_CNT; i=i+1) begin : OUTREG_BYTE
+            `ifndef NO_DIODES    
+                (* keep = "true" *)
+                sky130_fd_sc_hd__diode_2 DIODE [7:0] (.DIODE(Di[(i+1)*8-1:i*8]));
+            `endif
             sky130_fd_sc_hd__dfxtp_1 Do_FF [7:0] ( .D(Di[(i+1)*8-1:i*8]), .Q(Do[(i+1)*8-1:i*8]), .CLK(CLKBUF[i]) );
         end
     endgenerate
@@ -425,19 +429,8 @@ module RAM32 #( parameter   USE_LATCH=1,
             sky130_fd_sc_hd__ebufn_2 FLOATBUF0[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do0_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
         end
     endgenerate
- 
-`ifndef NO_DIODES    
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0_pre[WSIZE*8-1:0]));
-`endif
 
     OUTREG #(.WIDTH(WSIZE*8)) Do0_REG ( .CLK(CLK), .Di(Do0_pre), .Do(Do0) );
-    /*
-    // Add a clock buffer for the output register clock
-    wire DO_CLKBUF;
-    sky130_fd_sc_hd__clkbuf_8 Do0_FF_CLKBUF (.X(DO_CLKBUF), .A(CLK) ); 
-    sky130_fd_sc_hd__dfxtp_1 Do0_FF [WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(DO_CLKBUF) );
-    */
 
 endmodule
 
@@ -531,23 +524,6 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
             sky130_fd_sc_hd__ebufn_2 FLOATBUF1[(8*(i+1))-1:8*i] ( .A( lo1[i] ), .Z(Do1_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en1[i]) );
         end
     endgenerate
- 
-`ifndef NO_DIODES   
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do0 [WSIZE*8-1:0] (.DIODE(Do0));
-`endif
-
-`ifndef NO_DIODES
-    (* keep = "true" *)
-    sky130_fd_sc_hd__diode_2 DIODE_Do1 [WSIZE*8-1:0] (.DIODE(Do1));
-`endif
-
-    /*
-    wire DO_CLKBUF[1:0];
-    sky130_fd_sc_hd__clkbuf_8 Do0_FF_CLKBUF[1:0] (.X(DO_CLKBUF), .A(CLK) ); 
-    sky130_fd_sc_hd__dfxtp_1 Do0_FF[WSIZE*8-1:0] ( .D(Do0_pre), .Q(Do0), .CLK(DO_CLKBUF[0]) );
-    sky130_fd_sc_hd__dfxtp_1 Do1_FF[WSIZE*8-1:0] ( .D(Do1_pre), .Q(Do1), .CLK(DO_CLKBUF[1]) );    
-    */
 
     OUTREG #(.WIDTH(WSIZE*8)) Do0_REG ( .CLK(CLK), .Di(Do0_pre), .Do(Do0) );
     OUTREG #(.WIDTH(WSIZE*8)) Do1_REG ( .CLK(CLK), .Di(Do1_pre), .Do(Do1) );
