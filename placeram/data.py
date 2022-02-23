@@ -235,6 +235,30 @@ class Slice(Placeable):  # A slice is defined as 8 words.
         return 8
 
 
+class Outreg(Placeable):
+    def __init__(self, instances: List[Instance]):
+
+        self.sieve(
+            instances,
+            [
+                S(variable="clkbufs", groups=["byte"]),
+                S(variable="ffs", groups=["byte", "bit"]),
+                S(variable="diodes", groups=["byte", "bit"]),
+            ],
+        )
+
+        self.dicts_to_lists()
+
+    def place(self, row_list: List[Row], start_row: int = 0):
+        r = row_list[start_row]
+
+        for clkbuf, ffs, diodes in zip(self.clkbufs, self.ffs, self.diodes):
+            r.place(clkbuf)
+            for ff, diode in zip(ffs, diodes):
+                r.place(ff)
+                r.place(diode)
+
+
 class LRPlaceable(Placeable):
     """
     A Placeable that can have some of its elements placed in left & right columns.
@@ -325,15 +349,21 @@ class LRPlaceable(Placeable):
 class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
     def __init__(self, instances: List[Instance]):
         raw_slices: Dict[int, List[Instance]] = {}
+        raw_doregs: Dict[int, List[Instance]] = {}
 
         def process_slice(instance, slice):
             raw_slices[slice] = raw_slices.get(slice) or []
             raw_slices[slice].append(instance)
 
+        def process_doreg(instance, port):
+            raw_doregs[port] = raw_doregs.get(port) or []
+            raw_doregs[port].append(instance)
+
         self.sieve(
             instances,
             [
                 S(variable="slices", groups=["slice"], custom_behavior=process_slice),
+                S(variable="doregs", groups=["port"], custom_behavior=process_doreg),
                 S(variable="clk_diode"),
                 S(variable="clkbuf"),
                 S(variable="webufs", groups=["bit"]),
@@ -342,8 +372,6 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 S(variable="abufs", groups=["port", "address_bit"]),
                 S(variable="decoder_ands", groups=["port", "bit"]),
                 S(variable="dibufs", groups=["bit"]),
-                S(variable="dobufs", groups=["port", "bit"]),
-                S(variable="dobuf_diodes", groups=["port", "bit"]),
                 S(variable="fbufenbufs", groups=["port", "bit"]),
                 S(variable="ties", groups=["port", "bit"]),
                 S(
@@ -357,6 +385,7 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
         self.dicts_to_lists()
 
         self.slices = d2a({k: Slice(v) for k, v in raw_slices.items()})
+        self.doregs = d2a({k: Outreg(v) for k, v in raw_doregs.items()})
 
     def place(self, row_list: List[Row], start_row: int = 0):
         def place_horizontal_elements(start_row: int):
@@ -384,11 +413,8 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
 
             for port in range(port_count):
                 r = row_list[current_row]
-                dobufs = self.dobufs[port]
-                dobuf_diodes = self.dobuf_diodes[port]
-                for dobuf, diode in zip(dobufs, dobuf_diodes):
-                    r.place(dobuf)
-                    r.place(diode)
+                doreg = self.doregs[port]
+                doreg.place(row_list, current_row)
 
             current_row += 1
 
@@ -435,7 +461,7 @@ class HigherLevelPlaceable(LRPlaceable):
                     custom_behavior=process_raw_domuxes,
                 ),
                 S(variable="clk_diode"),
-                S(variable="clkbuf"),
+                S(variable="clkbufs", groups=["block"]),
                 S(variable="di_diodes", groups=["bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="webufs", groups=["bit"]),
@@ -498,7 +524,7 @@ class HigherLevelPlaceable(LRPlaceable):
             start_row=current_row,
             addresses=len(self.domuxes),
             common=[
-                *([self.clkbuf, self.clk_diode] if self.clkbuf is not None else []),
+                *([*self.clkbufs, self.clk_diode] if len(self.clkbufs) > 0 else []),
                 *self.webufs,
             ],
             port_elements=["enbufs", "abufs", "a_diodes", "decoder_ands"],
