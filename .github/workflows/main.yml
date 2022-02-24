@@ -5,7 +5,7 @@ on:
 
 name: CI
 
-jobs:          
+jobs:
   lint:
     name: Lint All Models
     runs-on: ubuntu-latest
@@ -14,99 +14,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Get IcarusVerilog
         run: |
-            sudo apt-get install -y iverilog
-      - name: Get PDK
-        run: |
-            echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-            sudo mkdir -p /usr/local/pdk
-            sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
-            mkdir -p /usr/local/pdk/sky130A
-            tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
-      - name: Verify
-        run: |
-            cd verification
-            for SIZE in $(cat ./.github/workflows/sizes.txt); do
-                export PATTERN=tb_RAM$SIZE
-                /bin/bash -c "make lint"
-            done
-  verify_models:
-    name: Verify Models
-    runs-on: ubuntu-latest
-    strategy:
-        matrix:
-          size: ["8x32", "32x32", "128x32", "256x32", "512x32", "1024x32", "2048x32",
-                "8x32_1RW1R", "32x32_1RW1R", "128x32_1RW1R", "256x32_1RW1R", "512x32_1RW1R",
-                "1024x32_1RW1R", "2048x32_1RW1R"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Get IcarusVerilog
-        run: |
-            sudo apt-get install -y iverilog
-      - name: Get PDK
-        run: |
-            echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-            sudo mkdir -p /usr/local/pdk
-            sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
-            mkdir -p /usr/local/pdk/sky130A
-            tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
-      - name: Run Verification
-        run: |
-            export PATTERN=tb_RAM${{ matrix.size }}
-            cd verification/
-            /bin/bash -c "! make | grep -c FATAL"
-  test_flow:
-    name: Test Flow (1RW, 1RW1R)
-    runs-on: ubuntu-latest
-    strategy:
-        fail-fast: false
-        matrix:
-          include:
-            - { count: "8", width: "8", variant: "DEFAULT" }
-            - { count: "8", width: "8", variant: "1RW1R" }
-            - { count: "8", width: "16", variant: "DEFAULT" }
-            - { count: "8", width: "16", variant: "1RW1R" }
-            - { count: "8", width: "32", variant: "DEFAULT" }
-            - { count: "8", width: "32", variant: "1RW1R" }
-            - { count: "32", width: "8", variant: "DEFAULT" }
-            - { count: "32", width: "8", variant: "1RW1R" }
-            - { count: "32", width: "16", variant: "DEFAULT" }
-            - { count: "32", width: "16", variant: "1RW1R" }
-            - { count: "32", width: "32", variant: "DEFAULT" }
-            - { count: "32", width: "32", variant: "1RW1R" }
-            - { count: "256", width: "8", variant: "DEFAULT" }
-            - { count: "256", width: "8", variant: "1RW1R" }
-            - { count: "256", width: "16", variant: "DEFAULT" }
-            - { count: "256", width: "16", variant: "1RW1R" }
-            - { count: "256", width: "32", variant: "DEFAULT" }
-            #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Get PDK
-        run: |
-            echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-            sudo mkdir -p /usr/local/pdk
-            sudo chown $USER:$USER /usr/local/pdk
-            curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
-            mkdir -p /usr/local/pdk/sky130A
-            tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
-      - name: Run
-        run: |
-            ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
-  test_flow_rf:
-    name: Test Flow (2R1W)
-    runs-on: ubuntu-latest
-    strategy:
-        fail-fast: true
-        matrix:
-          include:
-            - { count: "32", width: "32", variant: "2R1W" }
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+          sudo apt-get install -y iverilog
       - name: Get PDK
         run: |
           echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
@@ -115,6 +23,106 @@ jobs:
           curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
           mkdir -p /usr/local/pdk/sky130A
           tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
+      - name: Verify
+        run: |
+          cd verification
+          for SIZE in $(cat ./.github/workflows/sizes.txt); do
+              export PATTERN=tb_RAM$SIZE
+              /bin/bash -c "make lint"
+          done
+  verify_models:
+    name: Verify Models
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        size:
+          [
+            "8x32",
+            "32x32",
+            "128x32",
+            "256x32",
+            "512x32",
+            "1024x32",
+            "2048x32",
+            "8x32_1RW1R",
+            "32x32_1RW1R",
+            "128x32_1RW1R",
+            "256x32_1RW1R",
+            "512x32_1RW1R",
+            "1024x32_1RW1R",
+            "2048x32_1RW1R",
+          ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get IcarusVerilog
+        run: |
+          sudo apt-get install -y iverilog
+      - name: Get PDK
+        run: |
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          python3 ./get_pdk.py
+      - name: Run Verification
+        run: |
+          export PATTERN=tb_RAM${{ matrix.size }}
+          cd verification/
+          /bin/bash -c "! make | grep -c FATAL"
+  test_flow:
+    name: Test Flow (1RW, 1RW1R)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { count: "8", width: "8", variant: "DEFAULT" }
+          - { count: "8", width: "8", variant: "1RW1R" }
+          - { count: "8", width: "16", variant: "DEFAULT" }
+          - { count: "8", width: "16", variant: "1RW1R" }
+          - { count: "8", width: "32", variant: "DEFAULT" }
+          - { count: "8", width: "32", variant: "1RW1R" }
+          - { count: "32", width: "8", variant: "DEFAULT" }
+          - { count: "32", width: "8", variant: "1RW1R" }
+          - { count: "32", width: "16", variant: "DEFAULT" }
+          - { count: "32", width: "16", variant: "1RW1R" }
+          - { count: "32", width: "32", variant: "DEFAULT" }
+          # - { count: "32", width: "32", variant: "1RW1R" } # Timeout
+          - { count: "256", width: "8", variant: "DEFAULT" }
+          - { count: "256", width: "8", variant: "1RW1R" }
+          - { count: "256", width: "16", variant: "DEFAULT" }
+          # - { count: "256", width: "16", variant: "1RW1R" } # Timeout
+          - { count: "256", width: "32", variant: "DEFAULT" }
+          #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get PDK
+        run: |
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          python3 ./get_pdk.py
+      - name: Run
+        run: |
+          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
+  test_flow_rf:
+    name: Test Flow (2R1W)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { count: "32", width: "32", variant: "2R1W" }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get PDK
+        run: |
+          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
+          sudo mkdir -p /usr/local/pdk
+          sudo chown $USER:$USER /usr/local/pdk
+          python3 ./get_pdk.py
       - name: Run
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}
