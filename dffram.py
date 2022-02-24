@@ -59,6 +59,12 @@ pdk_klayout_dir = ""
 pdk_magic_dir = ""
 pdk_openlane_dir = ""
 
+tool_metadata_file_path = os.path.join(os.path.dirname(__file__), "tool_metadata.yml")
+tool_metadata = yaml.safe_load(open(tool_metadata_file_path).read())
+openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"][0][
+    "commit"
+]
+
 
 def run_docker(image, args):
     global command_list
@@ -91,7 +97,7 @@ def run_docker(image, args):
 
 def openlane(*args_tuple):
     args = list(args_tuple)
-    run_docker("efabless/openlane:2022.01.13_01.51.43", args)
+    run_docker(f"efabless/openlane:{openlane_version}", args)
 
 
 def prep(local_pdk_root):
