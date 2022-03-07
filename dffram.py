@@ -356,7 +356,7 @@ def verify_placement(design, synth_info, in_file):
 
 
 def openlane_harden(
-    design, clock_period, final_netlist, final_placement, products_path
+    design, clock_period, final_netlist, final_placement, products_path, synth_info
 ):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
@@ -423,6 +423,9 @@ def openlane_harden(
             set ::env(LVS_CONNECT_BY_LABEL) "1"
 
             set ::env(QUIT_ON_TIMING_VIOLATIONS) "0"
+
+            set ::env(SYNTH_DRIVING_CELL) "{synth_info["sta_driving_cell"]}"
+            set ::env(SYNTH_DRIVING_CELL_PIN) "{synth_info["sta_driving_cell_pin"]}"
             """
         )
 
@@ -696,7 +699,7 @@ def flow(
         (
             "openlane_harden",
             lambda: openlane_harden(
-                design, clock_period, netlist, final_placement, products
+                design, clock_period, netlist, final_placement, products, synth_info
             ),
         ),
     ]

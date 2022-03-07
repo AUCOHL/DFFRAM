@@ -241,6 +241,7 @@ class Outreg(Placeable):
         self.sieve(
             instances,
             [
+                S(variable="root_clkbuf"),
                 S(variable="clkbufs", groups=["byte"]),
                 S(variable="ffs", groups=["byte", "bit"]),
                 S(variable="diodes", groups=["byte", "bit"]),
@@ -252,6 +253,7 @@ class Outreg(Placeable):
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
+        r.place(self.root_clkbuf)
         for clkbuf, ffs, diodes in zip(self.clkbufs, self.ffs, self.diodes):
             r.place(clkbuf)
             for ff, diode in zip(ffs, diodes):

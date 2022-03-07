@@ -35,6 +35,7 @@ Slice:
   words: "\\bWORD\\\\\\[(\\d+)\\\\\\]"
   decoders: "\\bDEC(\\d+)\\b"
 Outreg:
+  root_clkbuf: "\\bRoot_CLKBUF\\b"
   clkbufs: "\\bDo_CLKBUF\\\\\\[(\\d+)\\\\\\]"
   ffs: "\\bOUTREG_BYTE\\\\\\[(\\d+)\\\\\\]\\.Do_FF\\\\\\[(\\d+)\\\\\\]"
   diodes: "\\bOUTREG_BYTE\\\\\\[(\\d+)\\\\\\]\\.DIODE\\\\\\[(\\d+)\\\\\\]"
