@@ -422,10 +422,9 @@ def openlane_harden(
 
             set ::env(LVS_CONNECT_BY_LABEL) "1"
 
-            set ::env(QUIT_ON_TIMING_VIOLATIONS) "0"
-
             set ::env(SYNTH_DRIVING_CELL) "{synth_info["sta_driving_cell"]}"
             set ::env(SYNTH_DRIVING_CELL_PIN) "{synth_info["sta_driving_cell_pin"]}"
+            set ::env(IO_PCT) "0.25"
             """
         )
 
