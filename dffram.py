@@ -45,7 +45,7 @@ def ensure_dir(path):
 
 
 # --
-
+no_docker_option = False
 build_folder = ""
 pdk = ""
 scl = ""
@@ -64,6 +64,14 @@ tool_metadata = yaml.safe_load(open(tool_metadata_file_path).read())
 openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"][0][
     "commit"
 ]
+
+
+def run_commands(args):
+
+    global command_list
+    cmd = args
+    command_list.append(cmd)
+    subprocess.check_call(cmd)
 
 
 def run_docker(image, args):
@@ -96,8 +104,12 @@ def run_docker(image, args):
 
 
 def openlane(*args_tuple):
+    global no_docker_option
     args = list(args_tuple)
-    run_docker(f"efabless/openlane:{openlane_version}", args)
+    if no_docker_option:
+        run_commands(args)
+    else:
+        run_docker(f"efabless/openlane:{openlane_version}", args)
 
 
 def prep(local_pdk_root):
@@ -426,15 +438,35 @@ def openlane_harden(
             """
         )
 
-    openlane(
-        "tclsh",
-        "/openlane/flow.tcl",
-        "-design",
-        design_ol_dir,
-        "-it",
-        "-file",
-        f"{design_ol_dir}/interactive.tcl",
-    )
+    if no_docker_option:
+        os.environ["PDK_ROOT"] = "/usr/local/pdk"
+        os.environ["OPENLANE_ROOT"] = "/openlane"
+        os.environ["OPENLANE_LOCAL_INSTALL"] = "1"
+        os.environ["MISMATCHES_OK"] = "1"
+        os.environ["TCLLIBPATH"] = "/usr/share/tcltk"
+        os.environ["LD_LIBRARY_PATH"] = "$LD_LIBRARY_PATH:/usr/local/lib"
+        openlane(
+            "/openlane/flow.tcl",
+            "-design",
+            design_ol_dir,
+            "-it",
+            "-file",
+            f"{design_ol_dir}/interactive.tcl",
+            "-override_env",
+            "RUN_KLAYOUT=0",
+            "RUN_CVC=0",
+            "MISMATCHES_OK=1",
+        )
+    else:
+        openlane(
+            "tclsh",
+            "/openlane/flow.tcl",
+            "-design",
+            design_ol_dir,
+            "-it",
+            "-file",
+            f"{design_ol_dir}/interactive.tcl",
+        )
 
 
 @click.command()
@@ -496,6 +528,9 @@ def openlane_harden(
     default=False,
     help="Open the last def in Klayout. (Default: False)",
 )
+@click.option(
+    "--no-docker/--docker", default=False, type=bool, help="Dockerless DFFRAM"
+)
 def flow(
     frm,
     to,
@@ -512,11 +547,12 @@ def flow(
     klayout,
     output_dir,
     min_height,
+    no_docker,
 ):
     global build_folder
     global last_def
     global pdk, scl
-
+    global no_docker_option
     if horizontal_halo == 0.0:
         horizontal_halo = halo
 
@@ -525,7 +561,7 @@ def flow(
 
     if variant == "DEFAULT":
         variant = None
-
+    no_docker_option = no_docker
     pdk, scl, blocks = building_blocks.split(":")
     pdk = pdk or "sky130A"
     scl = scl or "sky130_fd_sc_hd"
