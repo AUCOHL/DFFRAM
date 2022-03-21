@@ -1,3 +1,4 @@
 black
+black[jupyter]
 flake8
 flake8-no-implicit-concat
