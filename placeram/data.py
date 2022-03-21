@@ -449,6 +449,8 @@ class HigherLevelPlaceable(LRPlaceable):
             raw_domuxes[domux] = raw_domuxes.get(domux) or []
             raw_domuxes[domux].append(instance)
 
+        self.clkbuf = None
+
         self.sieve(
             instances,
             [
@@ -463,7 +465,7 @@ class HigherLevelPlaceable(LRPlaceable):
                     custom_behavior=process_raw_domuxes,
                 ),
                 S(variable="clk_diode"),
-                S(variable="clkbufs", groups=["block"]),
+                S(variable="clkbuf"),
                 S(variable="di_diodes", groups=["bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="webufs", groups=["bit"]),
@@ -526,7 +528,7 @@ class HigherLevelPlaceable(LRPlaceable):
             start_row=current_row,
             addresses=len(self.domuxes),
             common=[
-                *([*self.clkbufs, self.clk_diode] if len(self.clkbufs) > 0 else []),
+                *([self.clkbuf, self.clk_diode] if self.clkbuf is not None else []),
                 *self.webufs,
             ],
             port_elements=["enbufs", "abufs", "a_diodes", "decoder_ands"],

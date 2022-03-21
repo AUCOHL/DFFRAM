@@ -76,12 +76,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { count: "8", width: "8", variant: "DEFAULT" }
-          - { count: "8", width: "8", variant: "1RW1R" }
-          - { count: "8", width: "16", variant: "DEFAULT" }
-          - { count: "8", width: "16", variant: "1RW1R" }
-          - { count: "8", width: "32", variant: "DEFAULT" }
-          - { count: "8", width: "32", variant: "1RW1R" }
+          # - { count: "8", width: "8", variant: "DEFAULT" }
+          # - { count: "8", width: "8", variant: "1RW1R" }
+          # - { count: "8", width: "16", variant: "DEFAULT" }
+          # - { count: "8", width: "16", variant: "1RW1R" }
+          # - { count: "8", width: "32", variant: "DEFAULT" }
+          # - { count: "8", width: "32", variant: "1RW1R" }
           - { count: "32", width: "8", variant: "DEFAULT" }
           - { count: "32", width: "8", variant: "1RW1R" }
           - { count: "32", width: "16", variant: "DEFAULT" }

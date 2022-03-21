@@ -58,7 +58,7 @@ HigherLevelPlaceable:
   block128: "\\bBANK128\\\\\\[(\\d+)\\\\\\]"
   block512: "\\bBANK512\\\\\\[(\\d+)\\\\\\]"
   clk_diode: "\\bDIODE_CLK\\b"
-  clkbufs: "\\bCLKBUF\\\\\\[(\\d+)\\\\\\]"
+  clkbuf: "\\bCLKBUF\\b"
   enbufs: "\\bEN(\\d+)BUF\\b"
   decoder_ands: "\\bDEC(\\d+)\\.AND(\\d+)\\b"
   dibufs: "\\bDIBUF\\\\\\[(\\d+)\\\\\\]"

@@ -26,6 +26,7 @@ except ImportError:
     exit(os.EX_CONFIG)
 
 import re
+import uuid
 import math
 import time
 import shutil
@@ -64,14 +65,21 @@ openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"
     "commit"
 ]
 
+running_docker_ids = set()
+
 
 def run_docker(image, args):
+    global running_docker_ids
     global command_list
+    container_id = str(uuid.uuid4())
+    running_docker_ids.add(container_id)
     cmd = (
         [
             "docker",
             "run",
             "--rm",
+            "--name",
+            container_id,
             "-v",
             f"{pdk_root}:{pdk_root}",
             "-v",
@@ -92,6 +100,7 @@ def run_docker(image, args):
     )
     command_list.append(cmd)
     subprocess.check_call(cmd)
+    running_docker_ids.remove(container_id)
 
 
 openlane_scripts_path = "/openlane/scripts"
@@ -759,7 +768,14 @@ def flow(
             execute_steps = True
         if execute_steps:
             if (only is None or name in only) and (name not in skip):
-                action()
+                try:
+                    action()
+                except KeyboardInterrupt as e:
+                    print("\n\nStopping on keyboard interrupt...")
+                    print("Killing docker containers...")
+                    for id in running_docker_ids:
+                        subprocess.call(["docker", "kill", id])
+                    raise e
         if to == name:
             execute_steps = False
 
