@@ -567,7 +567,7 @@ def flow(
             venv_lib = f"{local_openlane_path}/install/venv/lib"
             venv_lib_vers = os.listdir(venv_lib)
             if len(venv_lib_vers) < 1:
-                print(f"Installation venv contains no packages.")
+                print("Installation venv contains no packages.")
                 exit(os.EX_CONFIG)
 
             venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
