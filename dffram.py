@@ -105,7 +105,9 @@ def openlane(*args_tuple):
     if local_openlane_path is not None:
         env = os.environ.copy()
         env["PATH"] = f"{local_openlane_path}:{env['PATH']}"
-        env["PYTHONPATH"] = venv_lib_path
+
+        if venv_lib_path is not None:
+            env["PYTHONPATH"] = venv_lib_path
 
         # Disable tools not typically installed in Colaboratories
         env["RUN_KLAYOUT"] = "0"
@@ -555,19 +557,20 @@ def flow(
 
     local_openlane_path = using_local_openlane
     if local_openlane_path is not None:
-        install_path = os.path.join(local_openlane_path, "install")
-        if not os.path.isdir(install_path):
-            print(f"Error: OpenLane installation not found at {install_path}.")
-            exit(os.EX_CONFIG)
-        openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
+        if not os.getenv("NO_CHECK_INSTALL") == "1":
+            install_path = os.path.join(local_openlane_path, "install")
+            if not os.path.isdir(install_path):
+                print(f"Error: OpenLane installation not found at {install_path}.")
+                exit(os.EX_CONFIG)
+            openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
 
-        venv_lib = f"{local_openlane_path}/install/venv/lib"
-        venv_lib_vers = os.listdir(venv_lib)
-        if len(venv_lib_vers) < 1:
-            print(f"Installation venv contains no packages.")
-            exit(os.EX_CONFIG)
+            venv_lib = f"{local_openlane_path}/install/venv/lib"
+            venv_lib_vers = os.listdir(venv_lib)
+            if len(venv_lib_vers) < 1:
+                print(f"Installation venv contains no packages.")
+                exit(os.EX_CONFIG)
 
-        venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
+            venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
 
     pdk, scl, blocks = building_blocks.split(":")
     pdk = pdk or "sky130A"
