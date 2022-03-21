@@ -241,6 +241,7 @@ class Outreg(Placeable):
         self.sieve(
             instances,
             [
+                S(variable="root_clkbuf"),
                 S(variable="clkbufs", groups=["byte"]),
                 S(variable="ffs", groups=["byte", "bit"]),
                 S(variable="diodes", groups=["byte", "bit"]),
@@ -252,6 +253,7 @@ class Outreg(Placeable):
     def place(self, row_list: List[Row], start_row: int = 0):
         r = row_list[start_row]
 
+        r.place(self.root_clkbuf)
         for clkbuf, ffs, diodes in zip(self.clkbufs, self.ffs, self.diodes):
             r.place(clkbuf)
             for ff, diode in zip(ffs, diodes):
@@ -447,6 +449,8 @@ class HigherLevelPlaceable(LRPlaceable):
             raw_domuxes[domux] = raw_domuxes.get(domux) or []
             raw_domuxes[domux].append(instance)
 
+        self.clkbuf = None
+
         self.sieve(
             instances,
             [
@@ -461,7 +465,7 @@ class HigherLevelPlaceable(LRPlaceable):
                     custom_behavior=process_raw_domuxes,
                 ),
                 S(variable="clk_diode"),
-                S(variable="clkbufs", groups=["block"]),
+                S(variable="clkbuf"),
                 S(variable="di_diodes", groups=["bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="webufs", groups=["bit"]),
@@ -524,7 +528,7 @@ class HigherLevelPlaceable(LRPlaceable):
             start_row=current_row,
             addresses=len(self.domuxes),
             common=[
-                *([*self.clkbufs, self.clk_diode] if len(self.clkbufs) > 0 else []),
+                *([self.clkbuf, self.clk_diode] if self.clkbuf is not None else []),
                 *self.webufs,
             ],
             port_elements=["enbufs", "abufs", "a_diodes", "decoder_ands"],

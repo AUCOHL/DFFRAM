@@ -56,7 +56,6 @@ def main():
         backup_path = pdk
         it = 0
         while os.path.exists(backup_path) and len(os.listdir(backup_path)) != 0:
-            print(it)
             it += 1
             backup_path = f"/usr/local/pdk/sky130A.bk{it}"
         print(f"PDK installation already found at {pdk}, moving to {backup_path}...")
@@ -80,7 +79,7 @@ def main():
     subprocess.check_call(["curl", "-L", "-o", download_path, url])
 
     print("Untarring...")
-    subprocess.check_call(["tar", "-xJvf", download_path, "-C", pdk, "."])
+    subprocess.check_call(["tar", "-xJvf", download_path, "-C", pdk])
 
 
 if __name__ == "__main__":

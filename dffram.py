@@ -26,6 +26,7 @@ except ImportError:
     exit(os.EX_CONFIG)
 
 import re
+import uuid
 import math
 import time
 import shutil
@@ -64,14 +65,21 @@ openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"
     "commit"
 ]
 
+running_docker_ids = set()
+
 
 def run_docker(image, args):
+    global running_docker_ids
     global command_list
+    container_id = str(uuid.uuid4())
+    running_docker_ids.add(container_id)
     cmd = (
         [
             "docker",
             "run",
             "--rm",
+            "--name",
+            container_id,
             "-v",
             f"{pdk_root}:{pdk_root}",
             "-v",
@@ -92,6 +100,7 @@ def run_docker(image, args):
     )
     command_list.append(cmd)
     subprocess.check_call(cmd)
+    running_docker_ids.remove(container_id)
 
 
 openlane_scripts_path = "/openlane/scripts"
@@ -376,7 +385,7 @@ def verify_placement(design, synth_info, in_file):
 
 
 def openlane_harden(
-    design, clock_period, final_netlist, final_placement, products_path
+    design, clock_period, final_netlist, final_placement, products_path, synth_info
 ):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
@@ -442,7 +451,9 @@ def openlane_harden(
 
             set ::env(LVS_CONNECT_BY_LABEL) "1"
 
-            set ::env(QUIT_ON_TIMING_VIOLATIONS) "0"
+            set ::env(SYNTH_DRIVING_CELL) "{synth_info["sta_driving_cell"]}"
+            set ::env(SYNTH_DRIVING_CELL_PIN) "{synth_info["sta_driving_cell_pin"]}"
+            set ::env(IO_PCT) "0.25"
             """
         )
 
@@ -742,7 +753,7 @@ def flow(
         (
             "openlane_harden",
             lambda: openlane_harden(
-                design, clock_period, netlist, final_placement, products
+                design, clock_period, netlist, final_placement, products, synth_info
             ),
         ),
     ]
@@ -757,7 +768,14 @@ def flow(
             execute_steps = True
         if execute_steps:
             if (only is None or name in only) and (name not in skip):
-                action()
+                try:
+                    action()
+                except KeyboardInterrupt as e:
+                    print("\n\nStopping on keyboard interrupt...")
+                    print("Killing docker containers...")
+                    for id in running_docker_ids:
+                        subprocess.call(["docker", "kill", id])
+                    raise e
         if to == name:
             execute_steps = False
 
