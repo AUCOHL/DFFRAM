@@ -45,7 +45,6 @@ def ensure_dir(path):
 
 
 # --
-no_docker_option = False
 build_folder = ""
 pdk = ""
 scl = ""
@@ -64,14 +63,6 @@ tool_metadata = yaml.safe_load(open(tool_metadata_file_path).read())
 openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"][0][
     "commit"
 ]
-
-
-def run_commands(args):
-
-    global command_list
-    cmd = args
-    command_list.append(cmd)
-    subprocess.check_call(cmd)
 
 
 def run_docker(image, args):
@@ -103,11 +94,26 @@ def run_docker(image, args):
     subprocess.check_call(cmd)
 
 
+openlane_scripts_path = "/openlane/scripts"
+local_openlane_path = None
+venv_lib_path = None
+
+
 def openlane(*args_tuple):
     global no_docker_option
     args = list(args_tuple)
-    if no_docker_option:
-        run_commands(args)
+    if local_openlane_path is not None:
+        env = os.environ.copy()
+        env["PATH"] = f"{local_openlane_path}:{env['PATH']}"
+        env["PYTHONPATH"] = venv_lib_path
+
+        # Disable tools not typically installed in Colaboratories
+        env["RUN_KLAYOUT"] = "0"
+        env["RUN_CVC"] = "0"
+        env["PDK_ROOT"] = pdk_root
+        env["MISMATCHES_OK"] = "1"
+
+        subprocess.check_call(args, env=env)
     else:
         run_docker(f"efabless/openlane:{openlane_version}", args)
 
@@ -129,7 +135,7 @@ def prep(local_pdk_root):
     openlane(
         "openroad",
         "-python",
-        "/openlane/scripts/mergeLef.py",
+        f"{openlane_scripts_path}/mergeLef.py",
         "-i",
         f"{pdk_tlef_dir}/{scl}.tlef",
         f"{pdk_lef_dir}/{scl}.lef",
@@ -245,7 +251,7 @@ def floorplan(
             f"""
         set -e
 
-        python3 /openlane/scripts/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
+        python3 {openlane_scripts_path}/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
         openroad -exit {build_folder}/fp_init.tcl
         """
         )
@@ -322,7 +328,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
         openlane(
             "openroad",
             "-python",
-            "/openlane/scripts/io_place.py",
+            f"{openlane_scripts_path}/io_place.py",
             "--input-lef",
             f"{build_folder}/merged.lef",
             "--config",
@@ -438,35 +444,14 @@ def openlane_harden(
             """
         )
 
-    if no_docker_option:
-        os.environ["PDK_ROOT"] = "/usr/local/pdk"
-        os.environ["OPENLANE_ROOT"] = "/openlane"
-        os.environ["OPENLANE_LOCAL_INSTALL"] = "1"
-        os.environ["MISMATCHES_OK"] = "1"
-        os.environ["TCLLIBPATH"] = "/usr/share/tcltk"
-        os.environ["LD_LIBRARY_PATH"] = "$LD_LIBRARY_PATH:/usr/local/lib"
-        openlane(
-            "/openlane/flow.tcl",
-            "-design",
-            design_ol_dir,
-            "-it",
-            "-file",
-            f"{design_ol_dir}/interactive.tcl",
-            "-override_env",
-            "RUN_KLAYOUT=0",
-            "RUN_CVC=0",
-            "MISMATCHES_OK=1",
-        )
-    else:
-        openlane(
-            "tclsh",
-            "/openlane/flow.tcl",
-            "-design",
-            design_ol_dir,
-            "-it",
-            "-file",
-            f"{design_ol_dir}/interactive.tcl",
-        )
+    openlane(
+        "flow.tcl",
+        "-design",
+        design_ol_dir,
+        "-it",
+        "-file",
+        f"{design_ol_dir}/interactive.tcl",
+    )
 
 
 @click.command()
@@ -529,7 +514,10 @@ def openlane_harden(
     help="Open the last def in Klayout. (Default: False)",
 )
 @click.option(
-    "--no-docker/--docker", default=False, type=bool, help="Dockerless DFFRAM"
+    "--using-local-openlane",
+    default=None,
+    type=str,
+    help="Use this local OpenLane installation instead of a Dockerized installation.",
 )
 def flow(
     frm,
@@ -547,12 +535,15 @@ def flow(
     klayout,
     output_dir,
     min_height,
-    no_docker,
+    using_local_openlane,
 ):
     global build_folder
     global last_def
     global pdk, scl
-    global no_docker_option
+    global local_openlane_path
+    global openlane_scripts_path
+    global venv_lib_path
+
     if horizontal_halo == 0.0:
         horizontal_halo = halo
 
@@ -561,7 +552,23 @@ def flow(
 
     if variant == "DEFAULT":
         variant = None
-    no_docker_option = no_docker
+
+    local_openlane_path = using_local_openlane
+    if local_openlane_path is not None:
+        install_path = os.path.join(local_openlane_path, "install")
+        if not os.path.isdir(install_path):
+            print(f"Error: OpenLane installation not found at {install_path}.")
+            exit(os.EX_CONFIG)
+        openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
+
+        venv_lib = f"{local_openlane_path}/install/venv/lib"
+        venv_lib_vers = os.listdir(venv_lib)
+        if len(venv_lib_vers) < 1:
+            print(f"Installation venv contains no packages.")
+            exit(os.EX_CONFIG)
+
+        venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
+
     pdk, scl, blocks = building_blocks.split(":")
     pdk = pdk or "sky130A"
     scl = scl or "sky130_fd_sc_hd"
