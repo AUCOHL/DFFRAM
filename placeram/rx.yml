@@ -1,84 +1,84 @@
 # Common
 Mux:
-  selbufs: "\\bSEL(\\d+)BUF\\\\\\[(\\d+)\\\\\\]"
-  muxes: "\\bM\\\\\\[(\\d+)\\\\\\]\\.MUX\\\\\\[(\\d+)\\\\\\]"
-  input_diodes: "\\bM\\\\\\[(\\d+)\\\\\\]\\.DIODE_A(\\d+)MUX\\\\\\[(\\d+)\\\\\\]"
-  sel_diodes: "\\bSEL_DIODE\\\\\\[(\\d+)\\\\\\]"
+  selbufs: \bSEL(\d+)BUF\\\[(\d+)\\\]
+  muxes: \bM\\\[(\d+)\\\]\.MUX\\\[(\d+)\\\]
+  input_diodes: \bM\\\[(\d+)\\\]\.DIODE_A(\d+)MUX\\\[(\d+)\\\]
+  sel_diodes: \bSEL_DIODE\\\[(\d+)\\\]
 Decoder2x4:
-  and_gates: "\\bAND(\\d+)\\b"
+  and_gates: \bAND(\d+)\b
 Decoder3x8:
-  and_gates: "\\bAND(\\d+)\\b"
-  abufs: "\\bABUF\\\\\\[(\\d+)\\\\\\]"
-  enbuf: "\\bENBUF\\b"
+  and_gates: \bAND(\d+)\b
+  abufs: \bABUF\\\[(\d+)\\\]
+  enbuf: \bENBUF\b
 Decoder5x32:
-  decoders3x8: "\\bD(\\d+)\\b"
-  decoder2x4: "\\bD\\b"
-  tie: "\\bTIE\\b"
+  decoders3x8: \bD(\d+)\b
+  decoder2x4: \bD\b
+  tie: \bTIE\b
 # 1RWNR
 Bit:
-  store: "\\bSTORAGE\\b"
-  obufs: "\\bOBUF(\\d+)\\b"
+  store: \bSTORAGE\b
+  obufs: \bOBUF(\d+)\b
 Byte:
-  bits: "\\BIT\\\\\\[(\\d+)\\\\\\]"
-  clockgate: "\\bCG\\b"
-  cgand: "\\bCGAND\\b"
-  clkinv: "\\bCLKINV\\b"
-  clkdiode: "\\bDIODE_CLK\\b"
-  selinvs: "\\bSEL(\\d+)INV\\b"
+  bits: \BIT\\\[(\d+)\\\]
+  clockgate: \bCG\b
+  cgand: \bCGAND\b
+  clkinv: \bCLKINV\b
+  clkdiode: \bDIODE_CLK\b
+  selinvs: \bSEL(\d+)INV\b
 Word:
-  clkbuf: "\\bCLKBUF\\b"
-  selbufs: "\\bSEL(\\d+)BUF\\b"
-  bytes: "\\bBYTE\\\\\\[(\\d+)\\\\\\]"
+  clkbuf: \bCLKBUF\b
+  selbufs: \bSEL(\d+)BUF\b
+  bytes: \bBYTE\\\[(\d+)\\\]
 Slice:
-  clkbuf: "\\bCLKBUF\\b"
-  webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
-  words: "\\bWORD\\\\\\[(\\d+)\\\\\\]"
-  decoders: "\\bDEC(\\d+)\\b"
+  clkbuf: \bCLKBUF\b
+  webufs: \bWEBUF\\\[(\d+)\\\]
+  words: \bWORD\\\[(\d+)\\\]
+  decoders: \bDEC(\d+)\b
 Outreg:
-  root_clkbuf: "\\bRoot_CLKBUF\\b"
-  clkbufs: "\\bDo_CLKBUF\\\\\\[(\\d+)\\\\\\]"
-  ffs: "\\bOUTREG_BYTE\\\\\\[(\\d+)\\\\\\]\\.Do_FF\\\\\\[(\\d+)\\\\\\]"
-  diodes: "\\bOUTREG_BYTE\\\\\\[(\\d+)\\\\\\]\\.DIODE\\\\\\[(\\d+)\\\\\\]"
+  root_clkbuf: \bRoot_CLKBUF\b
+  clkbufs: \bDo_CLKBUF\\\[(\d+)\\\]
+  ffs: \bOUTREG_BYTE\\\[(\d+)\\\]\.Do_FF\\\[(\d+)\\\]
+  diodes: \bOUTREG_BYTE\\\[(\d+)\\\]\.DIODE\\\[(\d+)\\\]
 Block:
-  slices: "\\SLICE\\\\\\[(\\d+)\\\\\\]"
-  clk_diode: "\\bDIODE_CLK\\b"
-  clkbuf: "\\bCLKBUF\\b"
-  decoder_ands: "\\bDEC(\\d+)\\.AND(\\d+)\\b"
-  dibufs: "\\bDIBUF\\\\\\[(\\d+)\\\\\\]"
-  doregs: "\\bDo(\\d+)_REG\\b"
-  webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
-  a_diodes: "\\bDIODE_A(\\d+)\\\\\\[(\\d+)\\\\\\]"
-  abufs: "\\bA(\\d+)BUF\\\\\\[(\\d+)\\\\\\]"
-  enbufs: "\\bEN(\\d+)BUF\\b"
-  ties: "\\bTIE(\\d+)\\\\\\[(\\d+)\\\\\\]"
-  fbufenbufs: "\\bFBUFENBUF(\\d+)\\\\\\[(\\d+)\\\\\\]"
-  floatbufs: "\\bBYTE\\\\\\[(\\d+)\\\\\\]\\.FLOATBUF(\\d+)\\\\\\[(\\d+)\\\\\\]"
+  slices: \SLICE\\\[(\d+)\\\]
+  clk_diode: \bDIODE_CLK\b
+  clkbuf: \bCLKBUF\b
+  decoder_ands: \bDEC(\d+)\.AND(\d+)\b
+  dibufs: \bDIBUF\\\[(\d+)\\\]
+  doregs: \bDo(\d+)_REG\b
+  webufs: \bWEBUF\\\[(\d+)\\\]
+  a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
+  abufs: \bA(\d+)BUF\\\[(\d+)\\\]
+  enbufs: \bEN(\d+)BUF\b
+  ties: \bTIE(\d+)\\\[(\d+)\\\]
+  fbufenbufs: \bFBUFENBUF(\d+)\\\[(\d+)\\\]
+  floatbufs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\]
 HigherLevelPlaceable:
-  block32: "\\bBLOCK\\\\\\[(\\d+)\\\\\\]"
-  block128: "\\bBANK128\\\\\\[(\\d+)\\\\\\]"
-  block512: "\\bBANK512\\\\\\[(\\d+)\\\\\\]"
-  clk_diode: "\\bDIODE_CLK\\b"
-  clkbuf: "\\bCLKBUF\\b"
-  enbufs: "\\bEN(\\d+)BUF\\b"
-  decoder_ands: "\\bDEC(\\d+)\\.AND(\\d+)\\b"
-  dibufs: "\\bDIBUF\\\\\\[(\\d+)\\\\\\]"
-  domuxes: "\\bDo(\\d+)MUX\\b"
-  webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
-  abufs: "\\bA(\\d+)BUF\\\\\\[(\\d+)\\\\\\]"
-  di_diodes: "\\bDIODE_DI\\\\\\[(\\d+)\\\\\\]"
-  a_diodes: "\\bDIODE_A(\\d+)\\\\\\[(\\d+)\\\\\\]"
+  block32: \bBLOCK\\\[(\d+)\\\]
+  block128: \bBANK128\\\[(\d+)\\\]
+  block512: \bBANK512\\\[(\d+)\\\]
+  clk_diode: \bDIODE_CLK\b
+  clkbuf: \bCLKBUF\b
+  enbufs: \bEN(\d+)BUF\b
+  decoder_ands: \bDEC(\d+)\.AND(\d+)\b
+  dibufs: \bDIBUF\\\[(\d+)\\\]
+  domuxes: \bDo(\d+)MUX\b
+  webufs: \bWEBUF\\\[(\d+)\\\]
+  abufs: \bA(\d+)BUF\\\[(\d+)\\\]
+  di_diodes: \bDIODE_DI\\\[(\d+)\\\]
+  a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
 # 2R1W
 RFWord:
-  clkgateand: "\\bCGAND\\b"
-  clkgates: "\\bCG\\\\\\[(\\d+)\\\\\\]"
-  invs: "\\bINV(\\d+)\\\\\\[(\\d+)\\\\\\]"
-  ffs: "\\bBIT\\\\\\[(\\d+)\\\\\\]\\.FF"
-  obufs: "\\bBIT\\\\\\[(\\d+)\\\\\\]\\.OBUF(\\d+)\\b"
+  clkgateand: \bCGAND\b
+  clkgates: \bCG\\\[(\d+)\\\]
+  invs: \bINV(\d+)\\\[(\d+)\\\]
+  ffs: \bBIT\\\[(\d+)\\\]\.FF
+  obufs: \bBIT\\\[(\d+)\\\]\.OBUF(\d+)\b
 DFFRF:
-  words: "\\bREGF\\\\\\[(\\d+)\\\\\\]\\.RFW\\b"
-  decoders: "\\bDEC(\\d+)\\b"
-  rfw0_ties: "\\bRFW0\\.TIE\\\\\\[(\\d+)\\\\\\]"
-  rfw0_invs1: "\\bRFW0\\.INV1\\\\\\[(\\d+)\\\\\\]"
-  rfw0_invs2: "\\bRFW0\\.INV2\\\\\\[(\\d+)\\\\\\]"
-  rfw0_obufs1: "\\bRFW0\\.BIT\\\\\\[(\\d+)\\\\\\]\\.OBUF1\\b"
-  rfw0_obufs2: "\\bRFW0\\.BIT\\\\\\[(\\d+)\\\\\\]\\.OBUF2\\b"
+  words: \bREGF\\\[(\d+)\\\]\.RFW\b
+  decoders: \bDEC(\d+)\b
+  rfw0_ties: \bRFW0\.TIE\\\[(\d+)\\\]
+  rfw0_invs1: \bRFW0\.INV1\\\[(\d+)\\\]
+  rfw0_invs2: \bRFW0\.INV2\\\[(\d+)\\\]
+  rfw0_obufs1: \bRFW0\.BIT\\\[(\d+)\\\]\.OBUF1\b
+  rfw0_obufs2: \bRFW0\.BIT\\\[(\d+)\\\]\.OBUF2\b

@@ -40,10 +40,10 @@ The regular expressions for the sieves are retrieved from `./placeram/rx.yml`, s
 
 ```yaml
 Slice:
-  clkbuf: "\\bCLKBUF\\b"
-  webufs: "\\bWEBUF\\\\\\[(\\d+)\\\\\\]"
-  words: "\\bWORD\\\\\\[(\\d+)\\\\\\]"
-  decoders: "\\bDEC(\\d+)\\b"
+  clkbuf: \bCLKBUF\b
+  webufs: \bWEBUF\\\[(\d+)\\\]
+  words: \bWORD\\\[(\d+)\\\]
+  decoders: \bDEC(\d+)\b
 ```
 
 The variables are stored in dictionaries which can be turned into arrays by invoking `self.dicts_to_lists()`. 
