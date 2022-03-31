@@ -1,0 +1,17 @@
+channels:
+  - litex-hub
+  - conda-forge
+dependencies:
+  - open_pdks.sky130a=1.0.290
+  - magic
+  - openroad
+  - netgen
+  - yosys
+  - gdstk
+  - tcllib
+  - python
+  - pip
+  - pip:
+      - pyyaml
+      - click
+      - pandas
