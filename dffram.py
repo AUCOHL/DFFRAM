@@ -385,7 +385,13 @@ def verify_placement(design, synth_info, in_file):
 
 
 def openlane_harden(
-    design, clock_period, final_netlist, final_placement, products_path, synth_info
+    design,
+    clock_period,
+    final_netlist,
+    final_placement,
+    products_path,
+    synth_info,
+    routing_threads,
 ):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
@@ -438,7 +444,7 @@ def openlane_harden(
 
             set ::env(DIODE_INSERTION_STRATEGY) "0"
 
-            set ::env(ROUTING_CORES) {os.getenv('ROUTING_CORES') or subprocess.check_output(['nproc']).decode('utf8').strip()}
+            set ::env(ROUTING_CORES) {routing_threads}
 
             set ::env(DESIGN_IS_CORE) "0"
             set ::env(FP_PDN_CORE_RING) "0"
@@ -519,6 +525,13 @@ def openlane_harden(
 @click.option(
     "-H", "--min-height", default=0.0, type=float, help="Die Area Height in microns"
 )
+@click.option(
+    "-j",
+    "--routing-threads",
+    type=int,
+    default=int(os.getenv("ROUTING_CORES") or "1"),
+    help="Number of threads to be used in routing",
+)
 
 # Enable/Disable
 @click.option(
@@ -545,6 +558,7 @@ def flow(
     horizontal_halo,
     vertical_halo,
     variant,
+    routing_threads,
     klayout,
     output_dir,
     min_height,
@@ -753,7 +767,13 @@ def flow(
         (
             "openlane_harden",
             lambda: openlane_harden(
-                design, clock_period, netlist, final_placement, products, synth_info
+                design,
+                clock_period,
+                netlist,
+                final_placement,
+                products,
+                synth_info,
+                routing_threads,
             ),
         ),
     ]
