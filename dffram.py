@@ -582,12 +582,12 @@ def flow(
 
     local_openlane_path = using_local_openlane
     if local_openlane_path is not None:
+        openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
         if not os.getenv("NO_CHECK_INSTALL") == "1":
             install_path = os.path.join(local_openlane_path, "install")
             if not os.path.isdir(install_path):
                 print(f"Error: OpenLane installation not found at {install_path}.")
                 exit(os.EX_CONFIG)
-            openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
 
             venv_lib = f"{local_openlane_path}/install/venv/lib"
             venv_lib_vers = os.listdir(venv_lib)
