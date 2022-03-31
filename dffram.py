@@ -582,6 +582,7 @@ def flow(
 
     local_openlane_path = using_local_openlane
     if local_openlane_path is not None:
+        print(f"Setting olsp to {openlane_scripts_path}")
         openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
         if not os.getenv("NO_CHECK_INSTALL") == "1":
             install_path = os.path.join(local_openlane_path, "install")
