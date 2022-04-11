@@ -25,6 +25,35 @@ cd DFFRAM
 python3 -m pip install -r requirements.txt
 ./dffram.py -s 8x32 # <8-2048>x<8-64>
 ```
+# Run on Google Colab 
+DFFRAM can run on Google Colab. 
+
+An example Notebook can be found [here](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb).
+# Local Installation (Linux Only)
+## Installing Conda 
+
+1) Download the installer from [here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
+2) Install Conda by running the following command:
+```
+bash Miniconda3-latest-Linux-x86_64.sh
+```
+## Run DFFRAM
+
+1) Create and activate the virtual enviroment 
+```
+conda env create -f environment.yml
+conda activate dffram
+env NO_CHECK_INSTALL=1
+env TCLLIBPATH=/usr/share/tcltk
+
+```
+2) Invoke DFFRAM Compiler
+
+
+```
+./dffram.py --using-local-openlane <local_openlane_path> --pdk-root /usr/local/share/pdk -s 32x32 -b ::rf -v 2R1W
+
+```
 
 # Advanced
 The compilation flow at a minimum needs two options: the building blocks and the size.
