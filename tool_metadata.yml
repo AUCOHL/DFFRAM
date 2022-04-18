@@ -1,9 +1,9 @@
 - name: openlane
   repo: https://github.com/The-OpenROAD-Project/OpenLane
-  commit: 9602463a6dae6cfe4ad025251d91a8310b417bfd
+  commit: c29cdb4379acb11b67506b8e43f4d85249297498
 - name: open_pdks
   repo: https://github.com/rtimothyedwards/open_pdks
-  commit: 7519dfb04400f224f140749cda44ee7de6f5e095
+  commit: 41c0908b47130d5675ff8484255b43f66463a7d6
 - name: sky130
   repo: https://github.com/google/skywater-pdk
-  commit: c094b6e83a4f9298e47f696ec5a7fd53535ec5eb
+  commit: f70d8ca46961ff92719d8870a18a076370b85f6c

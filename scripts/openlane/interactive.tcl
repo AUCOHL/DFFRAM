@@ -19,6 +19,7 @@ set ::env(CURRENT_SDC) $::env(INITIAL_SDC)
 
 run_power_grid_generation
 run_routing
+run_parasitics_sta
 run_magic
 if {  [info exists ::env(ENABLE_KLAYOUT) ] } {
     if { ($::env(ENABLE_KLAYOUT) == 1)  } {
@@ -53,18 +54,18 @@ proc save_final_views {args} {
 
 
     # If they don't exist, save_views will simply not copy them
-    lappend arg_list -lef_path $::env(finishing_results)/$::env(DESIGN_NAME).lef
-    lappend arg_list -gds_path $::env(finishing_results)/$::env(DESIGN_NAME).gds
-    lappend arg_list -mag_path $::env(finishing_results)/$::env(DESIGN_NAME).mag
-    lappend arg_list -maglef_path $::env(finishing_results)/$::env(DESIGN_NAME).lef.mag
-    lappend arg_list -spice_path $::env(finishing_results)/$::env(DESIGN_NAME).spice
+    lappend arg_list -lef_path $::env(signoff_results)/$::env(DESIGN_NAME).lef
+    lappend arg_list -gds_path $::env(signoff_results)/$::env(DESIGN_NAME).gds
+    lappend arg_list -mag_path $::env(signoff_results)/$::env(DESIGN_NAME).mag
+    lappend arg_list -maglef_path $::env(signoff_results)/$::env(DESIGN_NAME).lef.mag
+    lappend arg_list -spice_path $::env(signoff_results)/$::env(DESIGN_NAME).spice
     # Guaranteed to have default values
     lappend arg_list -def_path $::env(CURRENT_DEF)
     lappend arg_list -verilog_path $::env(CURRENT_NETLIST)
 
     # Not guaranteed to have default values
-    if { [info exists ::env(SPEF_TYPICAL)] } {
-        lappend arg_list -spef_path $::env(SPEF_TYPICAL)
+    if { [info exists ::env(CURRENT_SPEF)] } {
+        lappend arg_list -spef_path $::env(CURRENT_SPEF)
     }
     if { [info exists ::env(CURRENT_SDF)] } {
         lappend arg_list -sdf_path $::env(CURRENT_SDF)
