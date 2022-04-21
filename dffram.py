@@ -64,6 +64,7 @@ tool_metadata = yaml.safe_load(open(tool_metadata_file_path).read())
 openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"][0][
     "commit"
 ]
+openlane_image = os.getenv("OPENLANE_IMAGE_NAME", default=f"efabless/openlane:{openlane_version}")
 
 running_docker_ids = set()
 
@@ -126,7 +127,7 @@ def openlane(*args_tuple):
 
         subprocess.check_call(args, env=env)
     else:
-        run_docker(f"efabless/openlane:{openlane_version}", args)
+        run_docker(openlane_image, args)
 
 
 def prep(local_pdk_root):
