@@ -21,8 +21,11 @@ import os
 try:
     import click
     import yaml
+    import volare
 except ImportError:
-    print("You need to install click and pyyaml: python3 -m pip install click pyyaml")
+    print(
+        "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
+    )
     exit(os.EX_CONFIG)
 
 import re
@@ -47,7 +50,9 @@ def ensure_dir(path):
 
 # --
 build_folder = ""
+pdk_family = ""
 pdk = ""
+pdk_version = ""
 scl = ""
 pdk_root = ""
 pdk_tech_dir = ""
@@ -135,8 +140,13 @@ def prep(local_pdk_root):
     global pdk_liberty_dir, pdk_lef_dir, pdk_tlef_dir
     global pdk_klayout_dir, pdk_magic_dir, pdk_openlane_dir
     pdk_root = os.path.abspath(local_pdk_root)
-    pdk_tech_dir = os.path.join(pdk_root, pdk, "libs.tech")
-    pdk_ref_dir = os.path.join(pdk_root, pdk, "libs.ref")
+    pdk_path = os.path.join(pdk_root, pdk)
+    if not os.path.exists(os.path.join(pdk_path)):
+        print(f"PDK not found at {pdk_path}, grabbing PDK using volare...")
+        volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
+
+    pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
+    pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
     pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "lib")
     pdk_lef_dir = os.path.join(pdk_ref_dir, scl, "lef")
     pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, "techlef")
@@ -486,9 +496,9 @@ def openlane_harden(
 @click.option(
     "-p",
     "--pdk-root",
-    required=os.getenv("PDK_ROOT") is None,
-    default=os.getenv("PDK_ROOT"),
-    help="Path to OpenPDKs PDK root",
+    required=False,
+    default="./pdk",
+    help="Optionally override the used PDK root",
 )
 @click.option("-O", "--output-dir", default="./build", help="Output directory.")
 @click.option(
@@ -566,7 +576,7 @@ def flow(
 ):
     global build_folder
     global last_def
-    global pdk, scl
+    global pdk_family, pdk, pdk_version, scl
     global local_openlane_path
     global openlane_scripts_path
     global venv_lib_path
@@ -602,6 +612,11 @@ def flow(
     scl = scl or "sky130_fd_sc_hd"
     blocks = blocks or "ram"
     building_blocks = f"{pdk}:{scl}:{blocks}"
+
+    process_data_file = os.path.join(".", "platforms", pdk, "process_data.yml")
+    process_data = yaml.safe_load(open(process_data_file))
+    pdk_family = process_data["volare_pdk_family"]
+    pdk_version = process_data["volare_pdk_version"]
 
     bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):

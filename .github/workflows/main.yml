@@ -15,14 +15,6 @@ jobs:
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
-      - name: Get PDK
-        run: |
-          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/pdk
-          sudo chown $USER:$USER /usr/local/pdk
-          curl -L https://github.com/Cloud-V/sky130-builds/releases/download/c094b6e83a4f9298e47f696ec5a7fd53535ec5eb-476f7428f7f686de51a5164c702629a9b9f2da46/sky130A.tar.xz > /usr/local/pdk/sky130A.tar.xz
-          mkdir -p /usr/local/pdk/sky130A
-          tar -xJf /usr/local/pdk/sky130A.tar.xz -C /usr/local/pdk/sky130A
       - name: Verify
         run: |
           cd verification
@@ -58,12 +50,6 @@ jobs:
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
-      - name: Get PDK
-        run: |
-          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/pdk
-          sudo chown $USER:$USER /usr/local/pdk
-          python3 ./get_pdk.py
       - name: Run Verification
         run: |
           export PATTERN=tb_RAM${{ matrix.size }}
@@ -97,12 +83,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Get PDK
-        run: |
-          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/pdk
-          sudo chown $USER:$USER /usr/local/pdk
-          python3 ./get_pdk.py
       - name: Run
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
@@ -117,12 +97,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Get PDK
-        run: |
-          echo "PDK_ROOT=/usr/local/pdk" >> $GITHUB_ENV
-          sudo mkdir -p /usr/local/pdk
-          sudo chown $USER:$USER /usr/local/pdk
-          python3 ./get_pdk.py
       - name: Run
         run: |
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}

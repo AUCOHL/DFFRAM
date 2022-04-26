@@ -1,15 +1,27 @@
-# DFFRAM Compiler
-[![code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![CI Badge](https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main) [![Slack Invite](https://img.shields.io/badge/Community-Skywater%20PDK%20Slack-ff69b4?logo=slack)](https://invite.skywater.tools)  
+<h1 align="center"> DFFRAM Compiler</h1>
+<p align="center">
+  <a href="https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Google Colab"/></a>
+</p>
+<p align="center">
+    <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"/></a>
+    <img src="https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main" alt="CI Status" />
+    <a href="https://invite.skywater.tools"><img src="https://img.shields.io/badge/Community-Skywater%20PDK%20Slack-ff69b4?logo=slack" alt="Invite to the Skywater PDK Slack"/></a>
+    <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style: Black"/></a>
+</p>
 
 Standard Cell Library based Memory Compiler using DFF/Latch cells.
 
-# Table of Contents
-- [Overview](#overview)
-  - [File Structure](#file-structure)
-- [Comparisons](#comparisons)
-- [Usage](./docs/Usage.md)
-- [DFFRAM Macros Interface Specifications](./docs/md/Specs.md)
-- [Copyright and Licensing](#️copyright-and-licensing)
+# ✨ Quick Usage
+You can try the [Google Colaboratory](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb), but also...
+
+[Get **Docker**](https://docs.docker.com/get-docker/), set it up nicely, then, in your terminal:
+
+```sh
+pip3 install --user --no-cache-dir --upgrade ./requirements.txt
+./dffram.py -s 32x32
+```
+
+If all goes well, you've placed your first register file!
 
 # Overview
 The objective of this project is to develop a DFF/Latch-based RAM, Register File and Cache custom compilation flow that utilizes standard cell libraries following a standard ASIC (Application Specific Integrated Circuit) implementation approach. Different views (HDL netlist, HDL functional models, LEF, GDS, Timing, …) are all generated for a given size configuration.

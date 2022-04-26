@@ -548,7 +548,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     
 );
 
-    wire [3:0]               CLK_buf;
+    wire                     CLK_buf;
     wire [WSIZE-1:0]         WE0_buf;
     wire                     EN0_buf;
     wire [6:0]               A0_buf;
@@ -609,7 +609,7 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
     
 );
 
-    wire [3:0]               CLK_buf;
+    wire                     CLK_buf;
     wire [WSIZE-1:0]         WE0_buf;
     wire                     EN0_buf;
     wire                     EN1_buf;

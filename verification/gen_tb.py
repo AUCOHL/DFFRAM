@@ -51,7 +51,7 @@ def single_ported_test(word_num, word_size, addr_width, model_filename):
         word_size=word_size,
         addr_width=addr_width,
         filename=model_filename,
-        pdk_root=os.environ["PDK_ROOT"],
+        pdk_root=os.getenv("PDK_ROOT") or "/",
     )
     tb += RAM_tb.start_test_common
     tb += RAM_tb.begin_single_ported_test
