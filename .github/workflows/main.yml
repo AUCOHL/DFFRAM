@@ -85,6 +85,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Run
         run: |
+          pip3 install --upgrade --no-cache-dir -r ./requirements.txt
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
   test_flow_rf:
     name: Test Flow (2R1W)
@@ -99,4 +100,5 @@ jobs:
         uses: actions/checkout@v2
       - name: Run
         run: |
+          pip3 install --upgrade --no-cache-dir -r ./requirements.txt
           ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}
