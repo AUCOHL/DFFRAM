@@ -53,11 +53,11 @@ proc save_final_views {args} {
 
 
     # If they don't exist, save_views will simply not copy them
-    lappend arg_list -lef_path $::env(finishing_results)/$::env(DESIGN_NAME).lef
-    lappend arg_list -gds_path $::env(finishing_results)/$::env(DESIGN_NAME).gds
-    lappend arg_list -mag_path $::env(finishing_results)/$::env(DESIGN_NAME).mag
-    lappend arg_list -maglef_path $::env(finishing_results)/$::env(DESIGN_NAME).lef.mag
-    lappend arg_list -spice_path $::env(finishing_results)/$::env(DESIGN_NAME).spice
+    lappend arg_list -lef_path $::env(signoff_results)/$::env(DESIGN_NAME).lef
+    lappend arg_list -gds_path $::env(signoff_results)/$::env(DESIGN_NAME).gds
+    lappend arg_list -mag_path $::env(signoff_results)/$::env(DESIGN_NAME).mag
+    lappend arg_list -maglef_path $::env(signoff_results)/$::env(DESIGN_NAME).lef.mag
+    lappend arg_list -spice_path $::env(signoff_results)/$::env(DESIGN_NAME).spice
     # Guaranteed to have default values
     lappend arg_list -def_path $::env(CURRENT_DEF)
     lappend arg_list -verilog_path $::env(CURRENT_NETLIST)
