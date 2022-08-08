@@ -352,7 +352,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
         openlane(
             "openroad",
             "-python",
-            f"{openlane_scripts_path}/io_place.py",
+            f"{openlane_scripts_path}/odbpy/io_place.py",
             "--input-lef",
             f"{build_folder}/merged.lef",
             "--config",
