@@ -29,10 +29,6 @@ app = pya.Application.instance()
 try:
     win = app.main_window()
 
-    layout = os.getenv("LAYOUT")
-    if layout is None:
-        raise Exception("LAYOUT environment variable is not set.")
-
     pdk_root = os.getenv("PDK_ROOT")
     if pdk_root is None:
         raise Exception("PDK_ROOT environment variable is not set.")
@@ -41,14 +37,17 @@ try:
     if pdk_name is None:
         raise Exception("PDK environment variable is not set.")
 
-    # Relative to the layout path, ':' delimited. If not provided, all LEFs
-    # in the same folder as the layout will be loaded.
-    explicitly_listed_lefs_raw = os.getenv("EXPLICITLY_LISTED_LEFS")
+    layout = os.getenv("LAYOUT")
+    if layout is None:
+        raise Exception("LAYOUT environment variable is not set.")
 
-    use_explicitly_listed_lefs = explicitly_listed_lefs_raw is not None
+    # Relative to the layout path (or absolute), ':' delimited. Required.
+    lef_files = os.getenv("LEF_FILES")
+    if layout is None:
+        raise Exception("LEF_FILES environment variable is not set.")
 
-    tech_file_path = os.path.join(
-        pdk_root, pdk_name, "libs.tech", "klayout", f"{pdk_name}.lyt"
+    tech_file_path = os.getenv("KLAYOUT_TECH") or os.path.join(
+        pdk_root, pdk_name, "libs.tech", "klayout", "tech", f"{pdk_name}.lyt"
     )
 
     tech = pya.Technology()
@@ -60,11 +59,8 @@ try:
 
     layout_options = tech.load_layout_options
     layout_options.lefdef_config.macro_resolution_mode = 1
-
-    if use_explicitly_listed_lefs:
-        explicitly_listed_lefs = explicitly_listed_lefs_raw.split(":")
-        layout_options.lefdef_config.read_lef_with_def = False
-        layout_options.lefdef_config.lef_files = explicitly_listed_lefs
+    layout_options.lefdef_config.read_lef_with_def = False
+    layout_options.lefdef_config.lef_files = lef_files.split(":")
 
     cell_view = win.load_layout(layout, layout_options, 0)
 
