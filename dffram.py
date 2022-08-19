@@ -101,7 +101,7 @@ def run_docker(image, args):
             "-e",
             f"PDK={pdk}",
             "-e",
-            f"PWD=/mnt/dffram",
+            "PWD=/mnt/dffram",
             "-e",
             "LC_ALL=en_US.UTF-8",
             "-e",
