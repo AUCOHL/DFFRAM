@@ -99,6 +99,10 @@ def run_docker(image, args):
             "-e",
             f"PDKPATH={pdk_root}/{pdk}",
             "-e",
+            f"PDK={pdk}",
+            "-e",
+            "PWD=/mnt/dffram",
+            "-e",
             "LC_ALL=en_US.UTF-8",
             "-e",
             "LANG=en_US.UTF-8",
@@ -352,7 +356,7 @@ def place_pins(design, synth_info, in_file, out_file, pin_order_file):
         openlane(
             "openroad",
             "-python",
-            f"{openlane_scripts_path}/io_place.py",
+            f"{openlane_scripts_path}/odbpy/io_place.py",
             "--input-lef",
             f"{build_folder}/merged.lef",
             "--config",
@@ -449,13 +453,13 @@ def openlane_harden(
             set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
             set ::env(RT_MAX_LAYER) "met4"
-            set ::env(GLB_RT_ALLOW_CONGESTION) "1"
+            set ::env(GRT_ALLOW_CONGESTION) "1"
 
             set ::env(CELLS_LEF) "$::env(DESIGN_DIR)/cells.lef"
 
             set ::env(DIE_AREA) "0 0 {full_width} {full_height}"
 
-            set ::env(DIODE_INSERTION_STRATEGY) "0"
+            set ::env(DIODE_INSERTION_STRATEGY) {0}
 
             set ::env(ROUTING_CORES) {routing_threads}
 
