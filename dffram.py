@@ -826,6 +826,7 @@ def flow(
             env = os.environ.copy()
             env["LAYOUT"] = last_def
             env["PDK"] = pdk
+            env["LEF_FILES"] = "merged.lef"
             subprocess.Popen(["klayout", "-rm", last_def], env=env)
 
     elapsed = time.time() - start
