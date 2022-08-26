@@ -184,6 +184,7 @@ def cl():
 def synthesis(
     design,
     building_blocks,
+    generics,
     synth_info,
     widths_supported,
     word_width_bytes,
@@ -205,6 +206,7 @@ def synthesis(
             yosys -import
             set SCL {pdk_liberty_dir}/{synth_info['typical']}
             read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
+            read_verilog {generics}
             read_verilog {building_blocks}
             {chparam}
             hierarchy -check -top {design}
@@ -619,19 +621,27 @@ def flow(
     scl = scl or "sky130_fd_sc_hd"
     blocks = blocks or "ram"
     building_blocks = f"{pdk}:{scl}:{blocks}"
+    generics = f"{pdk}:{scl}"
 
     process_data_file = os.path.join(".", "platforms", pdk, "process_data.yml")
     process_data = yaml.safe_load(open(process_data_file))
     pdk_family = process_data["volare_pdk_family"]
     pdk_version = process_data["volare_pdk_version"]
 
-    bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
+    generics_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
+    bb_dir = os.path.join(".", "models", "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
         print("Looking for building blocks in :", bb_dir)
         print("Building blocks %s not found." % building_blocks)
         exit(os.EX_NOINPUT)
 
+    if not os.path.isdir(generics_dir):
+        print("Looking for pdk generics in :", generics_dir)
+        print("Pdk generics %s not found." % generics)
+        exit(os.EX_NOINPUT)
+
     bb_used = os.path.join(bb_dir, "model.v")
+    generics_used = os.path.join(generics_dir, "pdk_generics.v")
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
 
@@ -777,6 +787,7 @@ def flow(
             lambda: synthesis(
                 design,
                 bb_used,
+                generics_used,
                 synth_info,
                 config["widths"],
                 word_width_bytes,

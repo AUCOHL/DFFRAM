@@ -247,13 +247,13 @@ def cli(
     def_file,
 ):
 
-    pdk, scl, blocks = building_blocks.split(":")
+    pdk, _, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):
         eprint("Platform %s not found." % pdk)
         exit(os.EX_NOINPUT)
 
-    bb_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
+    bb_dir = os.path.join(".", "models", "_building_blocks", blocks)
     if not os.path.isdir(bb_dir):
         eprint("Building blocks %s not found." % building_blocks)
         exit(os.EX_NOINPUT)
