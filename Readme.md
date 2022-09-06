@@ -97,21 +97,21 @@ The following table compares the areas and bit densities of RAM macros generated
   <tr>
     <td> 512 bytes </td>
     <td> N/A </td> <td> N/A </td>
-    <td> 395.6 x 388.96 </td> <td> 26,619 </td>
-    <td> TBD </td> <td> TBD </td>
+    <td> 396.52 x 388.96 </td> <td> 26,557 </td>
+    <td> 527.46 x 527.46 </td> <td> 14,722 </td>
     <td> 680.25 x 690.97 </td> <td> 8,714 </td>
   </tr>
   <tr>
     <td> 1 kbytes </td>
     <td> 386 x 456 </td> <td> 46,541 </td>
-    <td> 788.44 x 394.4 <td> 26,344 </td>
+    <td> 792.58  x 397.12 <td> 26,027 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 1,050 x 1,060 </td> <td> 7,360 </td>
   </tr>
   <tr>
     <td> 2 kbytes </td>
     <td> 659.98 x 398.18  </td> <td> 62,372 </td>
-    <td> 793.5 x 783.36 </td> <td> 26,358 </td>
+    <td> 792.58 x 786.08 </td> <td> 26,297 </td>
     <td> TBD </td> <td> TBD </td>
     <td> 1,439.615 x 1,450.335 </td> <td> 7,847 </td>
   </tr>
