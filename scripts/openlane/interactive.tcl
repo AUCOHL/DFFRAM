@@ -2,8 +2,13 @@
 
 package require openlane
 set script_dir [file dirname [file normalize [info script]]]
-
-prep -design $script_dir
+if {  [info exists ::env(IGNORE_MISMATCHES) ] } {
+    if { ($::env(IGNORE_MISMATCHES) == 1)  } {
+        prep -design $script_dir -ignore_mismatches
+    }
+} else {
+    prep -design $script_dir
+}
 
 set ::env(LIB_SYNTH_COMPLETE_NO_PG) [list]
 foreach lib $::env(LIB_SYNTH_COMPLETE) {
