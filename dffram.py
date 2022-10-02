@@ -389,13 +389,7 @@ def openlane_harden(
         "./scripts/openlane/interactive.tcl", f"{design_ol_dir}/interactive.tcl"
     )
 
-    if pdk == "sky130A":
-        sky130_hd_hack.process_lefs(
-            lef=f"{pdk_lef_dir}/{scl}.lef",
-            output_cells=f"{design_ol_dir}/cells.lef",
-        )
-    else:
-        shutil.copy(f"{pdk_lef_dir}/{scl}.lef", f"{design_ol_dir}/cells.lef")
+    shutil.copy(f"{pdk_lef_dir}/{scl}.lef", f"{design_ol_dir}/cells.lef")
 
     with open(f"{design_ol_dir}/config.tcl", "w") as f:
         f.write(

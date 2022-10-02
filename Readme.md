@@ -139,7 +139,7 @@ The following table compares the areas and bit densities of RAM macros generated
 
 # ⚖️ Copyright and Licensing
 <a id="copyright-and-licensing"></a>
-Copyright ©2020-2021 The American University in Cairo
+Copyright ©2020-2022 The American University in Cairo
 
 Licensed under the Apache License, Version 2.0 (the "Open Source License");
 you may not use this file except in compliance with the Open Source License.

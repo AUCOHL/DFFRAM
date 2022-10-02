@@ -1,5 +1,5 @@
 /*
-    Copyright ©2020-2021 The American University in Cairo
+    Copyright ©2020-2022 The American University in Cairo
 
     This file is part of the DFFRAM Memory Compiler.
     See https://github.com/Cloud-V/DFFRAM for further info.
