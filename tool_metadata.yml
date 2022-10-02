@@ -1,3 +1,3 @@
 - name: openlane
   repo: https://github.com/The-OpenROAD-Project/OpenLane
-  commit: 37faafee20ec76a349fb817d7a75ed26d94be904
+  commit: 725f313041614f401814a4004dc59e58cf7d12f0

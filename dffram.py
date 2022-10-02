@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
-# Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+# Copyright ©2020-2022 The American University in Cairo
 #
 # This file is part of the DFFRAM Memory Compiler.
 # See https://github.com/Cloud-V/DFFRAM for further info.
@@ -33,6 +33,7 @@ import uuid
 import math
 import time
 import shutil
+import fnmatch
 import pathlib
 import traceback
 import subprocess
@@ -134,7 +135,6 @@ def openlane(*args_tuple):
         env["RUN_KLAYOUT"] = "0"
         env["RUN_CVC"] = "0"
         env["PDK_ROOT"] = pdk_root
-        env["MISMATCHES_OK"] = "1"
 
         subprocess.check_call(args, env=env)
     else:
@@ -148,9 +148,7 @@ def prep(local_pdk_root):
     global pdk_klayout_dir, pdk_magic_dir, pdk_openlane_dir
     pdk_root = os.path.abspath(local_pdk_root)
     pdk_path = os.path.join(pdk_root, pdk)
-    if not os.path.exists(os.path.join(pdk_path)):
-        print(f"PDK not found at {pdk_path}, grabbing PDK using volare...")
-        volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
+    volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
 
     pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
     pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
@@ -184,8 +182,8 @@ def cl():
 def synthesis(
     design,
     building_blocks,
-    generics,
-    synth_info,
+    block_deinitions,
+    sta_info,
     widths_supported,
     word_width_bytes,
     out_file,
@@ -204,9 +202,9 @@ def synthesis(
         f.write(
             f"""
             yosys -import
-            set SCL {pdk_liberty_dir}/{synth_info['typical']}
+            set SCL {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
             read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-            read_verilog {generics}
+            read_verilog {block_deinitions}
             read_verilog {building_blocks}
             {chparam}
             hierarchy -check -top {design}
@@ -224,15 +222,13 @@ def synthesis(
     openlane("yosys", f"{build_folder}/synth.tcl")
 
 
-last_def = None
-
 full_width = 0
 full_height = 0
 
 
 def floorplan(
     design,
-    synth_info,
+    sta_info,
     wmargin,
     hmargin,
     width,
@@ -243,7 +239,7 @@ def floorplan(
     min_height_flag,
     site_height,
 ):
-    global full_width, full_height, last_def
+    global full_width, full_height
     print("--- Floorplan ---")
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
@@ -263,7 +259,7 @@ def floorplan(
     with open(f"{build_folder}/fp_init.tcl", "w") as f:
         f.write(
             f"""
-            read_liberty {pdk_liberty_dir}/{synth_info['typical']}
+            read_liberty {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
             read_lef {build_folder}/merged.lef
             read_verilog {in_file}
             link_design {design}
@@ -272,22 +268,21 @@ def floorplan(
                 -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
                 -site unithd
             source {track_file}
-            write_def {out_file}
+            write_db {out_file}
             """
         )
 
     with open(f"{build_folder}/fp_init.sh", "w") as f:
         f.write(
             f"""
-        set -e
+            set -e
 
-        python3 {openlane_scripts_path}/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
-        openroad -exit {build_folder}/fp_init.tcl
-        """
+            python3 {openlane_scripts_path}/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
+            openroad -exit {build_folder}/fp_init.tcl
+            """
         )
 
     openlane("bash", f"{build_folder}/fp_init.sh")
-    last_def = out_file
 
 
 def placeram(
@@ -299,21 +294,14 @@ def placeram(
     density=os.devnull,
     represent=os.devnull,
 ):
-    global last_def
     print("--- placeRAM Script ---")
-    unaltered = out_file + ".ref"
-
     openlane(
         "openroad",
         "-python",
         "-m",
         "placeram",
         "--output",
-        unaltered,
-        "--tech-lef",
-        f"{pdk_tlef_dir}/{scl}__nom.tlef",
-        "--lef",
-        f"{pdk_lef_dir}/{scl}.lef",
+        out_file,
         "--size",
         size,
         "--write-dimensions",
@@ -327,72 +315,45 @@ def placeram(
         in_file,
     )
 
-    unaltered_str = open(unaltered).read()
 
-    altered_str = re.sub(r"\+ PORT", "", unaltered_str)
-
-    with open(out_file, "w") as f:
-        f.write(altered_str)
-
-    last_def = out_file
-
-
-def place_pins(design, synth_info, in_file, out_file, pin_order_file):
-    global last_def
+def place_pins(design, sta_info, in_file, out_file, pin_order_file):
     print("--- Pin Placement ---")
-
-    if os.getenv("OR_PIN_PLACE") == "1":
-        with open(f"{build_folder}/place_pins.tcl", "w") as f:
-            f.write(
-                f"""
-                read_liberty {pdk_liberty_dir}/{synth_info['typical']}
-                read_lef {build_folder}/merged.lef
-                read_def {in_file}
-                place_pins -ver_layers met2 -hor_layers met3
-                write_def {out_file}
-                """
-            )
-
-        openlane("openroad", "-exit", f"{build_folder}/place_pins.tcl")
-    else:
-        openlane(
-            "openroad",
-            "-python",
-            f"{openlane_scripts_path}/odbpy/io_place.py",
-            "--input-lef",
-            f"{build_folder}/merged.lef",
-            "--config",
-            pin_order_file,
-            "--hor-layer",
-            "met3",
-            "--ver-layer",
-            "met2",
-            "--ver-width-mult",
-            "2",
-            "--hor-width-mult",
-            "2",
-            "--hor-extension",
-            "0",
-            "--ver-extension",
-            "0",
-            "--length",
-            "2",
-            "-o",
-            out_file,
-            in_file,
-        )
-
-    last_def = out_file
+    print(in_file)
+    openlane(
+        "openroad",
+        "-python",
+        f"{openlane_scripts_path}/odbpy/io_place.py",
+        "--config",
+        pin_order_file,
+        "--input-lef",
+        f"{build_folder}/merged.lef",
+        "--hor-layer",
+        "met3",
+        "--ver-layer",
+        "met2",
+        "--ver-width-mult",
+        "2",
+        "--hor-width-mult",
+        "2",
+        "--hor-extension",
+        "0",
+        "--ver-extension",
+        "0",
+        "--length",
+        "2",
+        "-o",
+        out_file,
+        in_file,
+    )
 
 
-def verify_placement(design, synth_info, in_file):
+def verify_placement(design, sta_info, in_file):
     print("--- Verify ---")
     with open(f"{build_folder}/verify.tcl", "w") as f:
         f.write(
             f"""
-            read_liberty {pdk_liberty_dir}/{synth_info['typical']}
-            read_lef {build_folder}/merged.lef
-            read_def {in_file}
+            read_db {in_file}
+            read_liberty {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
             if {{[catch check_placement -verbose]}} {{
                 puts "Placement failed: Check placement returned a nonzero value."
                 exit 65
@@ -409,7 +370,7 @@ def openlane_harden(
     final_netlist,
     final_placement,
     products_path,
-    synth_info,
+    sta_info,
     routing_threads,
 ):
     print("--- Hardening With OpenLane ---")
@@ -421,8 +382,8 @@ def openlane_harden(
     shutil.copy(final_netlist, current_netlist)
 
     placement_basename = os.path.basename(final_placement)
-    current_def = f"{design_ol_dir}/{placement_basename}"
-    shutil.copy(final_placement, current_def)
+    current_odb = f"{design_ol_dir}/{placement_basename}"
+    shutil.copy(final_placement, current_odb)
 
     shutil.copy(
         "./scripts/openlane/interactive.tcl", f"{design_ol_dir}/interactive.tcl"
@@ -471,19 +432,20 @@ def openlane_harden(
             set ::env(PRODUCTS_PATH) "{products_path}"
 
             set ::env(INITIAL_NETLIST) "$::env(DESIGN_DIR)/{netlist_basename}"
-            set ::env(INITIAL_DEF) "$::env(DESIGN_DIR)/{placement_basename}"
+            set ::env(INITIAL_ODB) "$::env(DESIGN_DIR)/{placement_basename}"
             set ::env(INITIAL_SDC) "$::env(BASE_SDC_FILE)"
 
             set ::env(LVS_CONNECT_BY_LABEL) "1"
 
-            set ::env(SYNTH_DRIVING_CELL) "{synth_info["sta_driving_cell"]}"
-            set ::env(SYNTH_DRIVING_CELL_PIN) "{synth_info["sta_driving_cell_pin"]}"
+            set ::env(SYNTH_DRIVING_CELL) "{sta_info["driving_cell"]["name"]}"
+            set ::env(SYNTH_DRIVING_CELL_PIN) "{sta_info["driving_cell"]["pin"]}"
             set ::env(IO_PCT) "0.25"
             """
         )
 
     openlane(
         "flow.tcl",
+        "-ignore_mismatches",
         "-design",
         design_ol_dir,
         "-it",
@@ -506,7 +468,7 @@ def openlane_harden(
     "-p",
     "--pdk-root",
     required=False,
-    default="./pdk",
+    default="./pdks",
     help="Optionally override the used PDK root",
 )
 @click.option("-O", "--output-dir", default="./build", help="Output directory.")
@@ -524,9 +486,9 @@ def openlane_harden(
     "-C",
     "--clock-period",
     "default_clock_period",
-    default=3,
+    default=20,
     type=float,
-    help="default clk period for sta",
+    help="Fallback clock period for STA (when unspecified)",
 )
 @click.option("--halo", default=2.5, type=float, help="Halo in microns")
 @click.option(
@@ -584,7 +546,6 @@ def flow(
     using_local_openlane,
 ):
     global build_folder
-    global last_def
     global pdk_family, pdk, pdk_version, scl
     global local_openlane_path
     global openlane_scripts_path
@@ -620,28 +581,27 @@ def flow(
     pdk = pdk or "sky130A"
     scl = scl or "sky130_fd_sc_hd"
     blocks = blocks or "ram"
-    building_blocks = f"{pdk}:{scl}:{blocks}"
-    generics = f"{pdk}:{scl}"
+    platform = f"{pdk}:{scl}"
+    building_blocks = f"{platform}:{blocks}"
 
     process_data_file = os.path.join(".", "platforms", pdk, "process_data.yml")
     process_data = yaml.safe_load(open(process_data_file))
     pdk_family = process_data["volare_pdk_family"]
     pdk_version = process_data["volare_pdk_version"]
 
-    generics_dir = os.path.join(".", "platforms", pdk, scl, "_building_blocks", blocks)
-    bb_dir = os.path.join(".", "models", "_building_blocks", blocks)
+    bb_dir = os.path.join(".", "models", blocks)
     if not os.path.isdir(bb_dir):
-        print("Looking for building blocks in :", bb_dir)
-        print("Building blocks %s not found." % building_blocks)
+        print(f"Generic building blocks {blocks} not found.")
         exit(os.EX_NOINPUT)
 
-    if not os.path.isdir(generics_dir):
-        print("Looking for pdk generics in :", generics_dir)
-        print("Pdk generics %s not found." % generics)
+    pdk_dir = os.path.join(".", "platforms", pdk, scl)
+    if not os.path.isdir(pdk_dir):
+        print(f"Definitions for platform {platform} not found.")
         exit(os.EX_NOINPUT)
+
+    block_definitions_used = os.path.join(pdk_dir, "block_definitions.v")
 
     bb_used = os.path.join(bb_dir, "model.v")
-    generics_used = os.path.join(generics_dir, "pdk_generics.v")
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
 
@@ -679,28 +639,18 @@ def flow(
     )
     build_folder = f"{output_dir}/{size}_{variant or 'DEFAULT'}"
 
-    clock_periods = config["clock_periods"]
-    clock_period = clock_periods.get(f"{words}") or default_clock_period
+    tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
+    tech_info = yaml.safe_load(open(tech_info_path))
 
-    ensure_dir(build_folder)
+    clock_period = default_clock_period
+    block_clock_periods = tech_info["sta"]["clock_periods"].get(blocks)
+    if block_clock_periods is not None:
+        for wildcard, period in block_clock_periods.items():
+            if fnmatch.fnmatch(size, wildcard):
+                clock_period = period
+                break
 
-    def i(ext=""):
-        return f"{build_folder}/{design}{ext}"
-
-    synth_info_path = os.path.join(".", "platforms", pdk, scl, "synth.yml")
-    synth_info = yaml.safe_load(open(synth_info_path))
-
-    site_info_path = os.path.join(".", "platforms", pdk, scl, "site.yml")
-    site_info = None
-    try:
-        site_info = yaml.safe_load(open(site_info_path).read())
-    except FileNotFoundError:
-        if horizontal_halo != 0.0 or vertical_halo != 0.0:
-            print(
-                f"Note: {site_info_path} does not exist. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
-            )
-
-    # Normalize margins in terms of minimum units
+    site_info = tech_info.get("site")  # Normalize margins in terms of minimum units
     if site_info is not None:
         site_width = site_info["width"]
         site_height = site_info["height"]
@@ -708,20 +658,30 @@ def flow(
         wmargin = math.ceil(wmargin / site_width) * site_width
         hmargin = math.ceil(hmargin / site_height) * site_height
     else:
-        pass
+        if horizontal_halo != 0.0 or vertical_halo != 0.0:
+            print(
+                "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
+            )
+
+    sta_info = tech_info.get("sta")
+
+    ensure_dir(build_folder)
+
+    def i(ext=""):
+        return f"{build_folder}/{design}{ext}"
 
     prep(pdk_root)
 
     start = time.time()
 
     netlist = i(".nl.v")
-    initial_floorplan = i(".initfp.def")
-    initial_placement = i(".initp.def")
     dimensions_file = i(".dimensions.txt")
     density_file = i(".density.txt")
-    final_floorplan = i(".fp.def")
-    no_pins_placement = i(".npp.def")
-    final_placement = i(".placed.def")
+    initial_floorplan = i(".initfp.odb")
+    initial_placement = i(".initp.odb")
+    final_floorplan = i(".fp.odb")
+    no_pins_placement = i(".npp.odb")
+    final_placement = i(".placed.odb")
 
     products = f"{build_folder}/products"
 
@@ -734,7 +694,7 @@ def flow(
         min_height_flag = False
         floorplan(
             design,
-            synth_info,
+            sta_info,
             wmargin,
             hmargin,
             in_width,
@@ -758,7 +718,7 @@ def flow(
 
         floorplan(
             design,
-            synth_info,
+            sta_info,
             wmargin,
             hmargin,
             width,
@@ -776,10 +736,8 @@ def flow(
             building_blocks,
             density=density_file,
         )
-        place_pins(
-            design, synth_info, no_pins_placement, final_placement, pin_order_file
-        )
-        verify_placement(design, synth_info, final_placement)
+        place_pins(design, sta_info, no_pins_placement, final_placement, pin_order_file)
+        verify_placement(design, sta_info, final_placement)
 
     steps = [
         (
@@ -787,8 +745,8 @@ def flow(
             lambda: synthesis(
                 design,
                 bb_used,
-                generics_used,
-                synth_info,
+                block_definitions_used,
+                sta_info,
                 config["widths"],
                 word_width_bytes,
                 netlist,
@@ -805,7 +763,7 @@ def flow(
                 netlist,
                 final_placement,
                 products,
-                synth_info,
+                sta_info,
                 routing_threads,
             ),
         ),
@@ -831,14 +789,6 @@ def flow(
                     raise e
         if to == name:
             execute_steps = False
-
-    if last_def is not None:
-        if klayout:
-            env = os.environ.copy()
-            env["LAYOUT"] = last_def
-            env["PDK"] = pdk
-            env["LEF_FILES"] = "merged.lef"
-            subprocess.Popen(["klayout", "-rm", last_def], env=env)
 
     elapsed = time.time() - start
 

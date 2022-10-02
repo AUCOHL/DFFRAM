@@ -1,5 +1,5 @@
 # -*- coding: utf8 -*-
-# Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+# Copyright ©2020-2021 The American University in Cairo
 #
 # This file is part of the DFFRAM Memory Compiler.
 # See https://github.com/Cloud-V/DFFRAM for further info.
@@ -53,9 +53,7 @@ import traceback
 class Placer:
     def __init__(
         self,
-        lef,
-        tech_lef,
-        df,
+        odb_in,
         word_count,
         word_width,
         register_file,
@@ -65,12 +63,12 @@ class Placer:
         # Initialize Database
         self.db = odb.dbDatabase.create()
 
-        # Process LEF Data
-        self.tlef = odb.read_lef(self.db, tech_lef)
-        self.lef = odb.read_lef(self.db, lef)
+        odb.read_db(self.db, odb_in)
 
-        self.sites = self.tlef.getSites()
-        self.cells = self.lef.getMasters()
+        # Technology Setup
+        self.lib = self.db.getLibs()[0]
+        self.sites = self.lib.getSites()
+        self.cells = self.lib.getMasters()
 
         ## Extract the fill cells for later use
         ### We use decap cells to substitute fills wherever possible.
@@ -99,11 +97,8 @@ class Placer:
 
         fill_cell_sizes = list(self.fill_cells_by_sites.keys())
 
-        # Process DEF data
-        self.df = odb.read_def(self.db, df)
-
+        # Layout Setup
         self.block = self.db.getChip().getBlock()
-
         self.instances = self.block.getInsts()
         eprint("Found %i instances…" % len(self.instances))
 
@@ -180,8 +175,8 @@ class Placer:
         eprint("Density: %.2f%%" % (self.density * 100))
         eprint("Done.")
 
-    def write_def(self, output):
-        return odb.write_def(self.block, output) == 1
+    def write_db(self, output):
+        return odb.write_db(self.db, output) == 1
 
     def write_width_height(self, dimensions_file):
         try:
@@ -207,8 +202,6 @@ def check_readable(file):
 
 @click.command()
 @click.option("-o", "--output", required=True)
-@click.option("-l", "--lef", required=True)
-@click.option("-t", "--tech-lef", "tlef", required=True)
 @click.option("-s", "--size", required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option(
     "-r",
@@ -234,34 +227,27 @@ def check_readable(file):
     default="sky130A:sky130_fd_sc_hd:ram",
     help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.",
 )
-@click.argument("def_file", required=True, nargs=1)
+@click.argument("odb_in", required=True, nargs=1)
 def cli(
     output,
-    lef,
-    tlef,
     size,
     represent,
     write_dimensions,
     write_density,
     building_blocks,
-    def_file,
+    odb_in,
 ):
 
-    pdk, _, blocks = building_blocks.split(":")
+    pdk, scl, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):
         eprint("Platform %s not found." % pdk)
         exit(os.EX_NOINPUT)
 
-    bb_dir = os.path.join(".", "models", "_building_blocks", blocks)
-    if not os.path.isdir(bb_dir):
-        eprint("Building blocks %s not found." % building_blocks)
-        exit(os.EX_NOINPUT)
+    blocks_config_file = os.path.join(".", "models", blocks, "config.yml")
+    blocks_config = yaml.safe_load(open(blocks_config_file))
 
-    config_file = os.path.join(bb_dir, "config.yml")
-    config = yaml.safe_load(open(config_file))
-
-    register_file = config.get("register_file") or False
+    register_file = blocks_config.get("register_file") or False
 
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
@@ -278,17 +264,18 @@ def cli(
             "WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected."
         )
 
-    tap_distance = config["tap_distance"]
+    platform_tech_file = os.path.join(".", "platforms", pdk, scl, "tech.yml")
+    platform_tech_config = yaml.safe_load(open(platform_tech_file))
 
-    for input in [lef, tlef, def_file]:
+    tap_distance = platform_tech_config["tap_distance"]
+
+    for input in [odb_in]:
         check_readable(input)
 
     fill_cell_data = yaml.load(open(fill_cells_file).read(), Loader=yaml.SafeLoader)
 
     placer = Placer(
-        lef,
-        tlef,
-        def_file,
+        odb_in,
         words,
         word_length,
         register_file,
@@ -302,8 +289,8 @@ def cli(
 
     placer.place()
 
-    if not placer.write_def(output):
-        eprint("Failed to write output DEF file.")
+    if not placer.write_db(output):
+        eprint("Failed to write output ODB file.")
         exit(os.EX_IOERR)
 
     eprint("Wrote to %s." % output)

@@ -1,0 +1,22 @@
+tap_distance: 15
+site:
+  width: 0.46
+  height: 2.72
+sta:
+  driving_cell:
+    name: sky130_fd_sc_hd__inv_8
+    pin: "Y"
+  libs:
+    typical: sky130_fd_sc_hd__tt_025C_1v80.lib
+    slow: sky130_fd_sc_hd__ss_100C_1v60.lib
+    fast: sky130_fd_sc_hd__ff_n40C_1v95.lib
+  clock_periods:
+    ram:
+      "8x*": 5.21
+      "32x*": 8
+      "128x*": 10.1
+      "256x*": 10.49
+      "512x*": 11.21
+      "1024x*": 12.83
+      "2048x*": 14.1
+    rf: []

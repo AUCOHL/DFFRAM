@@ -1,5 +1,5 @@
 /*
-    Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+    Copyright ©2020-2021 The American University in Cairo
 
     This file is part of the DFFRAM Memory Compiler.
     See https://github.com/Cloud-V/DFFRAM for further info.
@@ -54,7 +54,9 @@ module DEC3x8 (
     sky130_fd_sc_hd__clkbuf_2 ABUF[2:0] (.X(A_buf), .A(A));
     sky130_fd_sc_hd__clkbuf_2 ENBUF (.X(EN_buf), .A(EN));
     
+    (* keep = "true" *)
     sky130_fd_sc_hd__nor4b_2   AND0 ( .Y(SEL[0])  , .A(A_buf[0]), .B(A_buf[1])  , .C(A_buf[2]), .D_N(EN_buf) ); // 000
+
     sky130_fd_sc_hd__and4bb_2   AND1 ( .X(SEL[1])  , .A_N(A_buf[2]), .B_N(A_buf[1]), .C(A_buf[0])  , .D(EN_buf) ); // 001
     sky130_fd_sc_hd__and4bb_2   AND2 ( .X(SEL[2])  , .A_N(A_buf[2]), .B_N(A_buf[0]), .C(A_buf[1])  , .D(EN_buf) ); // 010
     sky130_fd_sc_hd__and4b_2    AND3 ( .X(SEL[3])  , .A_N(A_buf[2]), .B(A_buf[1]), .C(A_buf[0])  , .D(EN_buf) );   // 011
@@ -62,6 +64,22 @@ module DEC3x8 (
     sky130_fd_sc_hd__and4b_2    AND5 ( .X(SEL[5])  , .A_N(A_buf[1]), .B(A_buf[0]), .C(A_buf[2])  , .D(EN_buf) );   // 101
     sky130_fd_sc_hd__and4b_2    AND6 ( .X(SEL[6])  , .A_N(A_buf[0]), .B(A_buf[1]), .C(A_buf[2])  , .D(EN_buf) );   // 110
     sky130_fd_sc_hd__and4_2     AND7 ( .X(SEL[7])  , .A(A_buf[0]), .B(A_buf[1]), .C(A_buf[2])  , .D(EN_buf) ); // 111
+endmodule
+
+module DEC5x32 (
+    input   [4:0]   A,
+    output  [31:0]  SEL
+);
+	wire [3:0]  EN;
+	DEC3x8 D0 ( .A(A[2:0]), .SEL(SEL[7:0]),   .EN(EN[0]) );
+	DEC3x8 D1 ( .A(A[2:0]), .SEL(SEL[15:8]),  .EN(EN[1]) );
+	DEC3x8 D2 ( .A(A[2:0]), .SEL(SEL[23:16]), .EN(EN[2]) );
+	DEC3x8 D3 ( .A(A[2:0]), .SEL(SEL[31:24]), .EN(EN[3]) );
+
+    wire hi;
+    sky130_fd_sc_hd__conb_1 TIE  (.LO(), .HI(hi));
+
+	DEC2x4 D ( .A(A[4:3]), .SEL(EN), .EN(hi) );
 endmodule
 
 module MUX4x1 #(parameter   WIDTH=32)
@@ -337,4 +355,66 @@ module EBUFN_2 (input A, input TE_B, output Z);
 
 sky130_fd_sc_hd__ebufn_2 cell ( .A(A), .TE_B(TE_B), .Z(Z));
 
+endmodule
+
+module RFWORD #(parameter WSIZE=32) 
+(
+    input   wire                CLK,
+    input   wire                WE,
+    input   wire                SEL1, 
+    input   wire                SEL2, 
+    input   wire                SELW,
+    output  wire [WSIZE-1:0]   D1, D2,
+    input   wire [WSIZE-1:0]   DW
+);
+
+    wire [WSIZE-1:0]   q_wire;
+    wire                we_wire;
+    wire [(WSIZE/8)-1:0]          SEL1_B, SEL2_B;
+    wire [(WSIZE/8)-1:0]          GCLK;
+
+    sky130_fd_sc_hd__inv_4 INV1[(WSIZE/8)-1:0] (.Y(SEL1_B), .A(SEL1));
+	sky130_fd_sc_hd__inv_4 INV2[(WSIZE/8)-1:0] (.Y(SEL2_B), .A(SEL2));
+
+    sky130_fd_sc_hd__and2_1 CGAND ( .A(SELW), .B(WE), .X(we_wire) );
+    sky130_fd_sc_hd__dlclkp_1 CG[(WSIZE/8)-1:0] ( .CLK(CLK), .GCLK(GCLK), .GATE(we_wire) );
+
+    generate 
+        genvar i;
+        for(i=0; i<WSIZE; i=i+1) begin : BIT
+            sky130_fd_sc_hd__dfxtp_1 FF ( .D(DW[i]), .Q(q_wire[i]), .CLK(GCLK[i/8]) );
+            sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(q_wire[i]), .Z(D1[i]), .TE_B(SEL1_B[i/8]) );
+			sky130_fd_sc_hd__ebufn_2 OBUF2 ( .A(q_wire[i]), .Z(D2[i]), .TE_B(SEL2_B[i/8]) );
+        end
+		
+    endgenerate 
+endmodule
+
+module RFWORD0 #(parameter WSIZE=32)
+(
+    input   wire                CLK,
+    input   wire                SEL1, 
+    input   wire                SEL2, 
+    input   wire                SELW,
+    output  wire [WSIZE-1:0]   D1, D2
+);
+
+    wire [WSIZE-1:0]           q_wire;
+    wire                        we_wire;
+    wire [(WSIZE/8)-1:0]                  SEL1_B, SEL2_B;
+    wire [(WSIZE/8)-1:0]                  GCLK;
+	wire [7:0]	                lo;
+
+    sky130_fd_sc_hd__inv_4 INV1[(WSIZE/8)-1:0] (.Y(SEL1_B), .A(SEL1));
+	sky130_fd_sc_hd__inv_4 INV2[(WSIZE/8)-1:0] (.Y(SEL2_B), .A(SEL2));
+
+	sky130_fd_sc_hd__conb_1 TIE [7:0] (.LO(lo), .HI());
+
+    generate 
+        genvar i;
+        for(i=0; i<WSIZE; i=i+1) begin : BIT
+            sky130_fd_sc_hd__ebufn_2 OBUF1 ( .A(lo[i/8]), .Z(D1[i]), .TE_B(SEL1_B[i/8]) );
+			sky130_fd_sc_hd__ebufn_2 OBUF2 ( .A(lo[4+i/8]), .Z(D2[i]), .TE_B(SEL2_B[i/8]) );
+        end
+    endgenerate 
 endmodule

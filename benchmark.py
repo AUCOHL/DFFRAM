@@ -2,7 +2,7 @@
 # Adapted from OpenLane by Donn.
 #
 # Copyright 2020 Efabless Corporation
-# Copyright 2021 The American University in Cairo and the Cloud V Project
+# Copyright 2021 The American University in Cairo
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
