@@ -38,8 +38,6 @@ import pathlib
 import traceback
 import subprocess
 
-from scripts.python import sky130_hd_hack
-
 
 def rp(path):
     return os.path.realpath(path)
@@ -434,6 +432,10 @@ def openlane_harden(
             set ::env(SYNTH_DRIVING_CELL) "{sta_info["driving_cell"]["name"]}"
             set ::env(SYNTH_DRIVING_CELL_PIN) "{sta_info["driving_cell"]["pin"]}"
             set ::env(IO_PCT) "0.25"
+
+            set ::env(RCX_RULES) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).nom.calibre"
+            set ::env(RCX_RULES_MIN) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).min.calibre"
+            set ::env(RCX_RULES_MAX) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).max.calibre"
             """
         )
 

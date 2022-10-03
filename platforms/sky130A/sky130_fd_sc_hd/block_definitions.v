@@ -322,38 +322,38 @@ endmodule
 
 module  CLKBUF_2  (input A, output X); 
 
-sky130_fd_sc_hd__clkbuf_2  cell (.A(A), .X(X)); 
+sky130_fd_sc_hd__clkbuf_2  __cell__ (.A(A), .X(X)); 
 
 endmodule
 
 
 module CLKBUF_16 (input A, output X); 
 
-sky130_fd_sc_hd__clkbuf_16 cell (.A(A), .X(X));
+sky130_fd_sc_hd__clkbuf_16 __cell__ (.A(A), .X(X));
 
 endmodule
 
 module DIODE (input DIODE);
 
-sky130_fd_sc_hd__diode_2 cell (.DIODE(DIODE));
+sky130_fd_sc_hd__diode_2 __cell__ (.DIODE(DIODE));
 
 endmodule
 
 module CLKBUF_4 (input A, output X); 
 
-sky130_fd_sc_hd__clkbuf_4 cell (.A(A), .X(X));
+sky130_fd_sc_hd__clkbuf_4 __cell__ (.A(A), .X(X));
 
 endmodule
 
 module CONB (output HI, output LO); 
 
-sky130_fd_sc_hd__conb_1 cell (.HI(), .LO(LO)); 
+sky130_fd_sc_hd__conb_1 __cell__ (.HI(), .LO(LO)); 
 
 endmodule
 
 module EBUFN_2 (input A, input TE_B, output Z); 
 
-sky130_fd_sc_hd__ebufn_2 cell ( .A(A), .TE_B(TE_B), .Z(Z));
+sky130_fd_sc_hd__ebufn_2 __cell__ ( .A(A), .TE_B(TE_B), .Z(Z));
 
 endmodule
 

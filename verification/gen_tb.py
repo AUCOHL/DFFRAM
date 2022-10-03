@@ -68,9 +68,7 @@ if __name__ == "__main__":
     PATTERN = sys.argv[1]
     word_num = int(re.search(r"RAM(\d+)x", PATTERN).group(1))
     addr_width = int(math.log2(word_num))
-    model_filename = os.path.realpath(
-        "../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/ram/model.v"
-    )
+    model_filename = os.path.realpath("../models/ram/model.v")
     if "1RW1R" in PATTERN:
         word_size = int(re.search(r"x(\d+)_", PATTERN).group(1))
         filename = f"tb_RAM{word_num}x{word_size}_1RW1R.v"
