@@ -441,7 +441,6 @@ def openlane_harden(
 
     openlane(
         "flow.tcl",
-        "-ignore_mismatches",
         "-design",
         design_ol_dir,
         "-it",
