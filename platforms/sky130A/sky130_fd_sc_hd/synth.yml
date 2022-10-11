@@ -1,5 +1,0 @@
-typical: sky130_fd_sc_hd__tt_025C_1v80.lib
-slow: sky130_fd_sc_hd__ss_100C_1v60.lib
-fast: sky130_fd_sc_hd__ff_n40C_1v95.lib
-sta_driving_cell: sky130_fd_sc_hd__inv_8
-sta_driving_cell_pin: "Y"

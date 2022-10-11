@@ -31,7 +31,7 @@ Word:
   bytes: \bBYTE\\\[(\d+)\\\]
 Slice:
   clkbuf: \bCLKBUF\b
-  webufs: \bWEBUF\\\[(\d+)\\\].cell
+  webufs: \bWEBUF\\\[(\d+)\\\].__cell__
   words: \bWORD\\\[(\d+)\\\]
   decoders: \bDEC(\d+)\b
 Outreg:
@@ -44,15 +44,15 @@ Block:
   clk_diode: \bDIODE_CLK\b
   clkbuf: \bCLKBUF\b
   decoder_ands: \bDEC(\d+)\.AND(\d+)\b
-  dibufs: \bDIBUF\\\[(\d+)\\\].cell
+  dibufs: \bDIBUF\\\[(\d+)\\\].__cell__
   doregs: \bDo(\d+)_REG\b
-  webufs: \bWEBUF\\\[(\d+)\\\].cell
+  webufs: \bWEBUF\\\[(\d+)\\\].__cell__
   a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
-  abufs: \bA(\d+)BUF\\\[(\d+)\\\].cell
-  enbufs: \bEN(\d+)BUF.cell
+  abufs: \bA(\d+)BUF\\\[(\d+)\\\].__cell__
+  enbufs: \bEN(\d+)BUF.__cell__
   ties: \bTIE(\d+)\\\[(\d+)\\\]
-  fbufenbufs: \bFBUFENBUF(\d+)\\\[(\d+)\\\].cell
-  floatbufs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].cell
+  fbufenbufs: \bFBUFENBUF(\d+)\\\[(\d+)\\\].__cell__
+  floatbufs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].__cell__
 HigherLevelPlaceable:
   block32: \bBLOCK\\\[(\d+)\\\]
   block128: \bBANK128\\\[(\d+)\\\]

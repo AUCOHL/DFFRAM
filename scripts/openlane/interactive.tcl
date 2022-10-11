@@ -2,13 +2,7 @@
 
 package require openlane
 set script_dir [file dirname [file normalize [info script]]]
-if {  [info exists ::env(IGNORE_MISMATCHES) ] } {
-    if { ($::env(IGNORE_MISMATCHES) == 1)  } {
-        prep -design $script_dir -ignore_mismatches
-    }
-} else {
-    prep -design $script_dir
-}
+prep -design $script_dir -ignore_mismatches
 
 set ::env(LIB_SYNTH_COMPLETE_NO_PG) [list]
 foreach lib $::env(LIB_SYNTH_COMPLETE) {
@@ -18,7 +12,7 @@ foreach lib $::env(LIB_SYNTH_COMPLETE) {
     lappend ::env(LIB_SYNTH_COMPLETE_NO_PG) $lib_path
 }
 
-set_def $::env(INITIAL_DEF)
+set_odb $::env(INITIAL_ODB)
 set_netlist $::env(INITIAL_NETLIST)
 set ::env(CURRENT_SDC) $::env(INITIAL_SDC)
 

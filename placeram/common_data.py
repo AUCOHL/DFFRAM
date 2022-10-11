@@ -1,5 +1,5 @@
 # -*- coding: utf8 -*-
-# Copyright ©2020-2021 The American University in Cairo and the Cloud V Project.
+# Copyright ©2020-2022 The American University in Cairo
 #
 # This file is part of the DFFRAM Memory Compiler.
 # See https://github.com/Cloud-V/DFFRAM for further info.
@@ -94,17 +94,12 @@ class Decoder3x8(Placeable):
         ands_placeable = self.and_gates
         buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
 
-        try:
-            for i in range(8):
-                r = row_list[start_row + i]
-
-                r.place(ands_placeable[i])
-                buf = buffers_placeable[i]
-                if buf is not None:
-                    r.place(buf)
-        except Exception as e:
-            print(ands_placeable)
-            raise e
+        for i in range(8):
+            r = row_list[start_row + i]
+            r.place(ands_placeable[i])
+            buf = buffers_placeable[i]
+            if buf is not None:
+                r.place(buf)
 
         return start_row + 8
 

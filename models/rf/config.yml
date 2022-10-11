@@ -1,8 +1,6 @@
 counts: [32]
-widths: [8,16,32,64,128,256]
+widths: [8, 16, 32, 64, 128, 256]
 design_name_template: "DFFRF{variant}"
 register_file: true
-tap_distance: 15
-clock_periods: {}
 variants:
   - 2R1W

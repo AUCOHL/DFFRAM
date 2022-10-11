@@ -1,30 +1,24 @@
 PATTERN = tb_RAM32x32
-RCOUNT = 32
-RWIDTH = 32
 
-INCLUDE_PATHS=../platforms/sky130A/sky130_fd_sc_hd
-RTL_PATH=../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/ram/model.v
-RF_PATH=../platforms/sky130A/sky130_fd_sc_hd/_building_blocks/rf/model.v
+PDK_ROOT ?= ../pdks
+PDK ?= sky130A
+SCL ?= sky130_fd_sc_hd
+export PDK_ROOT
+
+INCLUDE_PATHS=../platforms/${PDK}/${SCL}
+DEFINITIONS_FILE=../platforms/${PDK}/${SCL}/block_definitions.v
 
 IVL_FLAGS= -DFUNCTIONAL $(addprefix -I ,$(INCLUDE_PATHS))
-DFFRF_TB=tb_DFFRF$(RCOUNT)x$(RWIDTH)
 
 .SUFFIXES:
 .PRECIOUS: %.v %.vvp
 all:  ${PATTERN:=.vcd}
 
-tb_dffrf:
-	$(eval RCOUNT=$(shell sh -c "echo "${PATTERN}" | grep -o -P '(?<=tb_DFFRF).*(?=x)'"))
-	$(eval RWIDTH=$(shell sh -c " echo "${PATTERN}" | grep -o -P '(?<=x).*(?=_2R1W)'"))
-	iverilog -o $(DFFRF_TB).vvp -DMODEL_FILEPATH=$(RF_PATH) -DRCOUNT=$(RCOUNT) -DRWIDTH=$(RWIDTH) \
-		$(IVL_FLAGS) dffrf_tb.v
-	vvp $(DFFRF_TB).vvp
-
 %.vcd: %.vvp
 	vvp $<
 
 %.vvp: %.v
-	iverilog -o $@ $(IVL_FLAGS) $< 
+	iverilog -o $@ $(IVL_FLAGS) $(DEFINITIONS_FILE) $< 
 
 # $$ = delayed evaluation
 lint: ${PATTERN}.v

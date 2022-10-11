@@ -44,7 +44,7 @@ If the number of commits is low, rebase and merge, but if it is high (5 commits 
 Squash and merge makes for a cleaner commit history, but will require pretty much everyone to rebase any work they've had off the main branch with a great degree more difficulty.
 
 # Legal
-By submitting a pull request, you (the Contributor) hereby grant The American University in Cairo and the Cloud V Project a world-wide, royalty-free, non-exclusive license under intellectual property rights (other than patent or trademark) licensable by such Contributor to:
+By submitting a pull request, you (the Contributor) hereby grant The American University in Cairo a world-wide, royalty-free, non-exclusive license under intellectual property rights (other than patent or trademark) licensable by such Contributor to:
 
 * use, reproduce, make available, modify, display, perform, distribute, and otherwise exploit its Contributions, either on an unmodified basis, with Modifications, or as part of a Larger Work;
 
