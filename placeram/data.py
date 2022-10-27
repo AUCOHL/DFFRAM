@@ -507,13 +507,15 @@ class HigherLevelPlaceable(LRPlaceable):
 
             partition_cap = int(math.sqrt(len(self.blocks)))
             if symmetrically_placeable():
-                max_rows = []
+                block_start_row = current_row
+                max_row = -1
                 for i in range(len(self.blocks)):
                     if i == partition_cap:
-                        current_row = start_row
+                        current_row = block_start_row
                     current_row = self.blocks[i].place(row_list, current_row)
-                    max_rows.append(current_row)
-                current_row = max(max_rows)
+                    Row.fill_rows(row_list, block_start_row, current_row)
+                    max_row = max(max_row, current_row)
+                current_row = max_row
             else:
                 for block in self.blocks:
                     current_row = block.place(row_list, current_row)

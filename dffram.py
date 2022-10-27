@@ -316,33 +316,47 @@ def placeram(
 
 def place_pins(design, sta_info, in_file, out_file, pin_order_file):
     print("--- Pin Placement ---")
-    print(in_file)
-    openlane(
-        "openroad",
-        "-python",
-        f"{openlane_scripts_path}/odbpy/io_place.py",
-        "--config",
-        pin_order_file,
-        "--input-lef",
-        f"{build_folder}/merged.lef",
-        "--hor-layer",
-        "met3",
-        "--ver-layer",
-        "met2",
-        "--ver-width-mult",
-        "2",
-        "--hor-width-mult",
-        "2",
-        "--hor-extension",
-        "0",
-        "--ver-extension",
-        "0",
-        "--length",
-        "2",
-        "-o",
-        out_file,
-        in_file,
-    )
+    if pin_order_file is not None:
+        openlane(
+            "openroad",
+            "-python",
+            f"{openlane_scripts_path}/odbpy/io_place.py",
+            "--config",
+            pin_order_file,
+            "--input-lef",
+            f"{build_folder}/merged.lef",
+            "--hor-layer",
+            "met3",
+            "--ver-layer",
+            "met2",
+            "--ver-width-mult",
+            "2",
+            "--hor-width-mult",
+            "2",
+            "--hor-extension",
+            "0",
+            "--ver-extension",
+            "0",
+            "--length",
+            "2",
+            "-o",
+            out_file,
+            in_file,
+        )
+    else:
+        with open(f"{build_folder}/place_pins.tcl", "w") as f:
+            f.write(
+                f"""
+                read_liberty {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
+                read_db {in_file}
+                set_pin_length -hor_length 2 -ver_length 2
+                set_pin_thick_multiplier -hor_multiplier 2 -ver_multiplier 2
+                place_pins -ver_layers met2 -hor_layers met3
+                write_db {out_file}
+                """
+            )
+
+        openlane("openroad", "-exit", f"{build_folder}/place_pins.tcl")
 
 
 def verify_placement(design, sta_info, in_file):
@@ -370,6 +384,7 @@ def openlane_harden(
     products_path,
     sta_info,
     routing_threads,
+    diode_strategy,
 ):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
@@ -389,6 +404,10 @@ def openlane_harden(
 
     shutil.copy(f"{pdk_lef_dir}/{scl}.lef", f"{design_ol_dir}/cells.lef")
 
+    dis = 0
+    if diode_strategy == "openlane:3":
+        dis = 3
+
     with open(f"{design_ol_dir}/config.tcl", "w") as f:
         f.write(
             f"""
@@ -398,7 +417,6 @@ def openlane_harden(
             set ::env(CLOCK_PERIOD) "{clock_period}"
 
             set ::env(LEC_ENABLE) "1"
-            set ::env(FP_WELLTAP_CELL) "sky130_fd_sc_hd__tap*"
 
             set ::env(CELL_PAD) "0"
             set ::env(FILL_INSERTION) "0"
@@ -414,7 +432,7 @@ def openlane_harden(
 
             set ::env(DIE_AREA) "0 0 {full_width} {full_height}"
 
-            set ::env(DIODE_INSERTION_STRATEGY) {0}
+            set ::env(DIODE_INSERTION_STRATEGY) {dis}
 
             set ::env(ROUTING_CORES) {routing_threads}
 
@@ -508,13 +526,19 @@ def openlane_harden(
     default=int(os.getenv("ROUTING_CORES") or "1"),
     help="Number of threads to be used in routing",
 )
-
-# Enable/Disable
 @click.option(
-    "--klayout/--no-klayout",
+    "--optimal-pin-placement/--configured-pin-placement",
     default=False,
-    help="Open the last def in Klayout. (Default: False)",
+    help="Use OpenROAD's pin placer for an optimal pin placement for routing or stick to pin_order.cfg",
 )
+@click.option(
+    "-D",
+    "--diode-strategy",
+    default="placeram",
+    type=click.Choice(["placeram", "openlane:3"]),
+    help="How to insert diodes to handle antenna violations: placeram or openlane diode insertion strategy 3",
+)
+# Tool Manipulation
 @click.option(
     "--using-local-openlane",
     default=None,
@@ -535,7 +559,8 @@ def flow(
     vertical_halo,
     variant,
     routing_threads,
-    klayout,
+    diode_strategy,
+    optimal_pin_placement,
     output_dir,
     min_height,
     using_local_openlane,
@@ -600,7 +625,9 @@ def flow(
     config_file = os.path.join(bb_dir, "config.yml")
     config = yaml.safe_load(open(config_file))
 
-    pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
+    pin_order_file = None
+    if not optimal_pin_placement:
+        pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
 
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
@@ -751,7 +778,7 @@ def flow(
         ),
         ("placement", lambda: placement(width, height)),
         (
-            "openlane_harden",
+            "hardening",
             lambda: openlane_harden(
                 design,
                 clock_period,
@@ -760,6 +787,7 @@ def flow(
                 products,
                 sta_info,
                 routing_threads,
+                diode_strategy,
             ),
         ),
     ]

@@ -64,17 +64,20 @@ class Row(object):
             self.place(
                 Row.create_fill("tap_%i_%i" % (self.ordinal, self.tap_counter), 1),
                 ignore_tap=True,
+                fixed=True,
             )
             self.tap_counter += 1
 
-    def place(self, instance: dbInst, ignore_tap: bool = False):
+    def place(self, instance: dbInst, ignore_tap: bool = False, fixed: bool = False):
         width = instance.getMaster().getWidth()
         if not ignore_tap:
             self.tap(width)
 
+        status = "LOCKED" if fixed else "PLACED"
+
         instance.setOrient(self.orientation)
         instance.setLocation(self.x, self.y)
-        instance.setPlacementStatus("PLACED")
+        instance.setPlacementStatus(status)
 
         if re.match(Row.tap_rx, instance.getMaster().getName()):
             self.since_last_tap = 0
@@ -173,5 +176,5 @@ class Row(object):
                 fill_cell = Row.create_fill(
                     "fill_%i_%i" % (row_idx, r.fill_counter), fill
                 )
-                r.place(fill_cell, ignore_tap=True)
+                r.place(fill_cell, ignore_tap=True, fixed=True)
                 r.fill_counter += 1

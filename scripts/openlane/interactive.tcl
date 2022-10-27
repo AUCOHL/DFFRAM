@@ -13,14 +13,34 @@ foreach lib $::env(LIB_SYNTH_COMPLETE) {
 }
 
 set_odb $::env(INITIAL_ODB)
-set_netlist $::env(INITIAL_NETLIST)
+
+set ::env(INITIAL_DEF) [file rootname $::env(CURRENT_ODB)].def
+exec echo { read_db $::env(CURRENT_ODB) write_def $::env(INITIAL_DEF) } | $::env(OPENROAD_BIN) -exit
+
 set ::env(CURRENT_SDC) $::env(INITIAL_SDC)
 
+if { $::env(DIODE_INSERTION_STRATEGY) == 3 } {
+    puts "Removing fill cells..."
+    puts [exec $::env(OPENROAD_BIN) -python ./scripts/openroad/unplace.py\
+        --from-fills-file "./platforms/$::env(PDK)/fill_cells.yml"\
+        --exclude-tap\
+        $::env(CURRENT_ODB)]
+}
+
 run_power_grid_generation
+
 global_routing
+
+if { $::env(DIODE_INSERTION_STRATEGY) == 3 } {
+    # https://github.com/The-OpenROAD-Project/OpenLane/pull/1453
+    set ::env(FILL_INSERTION) {1}
+    ins_fill_cells
+}
+
 detailed_routing
-run_parasitics_sta
+
 run_magic
+run_parasitics_sta
 if {  [info exists ::env(ENABLE_KLAYOUT) ] } {
     if { ($::env(ENABLE_KLAYOUT) == 1)  } {
         run_klayout
