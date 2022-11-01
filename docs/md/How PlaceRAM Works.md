@@ -15,7 +15,7 @@ The instance hierarchy has already been "flattened" by the time it's become a fl
 
 Using regular expressions, the components are filtered into various components using a sieving algorithm, shown as follows:
 
-![A diagram of the sieve algorithm](../img/sieve_algorithm.png)
+![A diagram of the sieve algorithm](../img/sieve_algorithm.drawio.png)
 
 The final hierarchy is returned as a tree-like structure of an abstract class `Placeable`, which also implements the sieve algorithm: to reconstruct the hierarchy, a placeable object would simply have to include this code in its constructor:
 
