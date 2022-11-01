@@ -278,8 +278,11 @@ class LRPlaceable(Placeable):
         place_horizontal_elements: Callable,
     ) -> int:
         # Prologue. Split vertical elements into left and right columns
-        chunks = []
         common = list(filter(lambda x: x, common))
+
+        ## First: Split into "chunks" based on the number of EVEN addresses.
+        ## i.e. for 1RW2R: there are 0, 1, 2, so two even addresses.
+        chunks = []
         chunk_count = math.ceil(addresses / 2)
         per_chunk = math.ceil(len(common) / chunk_count)
 
@@ -288,6 +291,9 @@ class LRPlaceable(Placeable):
             chunks.append(common[i : i + per_chunk])
             i += per_chunk
 
+        ## Second: Iterate over addresses to create "columns"
+        ## Addresses go in the order right, left, right, left, right...
+        ## Chunks are to be distributed: one chunk per "right" column.
         vertical_left = []
         vertical_right = []
         right = True

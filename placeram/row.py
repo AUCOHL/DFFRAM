@@ -22,17 +22,17 @@ import re
 
 
 class Row(object):
-    sw: float = None
-    sh: float = None
+    sw: float
+    sh: float
 
-    tap_rx: str = None
-    tap_distance: float = None
+    tap_rx: str
+    tap_distance: float
 
     # Assumption: A fill of size 1 is always available.
     # If not, there WILL be an out of bounds error.
     # The fill of size 1 is also the tap cell.
-    create_fill: Callable[[str, int], dbInst] = None
-    supported_fill_sizes: List[int] = None
+    create_fill: Callable[[str, int], dbInst]
+    supported_fill_sizes: List[int]
 
     def __init__(self, ordinal, row_obj):
         self.ordinal: int = ordinal
