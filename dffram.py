@@ -400,11 +400,12 @@ def openlane_harden(
             set ::env(LEC_ENABLE) "1"
             set ::env(FP_WELLTAP_CELL) "sky130_fd_sc_hd__tap*"
 
-            set ::env(CELL_PAD) "0"
-            set ::env(FILL_INSERTION) "0"
+            set ::env(GPL_CELL_PADDING) {0}
+            set ::env(DPL_CELL_PADDING) {0}
+
+            set ::env(RUN_FILL_INSERTION) "0"
             set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
             set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
-            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) "0"
             set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
             set ::env(RT_MAX_LAYER) "met4"
