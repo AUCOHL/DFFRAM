@@ -133,8 +133,6 @@ def openlane(*args_tuple):
         env["RUN_KLAYOUT"] = "0"
         env["RUN_CVC"] = "0"
         env["PDK_ROOT"] = pdk_root
-        env["SYNTH_TIELO_PORT"]= "gf180mcu_fd_sc_mcu7t5v0__tiel ZN"
-        env["SYNTH_TIEHI_PORT"]= "gf180mcu_fd_sc_mcu7t5v0__tieh Z"
 
         subprocess.check_call(args, env=env)
     else:
@@ -152,7 +150,7 @@ def prep(local_pdk_root):
 
     pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
     pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
-    pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "liberty")
+    pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "lib")
     pdk_lef_dir = os.path.join(pdk_ref_dir, scl, "lef")
     pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, "techlef")
     pdk_openlane_dir = os.path.join(pdk_tech_dir, "openlane")
@@ -418,6 +416,13 @@ def openlane_harden(
             set ::env(DIODE_INSERTION_STRATEGY) "1" 
             set ::env(FP_PDN_ENABLE_RAILS) "1" 
             set ::env(FP_PDN_CHECK_NODES) "1" 
+            set ::env(GPL_CELL_PADDING) {0}
+            set ::env(DPL_CELL_PADDING) {0}
+
+            set ::env(RUN_FILL_INSERTION) "0"
+            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
+            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
+            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
             set ::env(RT_MAX_LAYER) "Metal4"
             set ::env(GRT_ALLOW_CONGESTION) "1"
