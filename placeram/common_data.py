@@ -81,6 +81,7 @@ class Decoder3x8(Placeable):
                 S(variable="enbuf"),
                 S(variable="and_gates", groups=["gate"]),
                 S(variable="abufs", groups=["address_bit"]),
+                S(variable="invs", groups=["gate"]),
             ],
         )
         self.dicts_to_lists()
@@ -93,11 +94,17 @@ class Decoder3x8(Placeable):
 
         ands_placeable = self.and_gates
         buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
+        invs_placeable = self.invs
 
         for i in range(8):
             r = row_list[start_row + i]
             r.place(ands_placeable[i])
             buf = buffers_placeable[i]
+            if i<4: 
+                inv = invs_placeable[i]
+
+                if inv is not None:
+                    r.place(inv)
             if buf is not None:
                 r.place(buf)
 

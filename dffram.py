@@ -133,6 +133,8 @@ def openlane(*args_tuple):
         env["RUN_KLAYOUT"] = "0"
         env["RUN_CVC"] = "0"
         env["PDK_ROOT"] = pdk_root
+        env["SYNTH_TIELO_PORT"]= "gf180mcu_fd_sc_mcu7t5v0__tiel ZN"
+        env["SYNTH_TIEHI_PORT"]= "gf180mcu_fd_sc_mcu7t5v0__tieh Z"
 
         subprocess.check_call(args, env=env)
     else:
@@ -150,7 +152,7 @@ def prep(local_pdk_root):
 
     pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
     pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
-    pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "lib")
+    pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "liberty")
     pdk_lef_dir = os.path.join(pdk_ref_dir, scl, "lef")
     pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, "techlef")
     pdk_openlane_dir = os.path.join(pdk_tech_dir, "openlane")
@@ -264,8 +266,14 @@ def floorplan(
             initialize_floorplan\\
                 -die_area "0 0 {full_width} {full_height}"\\
                 -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
-                -site unithd
-            source {track_file}
+                -site GF018hv5v_mcu_sc7
+            set tielo_cell gf180mcu_fd_sc_mcu7t5v0__tiel
+            set tielo_port ZN
+            set tiehi_cell gf180mcu_fd_sc_mcu7t5v0__tieh
+            set tiehi_port Z
+            insert_tiecells "$tielo_cell/$tielo_port" -prefix "TIE_ZERO_"
+            insert_tiecells "$tiehi_cell/$tiehi_port" -prefix "TIE_ONE_"
+            source {build_folder}/tracks.tcl
             write_db {out_file}
             """
         )
@@ -326,9 +334,9 @@ def place_pins(design, sta_info, in_file, out_file, pin_order_file):
         "--input-lef",
         f"{build_folder}/merged.lef",
         "--hor-layer",
-        "met3",
+        "Metal3",
         "--ver-layer",
-        "met2",
+        "Metal2",
         "--ver-width-mult",
         "2",
         "--hor-width-mult",
@@ -397,17 +405,21 @@ def openlane_harden(
             set ::env(CLOCK_PORT) "CLK"
             set ::env(CLOCK_PERIOD) "{clock_period}"
 
-            set ::env(LEC_ENABLE) "1"
+            set ::env(LEC_ENABLE) "0"
             set ::env(FP_WELLTAP_CELL) "sky130_fd_sc_hd__tap*"
 
-            set ::env(CELL_PAD) "0"
-            set ::env(FILL_INSERTION) "0"
-            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
-            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
-            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) "0"
-            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
+            set ::env(GPL_CELL_PADDING) {0}
+            set ::env(DPL_CELL_PADDING) {0}
+            set ::env(RUN_FILL_INSERTION) "0"
+            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "1"
+            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "1"
+            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "1"
+            set ::env(CLOCK_TREE_SYNTH) "1"  
+            set ::env(DIODE_INSERTION_STRATEGY) "1" 
+            set ::env(FP_PDN_ENABLE_RAILS) "1" 
+            set ::env(FP_PDN_CHECK_NODES) "1" 
 
-            set ::env(RT_MAX_LAYER) "met4"
+            set ::env(RT_MAX_LAYER) "Metal4"
             set ::env(GRT_ALLOW_CONGESTION) "1"
 
             set ::env(CELLS_LEF) "$::env(DESIGN_DIR)/cells.lef"
@@ -433,9 +445,11 @@ def openlane_harden(
             set ::env(SYNTH_DRIVING_CELL_PIN) "{sta_info["driving_cell"]["pin"]}"
             set ::env(IO_PCT) "0.25"
 
-            set ::env(RCX_RULES) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).nom.calibre"
-            set ::env(RCX_RULES_MIN) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).min.calibre"
-            set ::env(RCX_RULES_MAX) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).max.calibre"
+            set ::env(RCX_RULES) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).nom"
+            set ::env(RCX_RULES_MIN) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).min"
+            set ::env(RCX_RULES_MAX) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).max"
+            set ::env(SYNTH_TIELO_PORT) "gf180mcu_fd_sc_mcu7t5v0__tiel ZN"
+            set ::env(SYNTH_TIEHI_PORT) "gf180mcu_fd_sc_mcu7t5v0__tieh Z"
             """
         )
 

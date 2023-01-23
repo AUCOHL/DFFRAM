@@ -35,7 +35,7 @@ S = Placeable.Sieve
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
         self.sieve(
-            instances, [S(variable="store"), S(variable="obufs", groups=["port"])]
+            instances, [S(variable="store"), S(variable="obufs", groups=["port"]), S(variable="invs", groups=["port"])]
         )
 
         self.dicts_to_lists()
@@ -44,6 +44,9 @@ class Bit(Placeable):
         r = row_list[start_row]
 
         r.place(self.store)
+        if len(self.invs) is not 0:
+            for inv in self.invs:
+                r.place(inv)
         for obuf in self.obufs:
             r.place(obuf)
 
@@ -373,6 +376,7 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 S(variable="a_diodes", groups=["port", "address_bit"]),
                 S(variable="abufs", groups=["port", "address_bit"]),
                 S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="decoder_invs", groups=["port", "bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="fbufenbufs", groups=["port", "bit"]),
                 S(variable="ties", groups=["port", "bit"]),
@@ -380,6 +384,14 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                     variable="floatbufs",
                     groups=["port", "byte", "bit"],
                     group_rx_order=[2, 1, 3],
+                ),
+                 S(
+                    variable="floatbufsinvs",
+                    groups=["port", "byte", "bit"],
+                    group_rx_order=[2, 1, 3],
+                ),
+                 S(
+                    variable="tiezero",
                 ),
             ],
         )
@@ -403,11 +415,15 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 current_row = slice.place(row_list, current_row)
 
             port_count = len(self.ties)
-
+            r = row_list[current_row]
+            r.place(self.tiezero)
             for port in range(port_count):
                 r = row_list[current_row]
                 for tie_group, tie in enumerate(self.ties[port]):
                     r.place(tie)
+                    if len(self.floatbufsinvs) is not 0:
+                        for floatbufinv in self.floatbufsinvs[port][tie_group]:
+                            r.place(floatbufinv)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
 
@@ -427,7 +443,7 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
             start_row=start_row,
             addresses=len(self.abufs),
             common=[self.clk_diode, self.clkbuf, *self.webufs],
-            port_elements=["enbufs", "a_diodes", "abufs", "decoder_ands", "fbufenbufs"],
+            port_elements=["enbufs", "a_diodes", "abufs", "decoder_ands", "decoder_invs", "fbufenbufs"],
             place_horizontal_elements=place_horizontal_elements,
         )
 

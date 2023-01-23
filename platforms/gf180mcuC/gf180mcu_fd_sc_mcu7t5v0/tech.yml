@@ -1,0 +1,22 @@
+tap_distance: 15
+site:
+  width: 0.56
+  height: 3.92
+sta:
+  driving_cell:
+    name: gf180mcu_fd_sc_mcu7t5v0__inv_4
+    pin: "ZN"
+  libs:
+    typical: gf180mcu_fd_sc_mcu7t5v0__tt_025C_5v00.lib
+    slow: gf180mcu_fd_sc_mcu7t5v0__ss_125C_4v50.lib.lib
+    fast: gf180mcu_fd_sc_mcu7t5v0__ff_n40C_5v50.lib
+  clock_periods:
+    ram:
+      "8x*": 5.21
+      "32x*": 8
+      "128x*": 10.1
+      "256x*": 10.49
+      "512x*": 11.21
+      "1024x*": 12.83
+      "2048x*": 14.1
+    rf: {}
