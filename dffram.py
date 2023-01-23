@@ -421,6 +421,7 @@ def openlane_harden(
             set ::env(RUN_FILL_INSERTION) "0"
             set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
             set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
+            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) "0"
             set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
             set ::env(RT_MAX_LAYER) "{metal_layer['rt-max-layer']}"
