@@ -150,7 +150,11 @@ def prep(local_pdk_root):
 
     pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
     pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
+
     pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "lib")
+    if not os.path.exists(pdk_liberty_dir):
+        pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "liberty")
+
     pdk_lef_dir = os.path.join(pdk_ref_dir, scl, "lef")
     pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, "techlef")
     pdk_openlane_dir = os.path.join(pdk_tech_dir, "openlane")
@@ -236,6 +240,11 @@ def floorplan(
     min_height,
     min_height_flag,
     site_height,
+    site_name,
+    tie_lo_cell,
+    tie_lo_port,
+    tie_hi_cell,
+    tie_hi_port,
 ):
     global full_width, full_height
     print("--- Floorplan ---")
@@ -264,11 +273,11 @@ def floorplan(
             initialize_floorplan\\
                 -die_area "0 0 {full_width} {full_height}"\\
                 -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
-                -site GF018hv5v_mcu_sc7
-            set tielo_cell gf180mcu_fd_sc_mcu7t5v0__tiel
-            set tielo_port ZN
-            set tiehi_cell gf180mcu_fd_sc_mcu7t5v0__tieh
-            set tiehi_port Z
+                -site {site_name}
+            set tielo_cell {tie_lo_cell}
+            set tielo_port {tie_lo_port}
+            set tiehi_cell {tie_hi_cell}
+            set tiehi_port {tie_hi_port}
             insert_tiecells "$tielo_cell/$tielo_port" -prefix "TIE_ZERO_"
             insert_tiecells "$tiehi_cell/$tiehi_port" -prefix "TIE_ONE_"
             source {build_folder}/tracks.tcl
@@ -320,7 +329,7 @@ def placeram(
     )
 
 
-def place_pins(design, sta_info, in_file, out_file, pin_order_file):
+def place_pins(design, sta_info, in_file, out_file, pin_order_file, metal_layer):
     print("--- Pin Placement ---")
     print(in_file)
     openlane(
@@ -332,9 +341,9 @@ def place_pins(design, sta_info, in_file, out_file, pin_order_file):
         "--input-lef",
         f"{build_folder}/merged.lef",
         "--hor-layer",
-        "Metal3",
+        f"{metal_layer['hor-layer']}",
         "--ver-layer",
-        "Metal2",
+        f"{metal_layer['ver-layer']}",
         "--ver-width-mult",
         "2",
         "--hor-width-mult",
@@ -376,6 +385,7 @@ def openlane_harden(
     products_path,
     sta_info,
     routing_threads,
+    metal_layer,
 ):
     print("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
@@ -404,34 +414,23 @@ def openlane_harden(
             set ::env(CLOCK_PERIOD) "{clock_period}"
 
             set ::env(LEC_ENABLE) "0"
-            set ::env(FP_WELLTAP_CELL) "sky130_fd_sc_hd__tap*"
+            set ::env(FP_WELLTAP_CELL) "gf180mcu_fd_sc_mcu7t5v0__filltie*"
 
-            set ::env(GPL_CELL_PADDING) {0}
-            set ::env(DPL_CELL_PADDING) {0}
-            set ::env(RUN_FILL_INSERTION) "0"
-            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "1"
-            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "1"
-            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "1"
-            set ::env(CLOCK_TREE_SYNTH) "1"  
-            set ::env(DIODE_INSERTION_STRATEGY) "1" 
-            set ::env(FP_PDN_ENABLE_RAILS) "1" 
-            set ::env(FP_PDN_CHECK_NODES) "1" 
-            set ::env(GPL_CELL_PADDING) {0}
-            set ::env(DPL_CELL_PADDING) {0}
-
+            set ::env(GPL_CELL_PADDING) "0"
+            set ::env(DPL_CELL_PADDING) "0"
             set ::env(RUN_FILL_INSERTION) "0"
             set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
             set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
             set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
 
-            set ::env(RT_MAX_LAYER) "Metal4"
+            set ::env(RT_MAX_LAYER) "{metal_layer['rt-max-layer']}"
             set ::env(GRT_ALLOW_CONGESTION) "1"
 
             set ::env(CELLS_LEF) "$::env(DESIGN_DIR)/cells.lef"
 
             set ::env(DIE_AREA) "0 0 {full_width} {full_height}"
 
-            set ::env(DIODE_INSERTION_STRATEGY) {0}
+            set ::env(DIODE_INSERTION_STRATEGY) "0"
 
             set ::env(ROUTING_CORES) {routing_threads}
 
@@ -450,11 +449,6 @@ def openlane_harden(
             set ::env(SYNTH_DRIVING_CELL_PIN) "{sta_info["driving_cell"]["pin"]}"
             set ::env(IO_PCT) "0.25"
 
-            set ::env(RCX_RULES) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).nom"
-            set ::env(RCX_RULES_MIN) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).min"
-            set ::env(RCX_RULES_MAX) "$::env(PDK_ROOT)/$::env(PDK)/libs.tech/openlane/rules.openrcx.$::env(PDK).max"
-            set ::env(SYNTH_TIELO_PORT) "gf180mcu_fd_sc_mcu7t5v0__tiel ZN"
-            set ::env(SYNTH_TIEHI_PORT) "gf180mcu_fd_sc_mcu7t5v0__tieh Z"
             """
         )
 
@@ -668,6 +662,7 @@ def flow(
     if site_info is not None:
         site_width = site_info["width"]
         site_height = site_info["height"]
+        site_name = site_info["name"]
 
         wmargin = math.ceil(wmargin / site_width) * site_width
         hmargin = math.ceil(hmargin / site_height) * site_height
@@ -678,6 +673,16 @@ def flow(
             )
 
     sta_info = tech_info.get("sta")
+
+    tie_info = tech_info.get("tie")
+
+    if tie_info is not None:
+        tie_lo_cell = tie_info["tie_lo_cell"]
+        tie_lo_port = tie_info["tie_lo_port"]
+        tie_hi_cell = tie_info["tie_hi_cell"]
+        tie_hi_port = tie_info["tie_hi_port"]
+
+    metal_layer = tech_info.get("metal_layers")
 
     ensure_dir(build_folder)
 
@@ -718,6 +723,11 @@ def flow(
             min_height,
             min_height_flag,
             site_height,
+            site_name,
+            tie_lo_cell,
+            tie_lo_port,
+            tie_hi_cell,
+            tie_hi_port,
         )
         placeram(
             initial_floorplan,
@@ -742,6 +752,11 @@ def flow(
             min_height,
             min_height_flag,
             site_height,
+            site_name,
+            tie_lo_cell,
+            tie_lo_port,
+            tie_hi_cell,
+            tie_hi_port,
         )
         placeram(
             final_floorplan,
@@ -750,7 +765,14 @@ def flow(
             building_blocks,
             density=density_file,
         )
-        place_pins(design, sta_info, no_pins_placement, final_placement, pin_order_file)
+        place_pins(
+            design,
+            sta_info,
+            no_pins_placement,
+            final_placement,
+            pin_order_file,
+            metal_layer,
+        )
         verify_placement(design, sta_info, final_placement)
 
     steps = [
@@ -779,6 +801,7 @@ def flow(
                 products,
                 sta_info,
                 routing_threads,
+                metal_layer,
             ),
         ),
     ]
