@@ -37,6 +37,7 @@ Slice:
   webufs: \bWEBUF\\\[(\d+)\\\].__cell__
   words: \bWORD\\\[(\d+)\\\]
   decoders: \bDEC(\d+)\b
+  tiezero: \bTIE_ZERO_zero_\b
 Outreg:
   root_clkbuf: \bRoot_CLKBUF\b
   clkbufs: \bDo_CLKBUF\\\[(\d+)\\\]
@@ -67,12 +68,14 @@ HigherLevelPlaceable:
   clkbuf: \bCLKBUF\b
   enbufs: \bEN(\d+)BUF\b
   decoder_ands: \bDEC(\d+)\.AND(\d+)\b
+  decoder_invs: \bDEC(\d+)\.INV(\d+)\b
   dibufs: \bDIBUF\\\[(\d+)\\\]
   domuxes: \bDo(\d+)MUX\b
   webufs: \bWEBUF\\\[(\d+)\\\]
   abufs: \bA(\d+)BUF\\\[(\d+)\\\]
   di_diodes: \bDIODE_DI\\\[(\d+)\\\]
   a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
+  tiezero: \bTIE_ZERO_zero_\b
 # 2R1W
 RFWord:
   clkgateand: \bCGAND\b
