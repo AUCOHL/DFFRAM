@@ -100,11 +100,8 @@ class Decoder3x8(Placeable):
             r = row_list[start_row + i]
             r.place(ands_placeable[i])
             buf = buffers_placeable[i]
-            if i<4: 
-                inv = invs_placeable[i]
-
-                if inv is not None:
-                    r.place(inv)
+            if i < len(self.invs):
+                r.place(invs_placeable[i])
             if buf is not None:
                 r.place(buf)
 

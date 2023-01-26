@@ -27,6 +27,7 @@ class Row(object):
 
     tap_rx: str = None
     tap_distance: float = None
+    tap_width: int = None
 
     # Assumption: A fill of size 1 is always available.
     # If not, there WILL be an out of bounds error.
@@ -62,7 +63,9 @@ class Row(object):
     def tap(self, width: float = 0):
         if self.since_last_tap + width > Row.tap_distance:
             self.place(
-                Row.create_fill("tap_%i_%i" % (self.ordinal, self.tap_counter), 1),
+                Row.create_fill(
+                    "tap_%i_%i" % (self.ordinal, self.tap_counter), self.tap_width
+                ),
                 ignore_tap=True,
             )
             self.tap_counter += 1
@@ -91,6 +94,7 @@ class Row(object):
         create_fill: Callable[[str, int], dbInst],
         supported_fill_sizes: List[int],
         tap_cell_rx: str,
+        tap_width: int,
     ):
         Row.sw, Row.sh = (regular_site.getWidth(), regular_site.getHeight())
         Row.tap_distance = max_tap_distance
@@ -98,7 +102,7 @@ class Row(object):
         Row.create_fill = create_fill
         Row.supported_fill_sizes = sorted(supported_fill_sizes, reverse=True)
         Row.tap_rx = tap_cell_rx
-
+        Row.tap_width = tap_width
         returnable = []
         for i, row in enumerate(rows):
             returnable.append(Row(i, row))

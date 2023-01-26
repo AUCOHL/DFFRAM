@@ -66,12 +66,7 @@ class Placeable(object):
                 else:
                     access_order = []
                     for ordinal in sieve.groups_rx_order:
-                        try: 
-                        
-                            access_order.append(result.group(ordinal))
-                        except: 
-                            print('HEREEE')
-                            print(ordinal)
+                        access_order.append(result.group(ordinal))
 
                     if sieve.custom_behavior is not None:
                         sieve.custom_behavior(instance, *access_order)
