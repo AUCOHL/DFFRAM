@@ -160,10 +160,10 @@ module RAM16 #( parameter   USE_LATCH=1,
 endmodule
 
 // 2 x RAM16 slices (128 bytes) with registered outout 
-module RAM32_16 #( parameter   USE_LATCH=1,
-                            WSIZE=1 ) 
+module RAM32_16 #( parameter    USE_LATCH=1,
+                                WSIZE=4 ) 
 (
-    input   wire                 CLK,    // FO: 2
+    input   wire                 CLK,     // FO: 2
     input   wire [WSIZE-1:0]     WE0,     // FO: 1
     input                        EN0,     // FO: 1
     input   wire [4:0]           A0,      // FO: 1
@@ -171,14 +171,18 @@ module RAM32_16 #( parameter   USE_LATCH=1,
     output  wire [(WSIZE*8-1):0] Do0
 );
 
-    wire [1:0]           SEL0;
-    wire [4:0]           A0_buf;
-    wire [(WSIZE*8-1):0] Do0_pre;
+    wire                    EN0_buf;
+    wire [1:0]              SEL0;
+    wire [4:0]              A0_buf;
+    wire [(WSIZE-1):0]      WE0_buf;
+    wire [(WSIZE*8-1):0]    Do0_pre[1:0];
     
-    CLKBUF_2   WEBUF[(WSIZE-1):0]  (.X(WE0_buf), .A(WE0));
-    CLKBUF_2   A0BUF[3:0]          (.X(A0_buf),  .A(A0[4:0]));
+    CLKBUF_2   WEBUF[(WSIZE-1):0]   (.X(WE0_buf), .A(WE0));
+    CLKBUF_2   A0BUF[3:0]           (.X(A0_buf),  .A(A0[4:0]));
+    CLKBUF_2   EN0BUF               (.X(EN0_buf), .A(EN0));
 
     //DEC2x4 DEC0 (.EN(EN0_buf), .A(A0_buf[6:5]), .SEL(SEL0));
+
     DEC1x2 DEC0 (.EN(EN0_buf), .A(A0_buf[4]), .SEL(SEL0));
      generate
         genvar i;
