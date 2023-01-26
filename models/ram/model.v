@@ -107,7 +107,7 @@ module RAM16 #( parameter   USE_LATCH=1,
     wire                 EN0_buf;
 
     wire [(WSIZE*8-1):0] Do0_pre;
-    wire [(WSIZE*8-1):0] Di0_buf;
+    //wire [(WSIZE*8-1):0] Di0_buf;
 
     // Buffers
     // Di Buffers
@@ -137,7 +137,7 @@ module RAM16 #( parameter   USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : SLICE
-            RAM8 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (.CLK(CLK_buf), .WE0(WE0_buf),.EN0(SEL0[i]), .Di0(Di0_buf), .Do0(Do0_pre), .A0(A0_buf[2:0]) ); 
+            RAM8 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (.CLK(CLK_buf), .WE0(WE0_buf),.EN0(SEL0[i]), .Di0(Di0), .Do0(Do0_pre), .A0(A0_buf[2:0]) ); 
         end
     endgenerate
 
@@ -150,7 +150,7 @@ module RAM16 #( parameter   USE_LATCH=1,
     // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
     // Provides default values for floating lines (lo)
     generate
-        for (i=0; i< WSIZE; i=i+1) begin : BYTE
+        for (i=0; i< WSIZE; i=i+1) begin : FLOAT_BYTE
             EBUFN_2 FLOATBUF0[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do0_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );        
         end
     endgenerate
@@ -176,6 +176,10 @@ module RAM32_16 #( parameter    USE_LATCH=1,
     wire [4:0]              A0_buf;
     wire [(WSIZE-1):0]      WE0_buf;
     wire [(WSIZE*8-1):0]    Do0_pre[1:0];
+    wire [(WSIZE*8-1):0]    Di0_buf;
+
+    CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf), .A(Di0));
+    
     
     CLKBUF_2   WEBUF[(WSIZE-1):0]   (.X(WE0_buf), .A(WE0));
     CLKBUF_2   A0BUF[3:0]           (.X(A0_buf),  .A(A0[4:0]));
@@ -187,7 +191,7 @@ module RAM32_16 #( parameter    USE_LATCH=1,
      generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : BLOCK
-            RAM16 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM32 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0), .Do0(Do0_pre[i]), .A0(A0_buf[3:0]) );        
+            RAM16 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM16 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[3:0]) );        
         end
      endgenerate
 
