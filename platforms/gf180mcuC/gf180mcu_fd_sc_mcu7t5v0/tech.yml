@@ -1,7 +1,17 @@
-tap_distance: 15
+tap_distance: 20
+metal_layers:
+  hor-layer: Metal3
+  ver-layer: Metal2
+  rt-max-layer: Metal4
 site:
   width: 0.56
   height: 3.92
+  name: GF018hv5v_mcu_sc7
+tie:
+  tie_lo_cell: gf180mcu_fd_sc_mcu7t5v0__tiel
+  tie_lo_port: ZN
+  tie_hi_cell: gf180mcu_fd_sc_mcu7t5v0__tieh
+  tie_hi_port: Z
 sta:
   driving_cell:
     name: gf180mcu_fd_sc_mcu7t5v0__inv_4
