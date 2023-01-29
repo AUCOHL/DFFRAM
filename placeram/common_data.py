@@ -81,6 +81,7 @@ class Decoder3x8(Placeable):
                 S(variable="enbuf"),
                 S(variable="and_gates", groups=["gate"]),
                 S(variable="abufs", groups=["address_bit"]),
+                S(variable="invs", groups=["gate"]),
             ],
         )
         self.dicts_to_lists()
@@ -93,11 +94,14 @@ class Decoder3x8(Placeable):
 
         ands_placeable = self.and_gates
         buffers_placeable = [*self.abufs, self.enbuf, None, None, None, None]
+        invs_placeable = self.invs
 
         for i in range(8):
             r = row_list[start_row + i]
             r.place(ands_placeable[i])
             buf = buffers_placeable[i]
+            if i < len(self.invs):
+                r.place(invs_placeable[i])
             if buf is not None:
                 r.place(buf)
 
@@ -106,7 +110,19 @@ class Decoder3x8(Placeable):
 
 class Decoder2x4(Placeable):
     def __init__(self, instances):
-        self.sieve(instances, [S(variable="and_gates", groups=["address_bit"])])
+        self.sieve(
+            instances,
+            [
+                S(
+                    variable="and_gates",
+                    groups=["address_bit"],
+                ),
+                S(
+                    variable="invs",
+                    groups=["address_bit"],
+                ),
+            ],
+        )
         self.dicts_to_lists()
 
     def place(self, row_list, start_row=0):
@@ -115,6 +131,8 @@ class Decoder2x4(Placeable):
         ):  # range is 4 because 2x4 has 4 AND gates put on on top of each other
             r = row_list[start_row + i]
             r.place(self.and_gates[i])
+            if i < len(self.invs):
+                r.place(self.invs[i])
 
         return start_row + 4
 

@@ -35,7 +35,12 @@ S = Placeable.Sieve
 class Bit(Placeable):
     def __init__(self, instances: List[Instance]):
         self.sieve(
-            instances, [S(variable="store"), S(variable="obufs", groups=["port"])]
+            instances,
+            [
+                S(variable="store"),
+                S(variable="obufs", groups=["port"]),
+                S(variable="invs", groups=["port"]),
+            ],
         )
 
         self.dicts_to_lists()
@@ -44,6 +49,9 @@ class Bit(Placeable):
         r = row_list[start_row]
 
         r.place(self.store)
+        if len(self.invs) != 0:
+            for inv in self.invs:
+                r.place(inv)
         for obuf in self.obufs:
             r.place(obuf)
 
@@ -151,6 +159,7 @@ class Slice(Placeable):  # A slice is defined as 8 words.
                 ),
                 S(variable="clkbuf"),
                 S(variable="webufs", groups=["line"]),
+                S(variable="tiezero"),
             ],
         )
 
@@ -210,6 +219,9 @@ class Slice(Placeable):  # A slice is defined as 8 words.
             r = row_list[start_row + i]
             if last_column[i] is not None:
                 r.place(last_column[i])
+
+        if self.tiezero is not None:
+            r.place(self.tiezero)
 
         if place_clkbuf_alone:
             row_list[start_row].place(self.clkbuf)
@@ -373,6 +385,7 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 S(variable="a_diodes", groups=["port", "address_bit"]),
                 S(variable="abufs", groups=["port", "address_bit"]),
                 S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="decoder_invs", groups=["port", "bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="fbufenbufs", groups=["port", "bit"]),
                 S(variable="ties", groups=["port", "bit"]),
@@ -380,6 +393,14 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                     variable="floatbufs",
                     groups=["port", "byte", "bit"],
                     group_rx_order=[2, 1, 3],
+                ),
+                S(
+                    variable="floatbufsinvs",
+                    groups=["port", "byte", "bit"],
+                    group_rx_order=[2, 1, 3],
+                ),
+                S(
+                    variable="tiezero",
                 ),
             ],
         )
@@ -403,11 +424,18 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 current_row = slice.place(row_list, current_row)
 
             port_count = len(self.ties)
+            r = row_list[current_row]
+
+            if self.tiezero is not None:
+                r.place(self.tiezero)
 
             for port in range(port_count):
                 r = row_list[current_row]
                 for tie_group, tie in enumerate(self.ties[port]):
                     r.place(tie)
+                    if len(self.floatbufsinvs) != 0:
+                        for floatbufinv in self.floatbufsinvs[port][tie_group]:
+                            r.place(floatbufinv)
                     for floatbuf in self.floatbufs[port][tie_group]:
                         r.place(floatbuf)
 
@@ -427,7 +455,14 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
             start_row=start_row,
             addresses=len(self.abufs),
             common=[self.clk_diode, self.clkbuf, *self.webufs],
-            port_elements=["enbufs", "a_diodes", "abufs", "decoder_ands", "fbufenbufs"],
+            port_elements=[
+                "enbufs",
+                "a_diodes",
+                "abufs",
+                "decoder_ands",
+                "decoder_invs",
+                "fbufenbufs",
+            ],
             place_horizontal_elements=place_horizontal_elements,
         )
 
@@ -466,11 +501,13 @@ class HigherLevelPlaceable(LRPlaceable):
                 ),
                 S(variable="clk_diode"),
                 S(variable="clkbuf"),
+                S(variable="tiezero"),
                 S(variable="di_diodes", groups=["bit"]),
                 S(variable="dibufs", groups=["bit"]),
                 S(variable="webufs", groups=["bit"]),
                 S(variable="enbufs", groups=["port"]),
                 S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="decoder_invs", groups=["port", "bit"]),
                 S(variable="abufs", groups=["port", "address_bit"]),
                 S(variable="a_diodes", groups=["port", "address_bit"]),
             ],
@@ -503,6 +540,9 @@ class HigherLevelPlaceable(LRPlaceable):
                     r.place(diode)
                 r.place(dibuf)
 
+            if self.tiezero is not None:
+                r.place(self.tiezero)
+
             current_row += 1
 
             partition_cap = int(math.sqrt(len(self.blocks)))
@@ -531,7 +571,13 @@ class HigherLevelPlaceable(LRPlaceable):
                 *([self.clkbuf, self.clk_diode] if self.clkbuf is not None else []),
                 *self.webufs,
             ],
-            port_elements=["enbufs", "abufs", "a_diodes", "decoder_ands"],
+            port_elements=[
+                "enbufs",
+                "abufs",
+                "a_diodes",
+                "decoder_ands",
+                "decoder_invs",
+            ],
             place_horizontal_elements=place_horizontal_elements,
         )
 
