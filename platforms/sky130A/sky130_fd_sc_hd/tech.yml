@@ -1,7 +1,17 @@
 tap_distance: 15
+metal_layers: 
+  hor-layer: met3
+  ver-layer: met2
+  rt-max-layer: met4
 site:
   width: 0.46
   height: 2.72
+  name: unithd
+tie: 
+  tie_lo_cell: sky130_fd_sc_hd__conb_1
+  tie_lo_port: LO
+  tie_hi_cell: sky130_fd_sc_hd__conb_1
+  tie_hi_port: HI  
 sta:
   driving_cell:
     name: sky130_fd_sc_hd__inv_8

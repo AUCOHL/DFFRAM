@@ -92,8 +92,9 @@ class Placer:
             self.fill_cells_by_sites[site_count] = cell
         for cell in raw_tap_cells:
             match_info = re.match(fill_cell_data["tap"], cell.getName())
-            site_count = int(match_info[1])
+            site_count = cell.getWidth() / self.sites[0].getWidth()
             self.fill_cells_by_sites[site_count] = cell
+            tap_width = site_count
 
         fill_cell_sizes = list(self.fill_cells_by_sites.keys())
 
@@ -116,6 +117,7 @@ class Placer:
             create_fill,
             fill_cell_sizes,
             fill_cell_data["tap"],
+            tap_width,
         )
 
         if register_file:

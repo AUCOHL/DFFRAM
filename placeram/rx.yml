@@ -6,10 +6,12 @@ Mux:
   sel_diodes: \bSEL_DIODE\\\[(\d+)\\\]
 Decoder2x4:
   and_gates: \bAND(\d+)\b
+  invs: \bINV(\d+)\b
 Decoder3x8:
   and_gates: \bAND(\d+)\b
   abufs: \bABUF\\\[(\d+)\\\]
   enbuf: \bENBUF\b
+  invs: \bINV(\d+)\b
 Decoder5x32:
   decoders3x8: \bD(\d+)\b
   decoder2x4: \bD\b
@@ -18,6 +20,7 @@ Decoder5x32:
 Bit:
   store: \bSTORAGE\b
   obufs: \bOBUF(\d+)\b
+  invs: \bSEL(\d+)_BINV\b
 Byte:
   bits: \BIT\\\[(\d+)\\\]
   clockgate: \bCG\b
@@ -25,6 +28,7 @@ Byte:
   clkinv: \bCLKINV\b
   clkdiode: \bDIODE_CLK\b
   selinvs: \bSEL(\d+)INV\b
+  tiezero: \bTIE_ZERO_zero_\b
 Word:
   clkbuf: \bCLKBUF\b
   selbufs: \bSEL(\d+)BUF\b
@@ -34,6 +38,7 @@ Slice:
   webufs: \bWEBUF\\\[(\d+)\\\].__cell__
   words: \bWORD\\\[(\d+)\\\]
   decoders: \bDEC(\d+)\b
+  tiezero: \bTIE_ZERO_zero_\b
 Outreg:
   root_clkbuf: \bRoot_CLKBUF\b
   clkbufs: \bDo_CLKBUF\\\[(\d+)\\\]
@@ -53,6 +58,9 @@ Block:
   ties: \bTIE(\d+)\\\[(\d+)\\\]
   fbufenbufs: \bFBUFENBUF(\d+)\\\[(\d+)\\\].__cell__
   floatbufs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].__cell__
+  floatbufsinvs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].TE_BINV
+  tiezero: \bTIE_ZERO_zero_\b
+  decoder_invs: \bDEC(\d+)\.INV(\d+)\b
 HigherLevelPlaceable:
   block32: \bBLOCK\\\[(\d+)\\\]
   block128: \bBANK128\\\[(\d+)\\\]
@@ -61,12 +69,14 @@ HigherLevelPlaceable:
   clkbuf: \bCLKBUF\b
   enbufs: \bEN(\d+)BUF\b
   decoder_ands: \bDEC(\d+)\.AND(\d+)\b
+  decoder_invs: \bDEC(\d+)\.INV(\d+)\b
   dibufs: \bDIBUF\\\[(\d+)\\\]
   domuxes: \bDo(\d+)MUX\b
   webufs: \bWEBUF\\\[(\d+)\\\]
   abufs: \bA(\d+)BUF\\\[(\d+)\\\]
   di_diodes: \bDIODE_DI\\\[(\d+)\\\]
   a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
+  tiezero: \bTIE_ZERO_zero_\b
 # 2R1W
 RFWord:
   clkgateand: \bCGAND\b
@@ -74,6 +84,7 @@ RFWord:
   invs: \bINV(\d+)\\\[(\d+)\\\]
   ffs: \bBIT\\\[(\d+)\\\]\.FF
   obufs: \bBIT\\\[(\d+)\\\]\.OBUF(\d+)\b
+  selinv: \bBIT\\\[(\d+)\\\]\.SEL(\d+)_BINV\b
 DFFRF:
   words: \bREGF\\\[(\d+)\\\]\.RFW\b
   decoders: \bDEC(\d+)\b
@@ -81,4 +92,8 @@ DFFRF:
   rfw0_invs1: \bRFW0\.INV1\\\[(\d+)\\\]
   rfw0_invs2: \bRFW0\.INV2\\\[(\d+)\\\]
   rfw0_obufs1: \bRFW0\.BIT\\\[(\d+)\\\]\.OBUF1\b
+  rfw0_selinv1: \bRFW0\.BIT\\\[(\d+)\\\]\.SEL1_BINV\b
   rfw0_obufs2: \bRFW0\.BIT\\\[(\d+)\\\]\.OBUF2\b
+  rfw0_selinv2: \bRFW0\.BIT\\\[(\d+)\\\]\.SEL2_BINV\b
+  tiezero: \bTIE_ZERO_zero_\b
+  

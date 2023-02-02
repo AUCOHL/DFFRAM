@@ -64,6 +64,7 @@ class RFWord(Placeable):
                 S(variable="clkgateand"),
                 S(variable="clkgates", groups=["ports"]),
                 S(variable="obufs", groups=["ports", "bit"], group_rx_order=[2, 1]),
+                S(variable="selinv", groups=["ports", "bit"], group_rx_order=[2, 1]),
                 S(variable="invs", groups=["ports", "address_bit"]),
             ],
         )
@@ -109,7 +110,10 @@ class DFFRF(Placeable):  # 32 words
                 S(variable="rfw0_invs1", groups=["byte"]),
                 S(variable="rfw0_invs2", groups=["byte"]),
                 S(variable="rfw0_obufs1", groups=["bit"]),
+                S(variable="rfw0_selinv1", groups=["bit"]),
                 S(variable="rfw0_obufs2", groups=["bit"]),
+                S(variable="rfw0_selinv2", groups=["bit"]),
+                S(variable="tiezero"),
             ],
         )
 
@@ -153,7 +157,13 @@ class DFFRF(Placeable):  # 32 words
             if bit % 4 == 0:
                 row.place(self.rfw0_ties[nibble])
 
+            if bit < len(self.rfw0_selinv1):
+                row.place(self.rfw0_selinv1[bit])
+
             row.place(self.rfw0_obufs1[bit])
+
+            if bit < len(self.rfw0_selinv2):
+                row.place(self.rfw0_selinv2[bit])
             row.place(self.rfw0_obufs2[bit])
 
             current_row += 1
@@ -171,11 +181,17 @@ class DFFRF(Placeable):  # 32 words
                     row0.place(word.clkgateand)
 
                 row0.place(word.ffs[bit])
+
+                for selinv in word.selinv:
+                    row1.place(selinv[bit])
+
                 for obufs in word.obufs:
                     row1.place(obufs[bit])
 
                 current_row += 2
 
+            if self.tiezero is not None:
+                row.place(self.tiezero)
             Row.fill_rows(rows, start_row, current_row)
 
         # D0 placement

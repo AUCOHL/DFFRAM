@@ -1,0 +1,6 @@
+# Non-logical Cells
+decap: gf180mcu_\w+__fillcap_(\d+)
+fill: gf180mcu_\w+__fill_(\d+)
+tap: gf180mcu_\w+__filltie
+antenna: gf180mcu_\w+__antenna
+
