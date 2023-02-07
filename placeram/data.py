@@ -360,7 +360,7 @@ class LRPlaceable(Placeable):
         return max_row
 
 
-class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
+class Slice_16(LRPlaceable):  # A Slice_16 is defined as 2 RAM8 slices (16 words)
     def __init__(self, instances: List[Instance]):
         raw_slices: Dict[int, List[Instance]] = {}
         raw_doregs: Dict[int, List[Instance]] = {}
@@ -386,7 +386,6 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 S(variable="abufs", groups=["port", "address_bit"]),
                 S(variable="decoder_ands", groups=["port", "bit"]),
                 S(variable="decoder_invs", groups=["port", "bit"]),
-                S(variable="dibufs", groups=["bit"]),
                 S(variable="fbufenbufs", groups=["port", "bit"]),
                 S(variable="ties", groups=["port", "bit"]),
                 S(
@@ -398,9 +397,6 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                     variable="floatbufsinvs",
                     groups=["port", "byte", "bit"],
                     group_rx_order=[2, 1, 3],
-                ),
-                S(
-                    variable="tiezero",
                 ),
             ],
         )
@@ -415,9 +411,6 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
             current_row = start_row
             r = row_list[current_row]
 
-            for dibuf in self.dibufs:
-                r.place(dibuf)
-
             current_row += 1
 
             for slice in self.slices:
@@ -425,9 +418,6 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
 
             port_count = len(self.ties)
             r = row_list[current_row]
-
-            if self.tiezero is not None:
-                r.place(self.tiezero)
 
             for port in range(port_count):
                 r = row_list[current_row]
@@ -462,6 +452,91 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
                 "decoder_ands",
                 "decoder_invs",
                 "fbufenbufs",
+            ],
+            place_horizontal_elements=place_horizontal_elements,
+        )
+
+    def word_count(self):
+        return 16
+
+
+class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
+    def __init__(self, instances: List[Instance]):
+        raw_blocks: Dict[int, List[Instance]] = {}
+        raw_domuxes: Dict[int, List[Instance]] = {}
+
+        def process_block(instance, block):
+            raw_blocks[block] = raw_blocks.get(block) or []
+            raw_blocks[block].append(instance)
+
+        def process_raw_domuxes(instance, domux):
+            raw_domuxes[domux] = raw_domuxes.get(domux) or []
+            raw_domuxes[domux].append(instance)
+
+        self.sieve(
+            instances,
+            [
+                S(
+                    variable="slice_16",
+                    groups=["slice_16"],
+                    custom_behavior=process_block,
+                ),
+                S(variable="webufs", groups=["bit"]),
+                S(variable="enbufs", groups=["port"]),
+                S(variable="abufs", groups=["port", "address_bit"]),
+                S(variable="decoder_ands", groups=["port", "bit"]),
+                S(variable="decoder_invs", groups=["port", "bit"]),
+                S(variable="dibufs", groups=["bit"]),
+                S(
+                    variable="domuxes",
+                    groups=["domux"],
+                    custom_behavior=process_raw_domuxes,
+                ),
+                S(
+                    variable="tiezero",
+                ),
+            ],
+        )
+
+        self.dicts_to_lists()
+
+        self.blocks = d2a({k: Slice_16(v) for k, v in raw_blocks.items()})
+        self.domuxes = d2a({k: Mux(v) for k, v in raw_domuxes.items()})
+
+    def place(self, row_list: List[Row], start_row: int = 0):
+        def place_horizontal_elements(start_row: int):
+            current_row = start_row
+            r = row_list[current_row]
+
+            for dibuf in self.dibufs:
+                r.place(dibuf)
+
+            current_row += 1
+            for block in self.blocks:
+                current_row = block.place(row_list, current_row)
+
+            r = row_list[current_row]
+
+            if self.tiezero is not None:
+                r.place(self.tiezero)
+
+            current_row += 1
+
+            for domux in self.domuxes:
+                current_row = domux.place(row_list, current_row)
+
+            return current_row
+
+        return self.lrplace(
+            row_list=row_list,
+            start_row=start_row,
+            addresses=len(self.abufs),
+            common=[*self.webufs],
+            port_elements=[
+                "enbufs",
+                "abufs",
+                "decoder_ands",
+                "decoder_invs",
             ],
             place_horizontal_elements=place_horizontal_elements,
         )

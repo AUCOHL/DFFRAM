@@ -44,12 +44,11 @@ Outreg:
   clkbufs: \bDo_CLKBUF\\\[(\d+)\\\]
   ffs: \bOUTREG_BYTE\\\[(\d+)\\\]\.Do_FF\\\[(\d+)\\\]
   diodes: \bOUTREG_BYTE\\\[(\d+)\\\]\.DIODE\\\[(\d+)\\\]
-Block:
+Slice_16: 
   slices: \SLICE\\\[(\d+)\\\]
   clk_diode: \bDIODE_CLK\b
   clkbuf: \bCLKBUF\b
   decoder_ands: \bDEC(\d+)\.AND(\d+)\b
-  dibufs: \bDIBUF\\\[(\d+)\\\].__cell__
   doregs: \bDo(\d+)_REG\b
   webufs: \bWEBUF\\\[(\d+)\\\].__cell__
   a_diodes: \bDIODE_A(\d+)\\\[(\d+)\\\]
@@ -59,8 +58,18 @@ Block:
   fbufenbufs: \bFBUFENBUF(\d+)\\\[(\d+)\\\].__cell__
   floatbufs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].__cell__
   floatbufsinvs: \bBYTE\\\[(\d+)\\\]\.FLOATBUF(\d+)\\\[(\d+)\\\].TE_BINV
+  decoder_invs: \bDEC(\d+)\.INV(\d+)\b
+Block:
+  slice_16: \SLICE_16\\\[(\d+)\\\]
+  decoder_ands: \bDEC(\d+)\.AND(\d+)\b
+  dibufs: \bDIBUF\\\[(\d+)\\\].__cell__
+  doregs: \bDo(\d+)_REG\b
+  webufs: \bWEBUF\\\[(\d+)\\\].__cell__
+  abufs: \bA(\d+)BUF\\\[(\d+)\\\].__cell__
+  enbufs: \bEN(\d+)BUF.__cell__
   tiezero: \bTIE_ZERO_zero_\b
   decoder_invs: \bDEC(\d+)\.INV(\d+)\b
+  domuxes: \bDo(\d+)MUX\b
 HigherLevelPlaceable:
   block32: \bBLOCK\\\[(\d+)\\\]
   block128: \bBANK128\\\[(\d+)\\\]
