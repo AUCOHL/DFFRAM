@@ -21,7 +21,6 @@ import os
 try:
     import click
     import yaml
-    import volare
 except ImportError:
     print(
         "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
@@ -146,7 +145,6 @@ def prep(local_pdk_root):
     global pdk_klayout_dir, pdk_magic_dir, pdk_openlane_dir
     pdk_root = os.path.abspath(local_pdk_root)
     pdk_path = os.path.join(pdk_root, pdk)
-    volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
 
     pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
     pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
@@ -477,7 +475,7 @@ def openlane_harden(
     "-p",
     "--pdk-root",
     required=False,
-    default="./pdks",
+    default=os.getenv('PDK_ROOT', './pdks'),
     help="Optionally override the used PDK root",
 )
 @click.option("-O", "--output-dir", default="./build", help="Output directory.")
@@ -690,6 +688,9 @@ def flow(
     def i(ext=""):
         return f"{build_folder}/{design}{ext}"
 
+    if not os.getenv('PDK_ROOT'):
+        import volare
+        volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
     prep(pdk_root)
 
     start = time.time()
