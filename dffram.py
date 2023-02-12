@@ -162,6 +162,7 @@ def prep(local_pdk_root):
     pdk_magic_dir = os.path.join(pdk_tech_dir, "magic")
     openlane(
         "openroad",
+        "-exit",
         "-python",
         f"{openlane_scripts_path}/mergeLef.py",
         "-i",
@@ -310,6 +311,7 @@ def placeram(
     print("--- placeRAM Script ---")
     openlane(
         "openroad",
+        "-exit",
         "-python",
         "-m",
         "placeram",
@@ -334,6 +336,7 @@ def place_pins(design, sta_info, in_file, out_file, pin_order_file, metal_layer)
     print(in_file)
     openlane(
         "openroad",
+        "-exit",
         "-python",
         f"{openlane_scripts_path}/odbpy/io_place.py",
         "--config",
