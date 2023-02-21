@@ -14,11 +14,15 @@ foreach lib $::env(LIB_SYNTH_COMPLETE) {
 
 set_odb $::env(INITIAL_ODB)
 set_netlist $::env(INITIAL_NETLIST)
+
 set ::env(CURRENT_SDC) $::env(INITIAL_SDC)
 
 run_power_grid_generation
+
 global_routing
 detailed_routing
+run_antenna_check
+
 run_parasitics_sta
 run_magic
 if {  [info exists ::env(ENABLE_KLAYOUT) ] } {
@@ -36,7 +40,6 @@ if {  [info exists ::env(ENABLE_KLAYOUT) ] } {
         run_klayout_drc
     }
 }
-run_antenna_check
 if {  [info exists ::env(ENABLE_CVC) ] } {
     if { ($::env(ENABLE_CVC) == 1)  } {
         run_lef_cvc

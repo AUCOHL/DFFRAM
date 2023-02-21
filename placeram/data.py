@@ -249,7 +249,6 @@ class Slice(Placeable):  # A slice is defined as 8 words.
 
 class Outreg(Placeable):
     def __init__(self, instances: List[Instance]):
-
         self.sieve(
             instances,
             [
@@ -340,17 +339,24 @@ class LRPlaceable(Placeable):
         # Act 2. Place Horizontal Elements
         current_row = place_horizontal_elements(start_row)
 
-        # Row.fill_rows(row_list, start_row, current_row)
+        Row.fill_rows(row_list, start_row, current_row)
 
         final_rows.append(current_row)
 
         # Act 3. Place Right Vertical Elements
+        max_row = max(*final_rows)
+        row_count = max_row - start_row
+
         for column in vertical_right:
             current_row = start_row
+
+            ## Attempt to spread them out across rows.
+            ## TODO: Look into spreading out the left ones as well?
+            rows_per_element = max(1, math.floor(row_count / len(column)))
             for el in column:
                 r = row_list[current_row]
                 r.place(el)
-                current_row += 1
+                current_row += rows_per_element
 
         final_rows.append(current_row)
 
@@ -411,8 +417,6 @@ class Slice_16(LRPlaceable):  # A Slice_16 is defined as 2 RAM8 slices (16 words
             current_row = start_row
             r = row_list[current_row]
 
-            current_row += 1
-
             for slice in self.slices:
                 current_row = slice.place(row_list, current_row)
 
@@ -448,10 +452,10 @@ class Slice_16(LRPlaceable):  # A Slice_16 is defined as 2 RAM8 slices (16 words
             port_elements=[
                 "enbufs",
                 "a_diodes",
-                "abufs",
                 "decoder_ands",
                 "decoder_invs",
                 "fbufenbufs",
+                "abufs",
             ],
             place_horizontal_elements=place_horizontal_elements,
         )
@@ -515,12 +519,10 @@ class Block(LRPlaceable):  # A block is defined as 4 slices (32 words)
             for block in self.blocks:
                 current_row = block.place(row_list, current_row)
 
-            r = row_list[current_row]
-
             if self.tiezero is not None:
+                r = row_list[current_row]
                 r.place(self.tiezero)
-
-            current_row += 1
+                current_row += 1
 
             for domux in self.domuxes:
                 current_row = domux.place(row_list, current_row)

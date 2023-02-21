@@ -239,7 +239,6 @@ def cli(
     building_blocks,
     odb_in,
 ):
-
     pdk, scl, blocks = building_blocks.split(":")
     fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
     if not os.path.isfile(fill_cells_file):

@@ -70,14 +70,19 @@ class Row(object):
             )
             self.tap_counter += 1
 
-    def place(self, instance: dbInst, ignore_tap: bool = False):
+    def place(
+        self,
+        instance: dbInst,
+        ignore_tap: bool = False,
+        fixed: bool = False,
+    ):
         width = instance.getMaster().getWidth()
         if not ignore_tap:
             self.tap(width)
 
         instance.setOrient(self.orientation)
         instance.setLocation(self.x, self.y)
-        instance.setPlacementStatus("PLACED")
+        instance.setPlacementStatus("PLACED" if not fixed else "LOCKED")
 
         if re.match(Row.tap_rx, instance.getMaster().getName()):
             self.since_last_tap = 0
@@ -136,19 +141,19 @@ class Row(object):
             tracker = 0
 
             since_last_tap = 0
-            if current > 1:
+            if current > Row.tap_width:
                 # Always start with a tap.
-                fills.append(1)
-                current -= 1
+                fills.append(Row.tap_width)
+                current -= Row.tap_width
 
             while current > 0:
                 current_fill = fill_sizes[tracker]
                 current_width = current_fill * Row.sw
                 while current >= current_fill:
                     if since_last_tap + current_width > Row.tap_distance:
-                        fills.append(1)
+                        fills.append(Row.tap_width)
                         since_last_tap = 0
-                        current -= 1
+                        current -= Row.tap_width
                     else:
                         fills.append(current_fill)
                         since_last_tap += current_width
@@ -175,7 +180,8 @@ class Row(object):
             # print(f"{from_index}->{to_index}::{row_idx}: {fills}")
             for fill in fills:
                 fill_cell = Row.create_fill(
-                    "fill_%i_%i" % (row_idx, r.fill_counter), fill
+                    "fill_%i_%i" % (row_idx, r.fill_counter),
+                    fill,
                 )
                 r.place(fill_cell, ignore_tap=True)
                 r.fill_counter += 1

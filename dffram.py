@@ -22,7 +22,9 @@ try:
     import click
     import yaml
     import volare
-except ImportError:
+except ImportError as e:
+    print(e)
+    print("---")
     print(
         "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
     )

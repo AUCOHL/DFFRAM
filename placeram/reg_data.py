@@ -50,7 +50,6 @@ class Bit(Placeable):
 
 class RFWord(Placeable):
     def __init__(self, instances):
-
         self.raw_bits: Dict[int, List[Instance]] = {}
 
         def process_bit(instance, bit):

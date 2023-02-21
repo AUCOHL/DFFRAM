@@ -1,9 +1,9 @@
 # Common
 Mux:
   selbufs: \bSEL(\d+)BUF\\\[(\d+)\\\]
-  muxes: \bM\\\[(\d+)\\\]\.MUX\\\[(\d+)\\\]
-  input_diodes: \bM\\\[(\d+)\\\]\.DIODE_A(\d+)MUX\\\[(\d+)\\\]
   sel_diodes: \bSEL_DIODE\\\[(\d+)\\\]
+  muxes: \bM\\\[(\d+)\\\]\.MUX\\\[(\d+)\\\]
+  mux_input_diodes: \bM\\\[(\d+)\\\]\.DIODE_A(\d+)MUX\\\[(\d+)\\\]
 Decoder2x4:
   and_gates: \bAND(\d+)\b
   invs: \bINV(\d+)\b
@@ -44,7 +44,7 @@ Outreg:
   clkbufs: \bDo_CLKBUF\\\[(\d+)\\\]
   ffs: \bOUTREG_BYTE\\\[(\d+)\\\]\.Do_FF\\\[(\d+)\\\]
   diodes: \bOUTREG_BYTE\\\[(\d+)\\\]\.DIODE\\\[(\d+)\\\]
-Slice_16: 
+Slice_16:
   slices: \SLICE\\\[(\d+)\\\]
   clk_diode: \bDIODE_CLK\b
   clkbuf: \bCLKBUF\b
@@ -105,4 +105,3 @@ DFFRF:
   rfw0_obufs2: \bRFW0\.BIT\\\[(\d+)\\\]\.OBUF2\b
   rfw0_selinv2: \bRFW0\.BIT\\\[(\d+)\\\]\.SEL2_BINV\b
   tiezero: \bTIE_ZERO_zero_\b
-  
