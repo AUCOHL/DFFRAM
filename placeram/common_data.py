@@ -15,7 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from .row import Row
 from .util import d2a
 from .placeable import Placeable
@@ -23,6 +22,7 @@ from .placeable import Placeable
 from odb import dbInst as Instance
 
 from typing import List
+from itertools import zip_longest
 
 P = Placeable
 S = Placeable.Sieve
@@ -37,40 +37,53 @@ class Mux(Placeable):
         self.sieve(
             instances,
             [
-                S(variable="sel_diodes", groups=["line"]),
-                S(variable="selbufs", groups=["byte", "line"], group_rx_order=[2, 1]),
+                S(variable="sel_diodes", groups=["selection_line"]),
+                S(variable="selbufs", groups=["selection_line", "byte"]),
                 S(variable="muxes", groups=["byte", "bit"]),
-                S(variable="input_diodes", groups=["byte", "input", "bit"]),
+                S(
+                    variable="mux_input_diodes",
+                    groups=["byte", "bit", "line"],
+                    group_rx_order=[1, 3, 2],
+                ),
             ],
         )
         self.dicts_to_lists()
 
     def place(self, row_list: List[Row], start_row: int = 0):
         current_row = start_row
-        r = row_list[current_row]
 
-        for line in self.sel_diodes:
-            r.place(line)
+        row = row_list[current_row]
+        diode_row = None
+
+        fill_from = current_row
+        row_increment = 1
+
+        if len(self.sel_diodes) or len(self.mux_input_diodes):
+            row = row_list[current_row + 1]
+            diode_row = row_list[current_row]
+            row_increment = 2
+
+        fill_to = current_row + row_increment
+
+        for diode, line_buffers in zip_longest(self.sel_diodes, self.selbufs):
+            if diode is not None:
+                diode_row.place(diode)
+            for buf in line_buffers:
+                row.place(buf)
+            Row.fill_rows(row_list, fill_from, fill_to)
 
         byte = len(self.muxes)
         for i in range(byte):
-            for selbuf in self.selbufs[i]:
-                r.place(selbuf)
-            for mux in self.muxes[i]:
-                r.place(mux)
+            for mux, line_diodes in zip_longest(
+                self.muxes[i], self.mux_input_diodes[i]
+            ):
+                row.place(mux)
+                if line_diodes is not None:
+                    for diode in line_diodes:
+                        diode_row.place(diode)
+                Row.fill_rows(row_list, fill_from, fill_to)
 
-        current_row += 1
-
-        r = row_list[current_row]
-
-        for i in range(byte):
-            for input in self.input_diodes[i]:
-                for diode in input:
-                    r.place(diode)
-
-        current_row += 1
-
-        return current_row
+        return current_row + row_increment
 
 
 class Decoder3x8(Placeable):

@@ -28,3 +28,4 @@ support/
 *.log
 *.cvcrc
 *.xz
+venv/
