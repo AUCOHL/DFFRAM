@@ -25,7 +25,7 @@ print("Getting the latest tag…")
 
 latest_tag = None
 latest_tag_commit = None
-commits_with_tags = gh.openlane.tags
+commits_with_tags = gh.dffram.tags
 tags = [tag for _, tag in commits_with_tags]
 for tag in commits_with_tags:
     commit, name = tag

@@ -126,14 +126,13 @@ jobs:
         shell: bash
         run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
       - name: Generate Tag
-        if: env.PUSHING == '1'
         run: |
           echo "NEW_TAG=NO_NEW_TAG" >> $GITHUB_ENV
           if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ env.BRANCH_NAME }}" = "main" ]; then
             python3 ./.github/scripts/generate_tag.py
           fi
-      - name: All Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
         with:
           path: ./artifacts
       - name: Create Release
@@ -143,11 +142,16 @@ jobs:
           go install github.com/tcnksm/ghr@latest
           shopt -s nullglob
           for artifact in ./artifacts/*; do
+            echo "Uploading $artifact to release…"
+            gzipped=./$(basename $artifact).tgz
+            tar -czvf $gzipped $artifact
             ghr\
               -owner AUCOHL\
               -repository DFFRAM\
-              -committish HEAD\
+              -commitish main\
+              -token ${{ secrets.GITHUB_TOKEN }}\
               -replace\
               $NEW_TAG\
-              $artifact
+              $gzipped
+            echo "Done with $artifact."
           done
