@@ -83,7 +83,7 @@ jobs:
           pip3 install --upgrade --no-cache-dir -r ./requirements.txt
 
           building_blocks=ram
-          if [ "${{ matrix.variant }}" != "2R1W" ]; then
+          if [ "${{ matrix.variant }}" == "2R1W" ]; then
             building_blocks=rf
           fi
 
