@@ -76,16 +76,16 @@ jobs:
         include:
           - { count: "32", width: "8", variant: "DEFAULT" }
           # - { count: "32", width: "8", variant: "1RW1R" }
-          # - { count: "32", width: "16", variant: "DEFAULT" }
+          - { count: "32", width: "16", variant: "DEFAULT" }
           # - { count: "32", width: "16", variant: "1RW1R" }
-          # - { count: "32", width: "32", variant: "DEFAULT" }
-          # - { count: "32", width: "32", variant: "2R1W" }
+          - { count: "32", width: "32", variant: "DEFAULT" }
           # - { count: "32", width: "32", variant: "1RW1R" } # Timeout
-          # - { count: "256", width: "8", variant: "DEFAULT" }
+          - { count: "32", width: "32", variant: "2R1W" }
+          - { count: "256", width: "8", variant: "DEFAULT" }
           # - { count: "256", width: "8", variant: "1RW1R" }
-          # - { count: "256", width: "16", variant: "DEFAULT" }
+          - { count: "256", width: "16", variant: "DEFAULT" }
           # - { count: "256", width: "16", variant: "1RW1R" } # Timeout
-          # - { count: "256", width: "32", variant: "DEFAULT" }
+          - { count: "256", width: "32", variant: "DEFAULT" }
           #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
@@ -113,7 +113,7 @@ jobs:
   publish:
     name: Publish Release
     if: always()
-    needs: [harden]
+    needs: [harden, verify_models]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
