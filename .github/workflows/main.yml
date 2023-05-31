@@ -6,12 +6,12 @@ on:
 name: CI
 
 jobs:
-  lint:
+  lint_models:
     name: Lint All Models
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
@@ -22,83 +22,132 @@ jobs:
               export PATTERN=tb_RAM$SIZE
               /bin/bash -c "make lint"
           done
+  lint_python:
+    name: Lint Python Code
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+      - name: Lint
+        run: make lint
   verify_models:
-    name: Verify Models
-    runs-on: ubuntu-latest
+    name: Verify (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
+    runs-on: ubuntu-22.04
+    needs: [lint_models]
     strategy:
       matrix:
-        size:
-          [
-            "8x32",
-            "32x32",
-            "128x32",
-            "256x32",
-            "512x32",
-            "1024x32",
-            "2048x32",
-            "8x32_1RW1R",
-            "32x32_1RW1R",
-            "128x32_1RW1R",
-            "256x32_1RW1R",
-            "512x32_1RW1R",
-            "1024x32_1RW1R",
-            "2048x32_1RW1R",
-          ]
+        include:
+          - { count: "8", width: "32", variant: "DEFAULT" }
+          - { count: "32", width: "32", variant: "DEFAULT" }
+          - { count: "128", width: "32", variant: "DEFAULT" }
+          - { count: "256", width: "32", variant: "DEFAULT" }
+          - { count: "512", width: "32", variant: "DEFAULT" }
+          - { count: "1024", width: "32", variant: "DEFAULT" }
+          - { count: "2048", width: "32", variant: "DEFAULT" }
+          - { count: "8", width: "32", variant: "1RW1R" }
+          - { count: "32", width: "32", variant: "1RW1R" }
+          - { count: "128", width: "32", variant: "1RW1R" }
+          - { count: "256", width: "32", variant: "1RW1R" }
+          - { count: "512", width: "32", variant: "1RW1R" }
+          - { count: "1024", width: "32", variant: "1RW1R" }
+          - { count: "2048", width: "32", variant: "1RW1R" }
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
       - name: Run Verification
         run: |
-          export PATTERN=tb_RAM${{ matrix.size }}
+          variant_postfix=
+          if [ "${{ matrix.variant }}" != "DEFAULT" ]; then
+            variant_postfix="_${{ matrix.variant }}"
+          fi
+          export PATTERN=tb_RAM${{ matrix.count }}x${{ matrix.width }}$variant_postfix
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
-  test_flow:
-    name: Test Flow (1RW, 1RW1R)
-    runs-on: ubuntu-latest
+  harden:
+    name: Harden (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
+    runs-on: ubuntu-22.04
+    needs: [lint_models, lint_python]
     strategy:
       fail-fast: false
       matrix:
         include:
-          # - { count: "8", width: "8", variant: "DEFAULT" }
-          # - { count: "8", width: "8", variant: "1RW1R" }
-          # - { count: "8", width: "16", variant: "DEFAULT" }
-          # - { count: "8", width: "16", variant: "1RW1R" }
-          # - { count: "8", width: "32", variant: "DEFAULT" }
-          # - { count: "8", width: "32", variant: "1RW1R" }
           - { count: "32", width: "8", variant: "DEFAULT" }
-          - { count: "32", width: "8", variant: "1RW1R" }
-          - { count: "32", width: "16", variant: "DEFAULT" }
-          - { count: "32", width: "16", variant: "1RW1R" }
-          - { count: "32", width: "32", variant: "DEFAULT" }
+          # - { count: "32", width: "8", variant: "1RW1R" }
+          # - { count: "32", width: "16", variant: "DEFAULT" }
+          # - { count: "32", width: "16", variant: "1RW1R" }
+          # - { count: "32", width: "32", variant: "DEFAULT" }
+          # - { count: "32", width: "32", variant: "2R1W" }
           # - { count: "32", width: "32", variant: "1RW1R" } # Timeout
-          - { count: "256", width: "8", variant: "DEFAULT" }
-          - { count: "256", width: "8", variant: "1RW1R" }
-          - { count: "256", width: "16", variant: "DEFAULT" }
+          # - { count: "256", width: "8", variant: "DEFAULT" }
+          # - { count: "256", width: "8", variant: "1RW1R" }
+          # - { count: "256", width: "16", variant: "DEFAULT" }
           # - { count: "256", width: "16", variant: "1RW1R" } # Timeout
-          - { count: "256", width: "32", variant: "DEFAULT" }
+          # - { count: "256", width: "32", variant: "DEFAULT" }
           #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run
         run: |
           pip3 install --upgrade --no-cache-dir -r ./requirements.txt
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
-  test_flow_rf:
-    name: Test Flow (2R1W)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - { count: "32", width: "32", variant: "2R1W" }
+
+          building_blocks=ram
+          if [ "${{ matrix.variant }}" == "2R1W" ]; then
+            building_blocks=rf
+          fi
+
+          ./dffram.py\
+            -s ${{ matrix.count }}x${{ matrix.width }}\
+            -b sky130A:sky130_fd_sc_hd:$building_blocks\
+            -v ${{ matrix.variant }}
+
+          echo "PRODUCTS_PATH=$(cat ./products_path)" >> $GITHUB_ENV
+      - name: Upload Final Views
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
+          path: ${{ env.PRODUCTS_PATH }}
+  publish:
+    name: Publish Release
+    if: always()
+    needs: [harden]
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Export Repo URL
+        shell: bash
+        run: echo "REPO_URL=https://github.com/${{ github.repository }}.git" >> $GITHUB_ENV
+      - name: Export Branch Name
+        shell: bash
+        run: echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+      - name: Generate Tag
+        if: env.PUSHING == '1'
         run: |
-          pip3 install --upgrade --no-cache-dir -r ./requirements.txt
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}
+          echo "NEW_TAG=NO_NEW_TAG" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ env.BRANCH_NAME }}" = "main" ]; then
+            python3 ./.github/scripts/generate_tag.py
+          fi
+      - name: All Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          path: ./artifacts
+      - name: Create Release
+        if: env.NEW_TAG != 'NO_NEW_TAG'
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          go install github.com/tcnksm/ghr@latest
+          shopt -s nullglob
+          for artifact in ./artifacts/*; do
+            ghr\
+              -owner AUCOHL\
+              -repository DFFRAM\
+              -committish HEAD\
+              -replace\
+              $NEW_TAG\
+              $artifact
+          done
