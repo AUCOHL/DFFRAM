@@ -52,6 +52,9 @@ The generated layouts by the DFFRAM compilers for RAM32 as well as its building 
 
 
 Currently, the can compiler generate the layout of the following configurations:
+
+> 1RW1R variants are temporarily disabled due to a bug.
+
 - RAM
   - 32 words with byte write enable (1RW and 1RW1R).
   - 128 words with byte write enable (1RW and 1RW1R).

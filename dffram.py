@@ -17,19 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-
-try:
-    import click
-    import yaml
-    import volare
-except ImportError as e:
-    print(e)
-    print("---")
-    print(
-        "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
-    )
-    exit(os.EX_CONFIG)
-
+import sys
 import re
 import uuid
 import math
@@ -40,6 +28,21 @@ import pathlib
 import traceback
 import subprocess
 
+def eprint(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
+
+try:
+    import click
+    import yaml
+    import volare
+except ImportError as e:
+    eprint(e)
+    eprint("---")
+    eprint(
+        "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
+    )
+    exit(os.EX_CONFIG)
+
 
 def rp(path):
     return os.path.realpath(path)
@@ -47,7 +50,6 @@ def rp(path):
 
 def ensure_dir(path):
     return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-
 
 # --
 build_folder = ""
@@ -112,7 +114,7 @@ def run_docker(image, args):
         + args
     )
     command_list.append(cmd)
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, stdout=sys.stderr, stderr=subprocess.STDOUT)
     running_docker_ids.remove(container_id)
 
 
@@ -136,7 +138,7 @@ def openlane(*args_tuple):
         env["RUN_CVC"] = "0"
         env["PDK_ROOT"] = pdk_root
 
-        subprocess.check_call(args, env=env)
+        subprocess.check_call(args, env=env, stdout=sys.stderr, stderr=subprocess.STDOUT)
     else:
         run_docker(openlane_image, args)
 
@@ -195,7 +197,7 @@ def synthesis(
     word_width,
     blocks,
 ):
-    print("--- Synthesis ---")
+    eprint("--- Synthesis ---")
     chparam = ""
     if len(widths_supported) > 1:
         if blocks == "rf":
@@ -203,7 +205,6 @@ def synthesis(
         else:
             chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
     with open(f"{build_folder}/synth.tcl", "w") as f:
-        print(design)
         f.write(
             f"""
             yosys -import
@@ -250,7 +251,7 @@ def floorplan(
     tie_hi_port,
 ):
     global full_width, full_height
-    print("--- Floorplan ---")
+    eprint("--- Floorplan ---")
     full_width = width + (wmargin * 2)
     full_height = height + (hmargin * 2)
 
@@ -310,7 +311,7 @@ def placeram(
     density=os.devnull,
     represent=os.devnull,
 ):
-    print("--- placeRAM Script ---")
+    eprint("--- placeRAM Script ---")
     openlane(
         "openroad",
         "-exit",
@@ -334,8 +335,7 @@ def placeram(
 
 
 def place_pins(design, sta_info, in_file, out_file, pin_order_file, metal_layer):
-    print("--- Pin Placement ---")
-    print(in_file)
+    eprint("--- Pin Placement ---")
     openlane(
         "openroad",
         "-exit",
@@ -366,7 +366,7 @@ def place_pins(design, sta_info, in_file, out_file, pin_order_file, metal_layer)
 
 
 def verify_placement(design, sta_info, in_file):
-    print("--- Verify ---")
+    eprint("--- Verify ---")
     with open(f"{build_folder}/verify.tcl", "w") as f:
         f.write(
             f"""
@@ -392,7 +392,7 @@ def openlane_harden(
     routing_threads,
     metal_layer,
 ):
-    print("--- Hardening With OpenLane ---")
+    eprint("--- Hardening With OpenLane ---")
     design_ol_dir = f"{build_folder}/openlane"
     ensure_dir(design_ol_dir)
 
@@ -580,13 +580,13 @@ def flow(
         if not os.getenv("NO_CHECK_INSTALL") == "1":
             install_path = os.path.join(local_openlane_path, "install")
             if not os.path.isdir(install_path):
-                print(f"Error: OpenLane installation not found at {install_path}.")
+                eprint(f"Error: OpenLane installation not found at {install_path}.")
                 exit(os.EX_CONFIG)
 
             venv_lib = f"{local_openlane_path}/install/venv/lib"
             venv_lib_vers = os.listdir(venv_lib)
             if len(venv_lib_vers) < 1:
-                print("Installation venv contains no packages.")
+                eprint("Installation venv contains no packages.")
                 exit(os.EX_CONFIG)
 
             venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
@@ -605,12 +605,12 @@ def flow(
 
     bb_dir = os.path.join(".", "models", blocks)
     if not os.path.isdir(bb_dir):
-        print(f"Generic building blocks {blocks} not found.")
+        eprint(f"Generic building blocks {blocks} not found.")
         exit(os.EX_NOINPUT)
 
     pdk_dir = os.path.join(".", "platforms", pdk, scl)
     if not os.path.isdir(pdk_dir):
-        print(f"Definitions for platform {platform} not found.")
+        eprint(f"Definitions for platform {platform} not found.")
         exit(os.EX_NOINPUT)
 
     block_definitions_used = os.path.join(pdk_dir, "block_definitions.v")
@@ -623,7 +623,7 @@ def flow(
 
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
-        print("Invalid RAM size '%s'." % size)
+        eprint("Invalid RAM size '%s'." % size)
         exit(os.EX_USAGE)
 
     words = int(m[1])
@@ -632,11 +632,11 @@ def flow(
 
     if os.getenv("FORCE_ACCEPT_SIZE") is None:
         if words not in config["counts"] or word_width not in config["widths"]:
-            print("Size %s not supported by %s." % (size, building_blocks))
+            eprint("Size %s not supported by %s." % (size, building_blocks))
             exit(os.EX_USAGE)
 
         if variant not in config["variants"]:
-            print("Variant %s is unsupported by %s." % (variant, building_blocks))
+            eprint("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
 
     wmargin, hmargin = (horizontal_halo, vertical_halo)  # Microns
@@ -674,7 +674,7 @@ def flow(
         hmargin = math.ceil(hmargin / site_height) * site_height
     else:
         if horizontal_halo != 0.0 or vertical_halo != 0.0:
-            print(
+            eprint(
                 "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
             )
 
@@ -825,30 +825,33 @@ def flow(
                 try:
                     action()
                 except KeyboardInterrupt as e:
-                    print("\n\nStopping on keyboard interrupt...")
-                    print("Killing docker containers...")
+                    eprint("\n\nStopping on keyboard interrupt...")
+                    eprint("Killing docker containers...")
                     for id in running_docker_ids:
-                        subprocess.call(["docker", "kill", id])
+                        subprocess.call(["docker", "kill", id], stdout=os.devnull)
                     raise e
         if to == name:
             execute_steps = False
 
     elapsed = time.time() - start
 
-    print("Done in %.2fs." % elapsed)
+    eprint("Done in %.2fs." % elapsed)
     cl()
+
+    with open("./product_path", "w") as f:
+        f.write(products)
 
 
 def main():
     try:
         flow()
     except subprocess.CalledProcessError as e:
-        print("A step has failed:", e)
-        print(f"Quick invoke: {' '.join(e.cmd)}")
+        eprint("A step has failed:", e)
+        eprint(f"Quick invoke: {' '.join(e.cmd)}")
         cl()
         exit(os.EX_UNAVAILABLE)
     except Exception:
-        print("An unhandled exception has occurred.", traceback.format_exc())
+        eprint("An unhandled exception has occurred.", traceback.format_exc())
         cl()
         exit(os.EX_UNAVAILABLE)
 

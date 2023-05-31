@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
@@ -46,7 +46,7 @@ jobs:
           ]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
@@ -55,50 +55,46 @@ jobs:
           export PATTERN=tb_RAM${{ matrix.size }}
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
-  test_flow:
-    name: Test Flow (1RW, 1RW1R)
+  harden:
+    name: ${{ matrix.count }}x${{ matrix.width }} (${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          # - { count: "8", width: "8", variant: "DEFAULT" }
-          # - { count: "8", width: "8", variant: "1RW1R" }
-          # - { count: "8", width: "16", variant: "DEFAULT" }
-          # - { count: "8", width: "16", variant: "1RW1R" }
-          # - { count: "8", width: "32", variant: "DEFAULT" }
-          # - { count: "8", width: "32", variant: "1RW1R" }
           - { count: "32", width: "8", variant: "DEFAULT" }
-          - { count: "32", width: "8", variant: "1RW1R" }
+          # - { count: "32", width: "8", variant: "1RW1R" }
           - { count: "32", width: "16", variant: "DEFAULT" }
-          - { count: "32", width: "16", variant: "1RW1R" }
+          # - { count: "32", width: "16", variant: "1RW1R" }
           - { count: "32", width: "32", variant: "DEFAULT" }
+          - { count: "32", width: "32", variant: "2R1W" }
           # - { count: "32", width: "32", variant: "1RW1R" } # Timeout
           - { count: "256", width: "8", variant: "DEFAULT" }
-          - { count: "256", width: "8", variant: "1RW1R" }
+          # - { count: "256", width: "8", variant: "1RW1R" }
           - { count: "256", width: "16", variant: "DEFAULT" }
           # - { count: "256", width: "16", variant: "1RW1R" } # Timeout
           - { count: "256", width: "32", variant: "DEFAULT" }
           #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Run
         run: |
           pip3 install --upgrade --no-cache-dir -r ./requirements.txt
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:ram -v ${{ matrix.variant }}
-  test_flow_rf:
-    name: Test Flow (2R1W)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - { count: "32", width: "32", variant: "2R1W" }
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run
-        run: |
-          pip3 install --upgrade --no-cache-dir -r ./requirements.txt
-          ./dffram.py -s ${{ matrix.count }}x${{ matrix.width }} -b sky130A:sky130_fd_sc_hd:rf -v ${{ matrix.variant }}
+
+          building_blocks=ram
+          if [ "${{ matrix.variant }}" != "2R1W" ]; then
+            building_blocks=rf
+          fi
+
+          ./dffram.py\
+            -s ${{ matrix.count }}x${{ matrix.width }}\
+            -b sky130A:sky130_fd_sc_hd:$building_blocks\
+            -v ${{ matrix.variant }}
+
+          echo "PRODUCTS_PATH=$(cat ./products_path)" >> $GITHUB_ENV
+      - name: Upload Final Views
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.count }}x${{ matrix.width }}-${{ matrix.variant }}
+          path: ${{ env.PRODUCTS_PATH }}
