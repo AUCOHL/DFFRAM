@@ -23,27 +23,25 @@ jobs:
               /bin/bash -c "make lint"
           done
   verify_models:
-    name: Verify Models
+    name: Verify (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        size:
-          [
-            "8x32",
-            "32x32",
-            "128x32",
-            "256x32",
-            "512x32",
-            "1024x32",
-            "2048x32",
-            "8x32_1RW1R",
-            "32x32_1RW1R",
-            "128x32_1RW1R",
-            "256x32_1RW1R",
-            "512x32_1RW1R",
-            "1024x32_1RW1R",
-            "2048x32_1RW1R",
-          ]
+        include:
+          - { count: "8", width: "32", variant: "DEFAULT" }
+          - { count: "32", width: "32", variant: "DEFAULT" }
+          - { count: "128", width: "32", variant: "DEFAULT" }
+          - { count: "256", width: "32", variant: "DEFAULT" }
+          - { count: "512", width: "32", variant: "DEFAULT" }
+          - { count: "1024", width: "32", variant: "DEFAULT" }
+          - { count: "2048", width: "32", variant: "DEFAULT" }
+          - { count: "8", width: "32", variant: "1RW1R" }
+          - { count: "32", width: "32", variant: "1RW1R" }
+          - { count: "128", width: "32", variant: "1RW1R" }
+          - { count: "256", width: "32", variant: "1RW1R" }
+          - { count: "512", width: "32", variant: "1RW1R" }
+          - { count: "1024", width: "32", variant: "1RW1R" }
+          - { count: "2048", width: "32", variant: "1RW1R" }
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -52,11 +50,15 @@ jobs:
           sudo apt-get install -y iverilog
       - name: Run Verification
         run: |
-          export PATTERN=tb_RAM${{ matrix.size }}
+          variant_postfix=
+          if [ "${{ matrix.variant }}" != "DEFAULT" ]; then
+            variant_postfix="_${{ matrix.variant }}"
+          fi
+          export PATTERN=tb_RAM${{ matrix.count }}x${{ matrix.width }}$variant_postfix
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
   harden:
-    name: ${{ matrix.count }}x${{ matrix.width }} (${{ matrix.variant }})
+    name: Harden (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

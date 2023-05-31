@@ -838,7 +838,7 @@ def flow(
     eprint("Done in %.2fs." % elapsed)
     cl()
 
-    with open("./product_path", "w") as f:
+    with open("./products_path", "w") as f:
         f.write(products)
 
 
