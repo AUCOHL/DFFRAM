@@ -28,8 +28,10 @@ import pathlib
 import traceback
 import subprocess
 
+
 def eprint(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
+
 
 try:
     import click
@@ -50,6 +52,7 @@ def rp(path):
 
 def ensure_dir(path):
     return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+
 
 # --
 build_folder = ""
@@ -138,7 +141,9 @@ def openlane(*args_tuple):
         env["RUN_CVC"] = "0"
         env["PDK_ROOT"] = pdk_root
 
-        subprocess.check_call(args, env=env, stdout=sys.stderr, stderr=subprocess.STDOUT)
+        subprocess.check_call(
+            args, env=env, stdout=sys.stderr, stderr=subprocess.STDOUT
+        )
     else:
         run_docker(openlane_image, args)
 

@@ -6,7 +6,7 @@ on:
 name: CI
 
 jobs:
-  lint:
+  lint_models:
     name: Lint All Models
     runs-on: ubuntu-latest
     steps:
@@ -22,9 +22,18 @@ jobs:
               export PATTERN=tb_RAM$SIZE
               /bin/bash -c "make lint"
           done
+  lint_python:
+    name: Lint Python Code
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+      - name: Lint
+        run: make lint
   verify_models:
     name: Verify (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
     runs-on: ubuntu-latest
+    needs: [lint_models]
     strategy:
       matrix:
         include:
@@ -60,6 +69,7 @@ jobs:
   harden:
     name: Harden (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
     runs-on: ubuntu-latest
+    needs: [lint_models, lint_python]
     strategy:
       fail-fast: false
       matrix:
@@ -98,5 +108,5 @@ jobs:
       - name: Upload Final Views
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.count }}x${{ matrix.width }}-${{ matrix.variant }}
+          name: ${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
           path: ${{ env.PRODUCTS_PATH }}
