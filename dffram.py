@@ -194,7 +194,7 @@ def cl():
 def synthesis(
     design,
     building_blocks,
-    block_deinitions,
+    block_definitions,
     sta_info,
     widths_supported,
     word_width_bytes,
@@ -215,7 +215,7 @@ def synthesis(
             yosys -import
             set SCL {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
             read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-            read_verilog {block_deinitions}
+            read_verilog {block_definitions}
             read_verilog {building_blocks}
             {chparam}
             hierarchy -check -top {design}
