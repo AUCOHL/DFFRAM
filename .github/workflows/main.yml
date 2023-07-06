@@ -81,6 +81,7 @@ jobs:
           - { count: "32", width: "32", variant: "DEFAULT" }
           # - { count: "32", width: "32", variant: "1RW1R" } # Timeout
           - { count: "32", width: "32", variant: "2R1W" }
+          - { count: "128", width: "32", variant: "DEFAULT" }
           - { count: "256", width: "8", variant: "DEFAULT" }
           # - { count: "256", width: "8", variant: "1RW1R" }
           - { count: "256", width: "16", variant: "DEFAULT" }

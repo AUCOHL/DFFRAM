@@ -29,3 +29,4 @@ support/
 *.cvcrc
 *.xz
 venv/
+/products_path
