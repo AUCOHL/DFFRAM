@@ -244,6 +244,9 @@ def main(
     flow_name,
     **kwargs,
 ):
+    if variant == "DEFAULT":
+        variant = None
+
     scl = scl or "sky130_fd_sc_hd"
     platform = f"{pdk}:{scl}"
 
