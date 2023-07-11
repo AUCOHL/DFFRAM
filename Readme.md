@@ -11,17 +11,11 @@
 
 Standard Cell Library based Memory Compiler using DFF/Latch cells.
 
-# ✨ Quick Usage
-You can try the [Google Colaboratory](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb), but also...
+# ✨ Installation & Usage
+See [this document](./docs/Usage.md). 
 
-[Get **Docker**](https://docs.docker.com/get-docker/), set it up nicely, then, in your terminal:
-
-```sh
-pip3 install --user --no-cache-dir --upgrade ./requirements.txt
-./dffram.py -s 32x32
-```
-
-If all goes well, you've placed your first register file!
+You can try the [Google Colaboratory](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb),
+but it is a bit out-of-date at this point.
 
 # Overview
 The objective of this project is to develop a DFF/Latch-based RAM, Register File and Cache custom compilation flow that utilizes standard cell libraries following a standard ASIC (Application Specific Integrated Circuit) implementation approach. Different views (HDL netlist, HDL functional models, LEF, GDS, Timing, …) are all generated for a given size configuration.
@@ -142,7 +136,8 @@ The following table compares the areas and bit densities of RAM macros generated
 
 # ⚖️ Copyright and Licensing
 <a id="copyright-and-licensing"></a>
-Copyright ©2020-2022 The American University in Cairo
+
+Copyright ©2020-2023 The American University in Cairo
 
 Licensed under the Apache License, Version 2.0 (the "Open Source License");
 you may not use this file except in compliance with the Open Source License.

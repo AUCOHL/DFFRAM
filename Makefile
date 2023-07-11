@@ -9,15 +9,16 @@ lint: venv/created
 	./venv/bin/black --check .
 	./venv/bin/flake8 .
 
-venv: venv/created
-venv/created: ./requirements_dev.txt ./requirements.txt
+venv: venv/manifest.txt
+venv/manifest.txt: ./requirements_dev.txt ./requirements.txt
 	rm -rf venv
 	python3 -m venv ./venv
-	./venv/bin/python3 -m pip install --upgrade pip
-	./venv/bin/python3 -m pip install --upgrade wheel
-	./venv/bin/python3 -m pip install --upgrade\
+	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade pip
+	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade wheel
+	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade\
 		-r ./requirements_dev.txt\
 		-r ./requirements.txt
+	PYTHONPATH= ./venv/bin/python3 -m pip freeze > $@
 	touch venv/created
 
 .PHONY: veryclean

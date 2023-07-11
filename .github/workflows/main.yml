@@ -91,21 +91,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      - name: Setup Nix
+        uses: cachix/install-nix-action@v22
+        with:
+          nix_path: nixpkgs=channel:nixos-22.11
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v12
+        with:
+          name: openlane
       - name: Run
         run: |
-          pip3 install --upgrade --no-cache-dir -r ./requirements.txt
-
           building_blocks=ram
           if [ "${{ matrix.variant }}" == "2R1W" ]; then
             building_blocks=rf
           fi
 
-          ./dffram.py\
-            -s ${{ matrix.count }}x${{ matrix.width }}\
-            -b sky130A:sky130_fd_sc_hd:$building_blocks\
-            -v ${{ matrix.variant }}
+          nix-shell --run "\
+            ./dffram.py ${{ matrix.count }}x${{ matrix.width }}\
+            -p sky130A\
+            -s sky130_fd_sc_hd\
+            -v ${{ matrix.variant }}\
+          "
 
-          echo "PRODUCTS_PATH=$(cat ./products_path)" >> $GITHUB_ENV
+          echo "PRODUCTS_PATH=$(echo products/*)" >> $GITHUB_ENV
       - name: Upload Final Views
         uses: actions/upload-artifact@v3
         with:
