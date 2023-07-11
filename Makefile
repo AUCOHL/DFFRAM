@@ -1,11 +1,11 @@
 all: dist
 
 .PHONY: dist
-dist: venv/created
+dist: venv/manifest.txt
 	./venv/bin/python3 setup.py sdist bdist_wheel
 
 .PHONY: lint
-lint: venv/created
+lint: venv/manifest.txt
 	./venv/bin/black --check .
 	./venv/bin/flake8 .
 
@@ -19,7 +19,7 @@ venv/manifest.txt: ./requirements_dev.txt ./requirements.txt
 		-r ./requirements_dev.txt\
 		-r ./requirements.txt
 	PYTHONPATH= ./venv/bin/python3 -m pip freeze > $@
-	touch venv/created
+	touch venv/manifest.txt
 
 .PHONY: veryclean
 veryclean: clean
