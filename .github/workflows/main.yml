@@ -111,6 +111,7 @@ jobs:
             -p sky130A\
             -s sky130_fd_sc_hd\
             -v ${{ matrix.variant }}\
+            -b $building_blocks\
           "
 
           echo "PRODUCTS_PATH=$(echo products/*)" >> $GITHUB_ENV
