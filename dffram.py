@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
-# Copyright ©2020-2022 The American University in Cairo
+# Copyright ©2020-2023 The American University in Cairo
+# Copyright ©2023 Efabless Corporation
 #
 # This file is part of the DFFRAM Memory Compiler.
 # See https://github.com/Cloud-V/DFFRAM for further info.
@@ -17,637 +18,277 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import sys
 import re
-import uuid
 import math
-import time
-import shutil
-import fnmatch
-import pathlib
-import traceback
-import subprocess
+from typing import List
+from fnmatch import fnmatch
+from decimal import Decimal
+
+import yaml
+import cloup
+from openlane.common import mkdirp
+from openlane.config import Variable
+from openlane.logging import warn, err
+from openlane.state import DesignFormat
+from openlane.flows import SequentialFlow, cloup_flow_opts, Flow
+from openlane.steps import Yosys, OpenROAD, Magic, KLayout, Netgen, Odb, Checker, Misc
 
 
-def eprint(*args, **kwargs):
-    print(*args, **kwargs, file=sys.stderr)
+class PlaceRAM(Odb.OdbpyStep):
+    id = "DFFRAM.PlaceRAM"
 
+    config_vars = [
+        Variable(
+            "RAM_SIZE",
+            str,
+            "The size of the RAM macro being hardened the format {words}x{bits}",
+        ),
+        Variable(
+            "BUILDING_BLOCKS",
+            str,
+            "The set of building blocks being used.",
+            default="ram",
+        ),
+    ]
 
-try:
-    import click
-    import yaml
-    import volare
-except ImportError as e:
-    eprint(e)
-    eprint("---")
-    eprint(
-        "You need to install dependencies: pip3 install --user --upgrade --no-cache-dir -r ./requirements.txt"
-    )
-    exit(os.EX_CONFIG)
+    def get_script_path(self):
+        return "placeram"
 
-
-def rp(path):
-    return os.path.realpath(path)
-
-
-def ensure_dir(path):
-    return pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-
-
-# --
-build_folder = ""
-pdk_family = ""
-pdk = ""
-pdk_version = ""
-scl = ""
-pdk_root = ""
-pdk_tech_dir = ""
-pdk_ref_dir = ""
-pdk_liberty_dir = ""
-pdk_lef_dir = ""
-pdk_tlef_dir = ""
-pdk_klayout_dir = ""
-pdk_magic_dir = ""
-pdk_openlane_dir = ""
-
-tool_metadata_file_path = os.path.join(os.path.dirname(__file__), "tool_metadata.yml")
-tool_metadata = yaml.safe_load(open(tool_metadata_file_path).read())
-openlane_version = [tool for tool in tool_metadata if tool["name"] == "openlane"][0][
-    "commit"
-]
-openlane_image = os.getenv(
-    "OPENLANE_IMAGE_NAME", default=f"efabless/openlane:{openlane_version}"
-)
-
-running_docker_ids = set()
-
-
-def run_docker(image, args):
-    global running_docker_ids
-    global command_list
-    container_id = str(uuid.uuid4())
-    running_docker_ids.add(container_id)
-    cmd = (
-        [
-            "docker",
-            "run",
-            "--rm",
-            "--name",
-            container_id,
-            "-v",
-            f"{pdk_root}:{pdk_root}",
-            "-v",
-            f"{rp('.')}:/mnt/dffram",
-            "-w",
-            "/mnt/dffram",
-            "-e",
-            f"PDK_ROOT={pdk_root}",
-            "-e",
-            f"PDKPATH={pdk_root}/{pdk}",
-            "-e",
-            f"PDK={pdk}",
-            "-e",
-            "PWD=/mnt/dffram",
-            "-e",
-            "LC_ALL=en_US.UTF-8",
-            "-e",
-            "LANG=en_US.UTF-8",
+    def get_command(self) -> List[str]:
+        raw = super().get_command() + [
+            "--building-blocks",
+            f"{self.config['PDK']}:{self.config['STD_CELL_LIBRARY']}:{self.config['BUILDING_BLOCKS']}",
+            "--size",
+            self.config["RAM_SIZE"],
         ]
-        + [image]
-        + args
-    )
-    command_list.append(cmd)
-    subprocess.check_call(cmd, stdout=sys.stderr, stderr=subprocess.STDOUT)
-    running_docker_ids.remove(container_id)
+        raw.insert(raw.index("placeram"), "-m")
+        return raw
 
 
-openlane_scripts_path = "/openlane/scripts"
-local_openlane_path = None
-venv_lib_path = None
+class Floorplan(OpenROAD.Floorplan):
+    id = "DFFRAM.Floorplan"
 
+    outputs = [
+        DesignFormat.ODB,
+    ]
 
-def openlane(*args_tuple):
-    global no_docker_option
-    args = list(args_tuple)
-    if local_openlane_path is not None:
-        env = os.environ.copy()
-        env["PATH"] = f"{local_openlane_path}:{env['PATH']}"
+    config_vars = [
+        var
+        for var in OpenROAD.Floorplan.config_vars
+        if var.name not in ["FP_SIZING", "CORE_AREA", "DIE_AREA"]
+    ] + [
+        Variable(
+            "HORIZONTAL_HALO",
+            type=Decimal,
+            description="The space between the horizontal edges of the die area and the core area in microns.",
+            units="µm",
+            default=2.5,
+        ),
+        Variable(
+            "VERTICAL_HALO",
+            type=Decimal,
+            description="The space between the vertical edges of the die area and the core area in microns.",
+            units="µm",
+            default=2.5,
+        ),
+        Variable(
+            "MINIMUM_HEIGHT",
+            type=Decimal,
+            description="A minimum height to be applied",
+            default=0,
+            units="µm",
+        ),
+    ]
 
-        if venv_lib_path is not None:
-            env["PYTHONPATH"] = venv_lib_path
+    def run(self, state_in, **kwargs):
+        min_height = self.config["MINIMUM_HEIGHT"]
 
-        # Disable tools not typically installed in Colaboratories
-        env["RUN_KLAYOUT"] = "0"
-        env["RUN_CVC"] = "0"
-        env["PDK_ROOT"] = pdk_root
-
-        subprocess.check_call(
-            args, env=env, stdout=sys.stderr, stderr=subprocess.STDOUT
+        core_width = Decimal(
+            state_in.metrics.get("dffram__suggested__core_width") or 20000
         )
-    else:
-        run_docker(openlane_image, args)
+        core_height = Decimal(
+            state_in.metrics.get("dffram__suggested__core_height") or 20000
+        )
 
+        horizontal_halo = self.config["HORIZONTAL_HALO"]
+        vertical_halo = self.config["VERTICAL_HALO"]
 
-def prep(local_pdk_root):
-    global pdk, scl
-    global pdk_root, pdk_tech_dir, pdk_ref_dir
-    global pdk_liberty_dir, pdk_lef_dir, pdk_tlef_dir
-    global pdk_klayout_dir, pdk_magic_dir, pdk_openlane_dir
-    pdk_root = os.path.abspath(local_pdk_root)
-    pdk_path = os.path.join(pdk_root, pdk)
-    volare.enable(pdk_root=local_pdk_root, pdk=pdk_family, version=pdk_version)
+        pdk = self.config["PDK"]
+        scl = self.config["STD_CELL_LIBRARY"]
 
-    pdk_tech_dir = os.path.join(pdk_path, "libs.tech")
-    pdk_ref_dir = os.path.join(pdk_path, "libs.ref")
+        tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
+        tech_info = yaml.safe_load(open(tech_info_path))
+        site_info = tech_info.get("site")
 
-    pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "lib")
-    if not os.path.exists(pdk_liberty_dir):
-        pdk_liberty_dir = os.path.join(pdk_ref_dir, scl, "liberty")
+        site_width = Decimal(1)
+        site_height = Decimal(1)
 
-    pdk_lef_dir = os.path.join(pdk_ref_dir, scl, "lef")
-    pdk_tlef_dir = os.path.join(pdk_ref_dir, scl, "techlef")
-    pdk_openlane_dir = os.path.join(pdk_tech_dir, "openlane")
-    pdk_klayout_dir = os.path.join(pdk_tech_dir, "klayout")
-    pdk_magic_dir = os.path.join(pdk_tech_dir, "magic")
-    openlane(
-        "openroad",
-        "-exit",
-        "-python",
-        f"{openlane_scripts_path}/mergeLef.py",
-        "-i",
-        f"{pdk_tlef_dir}/{scl}__nom.tlef",
-        f"{pdk_lef_dir}/{scl}.lef",
-        "-o",
-        f"{build_folder}/merged.lef",
-    )
+        if site_info is not None:
+            site_width = Decimal(site_info["width"])
+            site_height = Decimal(site_info["height"])
 
-
-command_list = []
-
-
-def cl():
-    with open("./command_list.log", "w") as f:
-        f.write("\n".join([" ".join(cmd) for cmd in command_list]))
-
-
-# Not true synthesis, just elaboration.
-def synthesis(
-    design,
-    building_blocks,
-    block_deinitions,
-    sta_info,
-    widths_supported,
-    word_width_bytes,
-    out_file,
-    word_width,
-    blocks,
-):
-    eprint("--- Synthesis ---")
-    chparam = ""
-    if len(widths_supported) > 1:
-        if blocks == "rf":
-            chparam = "catch { chparam -set WSIZE %i %s }" % (word_width, design)
+            horizontal_halo = math.ceil(horizontal_halo / site_width) * site_width
+            vertical_halo = math.ceil(vertical_halo / site_height) * site_height
         else:
-            chparam = "catch { chparam -set WSIZE %i %s }" % (word_width_bytes, design)
-    with open(f"{build_folder}/synth.tcl", "w") as f:
-        f.write(
-            f"""
-            yosys -import
-            set SCL {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
-            read_liberty -lib -ignore_miss_dir -setattr blackbox $SCL
-            read_verilog {block_deinitions}
-            read_verilog {building_blocks}
-            {chparam}
-            hierarchy -check -top {design}
-            synth -flatten
-            yosys rename -top {design}
-            opt_clean -purge
-            splitnets
-            opt_clean -purge
-            write_verilog -noattr -noexpr -nodec {out_file}
-            stat -top {design} -liberty $SCL
-            exit
-            """
-        )
+            if horizontal_halo != 0.0 or vertical_halo != 0.0:
+                warn(
+                    "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
+                )
 
-    openlane("yosys", f"{build_folder}/synth.tcl")
+        die_width = core_width + horizontal_halo * 2
+        die_height = core_height + vertical_halo * 2
+        if die_height < min_height:
+            die_height = min_height
+            vertical_halo = (die_height - core_height) / 2
+            vertical_halo = math.ceil(vertical_halo / site_height) * site_height
+
+        kwargs, env = self.extract_env(kwargs)
+
+        env["DIE_AREA"] = f"0 0 {die_width} {die_height}"
+        env[
+            "CORE_AREA"
+        ] = f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
+        env["FP_SIZING"] = "absolute"
+        return super().run(state_in, env=env, **kwargs)
 
 
-full_width = 0
-full_height = 0
+@Flow.factory.register()
+class DFFRAM(SequentialFlow):
+    Steps = [
+        Yosys.Synthesis,
+        Misc.LoadBaseSDC,
+        OpenROAD.STAPrePNR,
+        Floorplan,
+        PlaceRAM,
+        Floorplan,
+        PlaceRAM,
+        OpenROAD.IOPlacement,
+        Odb.CustomIOPlacement,
+        OpenROAD.GeneratePDN,
+        OpenROAD.STAMidPNR,
+        OpenROAD.GlobalRouting,
+        OpenROAD.STAMidPNR,
+        OpenROAD.DetailedRouting,
+        Checker.TrDRC,
+        Odb.ReportDisconnectedPins,
+        Checker.DisconnectedPins,
+        Odb.ReportWireLength,
+        Checker.WireLength,
+        OpenROAD.RCX,
+        OpenROAD.STAPostPNR,
+        OpenROAD.IRDropReport,
+        Magic.StreamOut,
+        Magic.WriteLEF,
+        KLayout.StreamOut,
+        KLayout.XOR,
+        Checker.XOR,
+        Magic.DRC,
+        Checker.MagicDRC,
+        Magic.SpiceExtraction,
+        Checker.IllegalOverlap,
+        Netgen.LVS,
+        Checker.LVS,
+    ]
 
 
-def floorplan(
-    design,
-    sta_info,
-    wmargin,
-    hmargin,
-    width,
-    height,
-    in_file,
-    out_file,
-    min_height,
-    min_height_flag,
-    site_height,
-    site_name,
-    tie_lo_cell,
-    tie_lo_port,
-    tie_hi_cell,
-    tie_hi_port,
-):
-    global full_width, full_height
-    eprint("--- Floorplan ---")
-    full_width = width + (wmargin * 2)
-    full_height = height + (hmargin * 2)
-
-    wpm = width + wmargin
-    hpm = height + hmargin
-
-    track_file = f"{build_folder}/tracks.tcl"
-
-    if min_height_flag:
-        full_width = width + (wmargin * 2)
-        full_height = min_height + (hmargin * 2)
-        hmargin = full_height / 2 - height / 2
-        hmargin = math.ceil(hmargin / site_height) * site_height
-        hpm = height + hmargin
-
-    with open(f"{build_folder}/fp_init.tcl", "w") as f:
-        f.write(
-            f"""
-            read_liberty {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
-            read_lef {build_folder}/merged.lef
-            read_verilog {in_file}
-            link_design {design}
-            initialize_floorplan\\
-                -die_area "0 0 {full_width} {full_height}"\\
-                -core_area "{wmargin} {hmargin} {wpm} {hpm}"\\
-                -site {site_name}
-            set tielo_cell {tie_lo_cell}
-            set tielo_port {tie_lo_port}
-            set tiehi_cell {tie_hi_cell}
-            set tiehi_port {tie_hi_port}
-            insert_tiecells "$tielo_cell/$tielo_port" -prefix "TIE_ZERO_"
-            insert_tiecells "$tiehi_cell/$tiehi_port" -prefix "TIE_ONE_"
-            source {build_folder}/tracks.tcl
-            write_db {out_file}
-            """
-        )
-
-    with open(f"{build_folder}/fp_init.sh", "w") as f:
-        f.write(
-            f"""
-            set -e
-
-            python3 {openlane_scripts_path}/new_tracks.py -i {pdk_openlane_dir}/{scl}/tracks.info -o {track_file}
-            openroad -exit {build_folder}/fp_init.tcl
-            """
-        )
-
-    openlane("bash", f"{build_folder}/fp_init.sh")
-
-
-def placeram(
-    in_file,
-    out_file,
-    size,
-    building_blocks,
-    dimensions=os.devnull,
-    density=os.devnull,
-    represent=os.devnull,
-):
-    eprint("--- placeRAM Script ---")
-    openlane(
-        "openroad",
-        "-exit",
-        "-python",
-        "-m",
-        "placeram",
-        "--output",
-        out_file,
-        "--size",
-        size,
-        "--write-dimensions",
-        dimensions,
-        "--write-density",
-        density,
-        "--represent",
-        represent,
-        "--building-blocks",
-        building_blocks,
-        in_file,
-    )
-
-
-def place_pins(design, sta_info, in_file, out_file, pin_order_file, metal_layer):
-    eprint("--- Pin Placement ---")
-    openlane(
-        "openroad",
-        "-exit",
-        "-python",
-        f"{openlane_scripts_path}/odbpy/io_place.py",
-        "--config",
-        pin_order_file,
-        "--input-lef",
-        f"{build_folder}/merged.lef",
-        "--hor-layer",
-        f"{metal_layer['hor-layer']}",
-        "--ver-layer",
-        f"{metal_layer['ver-layer']}",
-        "--ver-width-mult",
-        "2",
-        "--hor-width-mult",
-        "2",
-        "--hor-extension",
-        "0",
-        "--ver-extension",
-        "0",
-        "--length",
-        "2",
-        "-o",
-        out_file,
-        in_file,
-    )
-
-
-def verify_placement(design, sta_info, in_file):
-    eprint("--- Verify ---")
-    with open(f"{build_folder}/verify.tcl", "w") as f:
-        f.write(
-            f"""
-            read_db {in_file}
-            read_liberty {pdk_liberty_dir}/{sta_info["libs"]["typical"]}
-            if {{[catch check_placement -verbose]}} {{
-                puts "Placement failed: Check placement returned a nonzero value."
-                exit 65
-            }}
-            puts "Placement successful."
-            """
-        )
-    openlane("openroad", "-exit", f"{build_folder}/verify.tcl")
-
-
-def openlane_harden(
-    design,
-    clock_period,
-    final_netlist,
-    final_placement,
-    products_path,
-    sta_info,
-    routing_threads,
-    metal_layer,
-):
-    eprint("--- Hardening With OpenLane ---")
-    design_ol_dir = f"{build_folder}/openlane"
-    ensure_dir(design_ol_dir)
-
-    netlist_basename = os.path.basename(final_netlist)
-    current_netlist = f"{design_ol_dir}/{netlist_basename}"
-    shutil.copy(final_netlist, current_netlist)
-
-    placement_basename = os.path.basename(final_placement)
-    current_odb = f"{design_ol_dir}/{placement_basename}"
-    shutil.copy(final_placement, current_odb)
-
-    shutil.copy(
-        "./scripts/openlane/interactive.tcl", f"{design_ol_dir}/interactive.tcl"
-    )
-
-    shutil.copy(f"{pdk_lef_dir}/{scl}.lef", f"{design_ol_dir}/cells.lef")
-
-    with open(f"{design_ol_dir}/config.tcl", "w") as f:
-        f.write(
-            f"""
-            set ::env(DESIGN_NAME) "{design}"
-
-            set ::env(CLOCK_PORT) "CLK"
-            set ::env(CLOCK_PERIOD) "{clock_period}"
-
-            set ::env(LEC_ENABLE) "0"
-            set ::env(FP_WELLTAP_CELL) "gf180mcu_fd_sc_mcu7t5v0__filltie*"
-
-            set ::env(GPL_CELL_PADDING) "0"
-            set ::env(DPL_CELL_PADDING) "0"
-            set ::env(RUN_FILL_INSERTION) "0"
-            set ::env(PL_RESIZER_DESIGN_OPTIMIZATIONS) "0"
-            set ::env(PL_RESIZER_TIMING_OPTIMIZATIONS) "0"
-            set ::env(GLB_RESIZER_DESIGN_OPTIMIZATIONS) "0"
-            set ::env(GLB_RESIZER_TIMING_OPTIMIZATIONS) "0"
-
-            set ::env(RT_MAX_LAYER) "{metal_layer['rt-max-layer']}"
-            set ::env(GRT_ALLOW_CONGESTION) "1"
-
-            set ::env(CELLS_LEF) "$::env(DESIGN_DIR)/cells.lef"
-
-            set ::env(DIE_AREA) "0 0 {full_width} {full_height}"
-
-            set ::env(DIODE_INSERTION_STRATEGY) "0"
-
-            set ::env(ROUTING_CORES) {routing_threads}
-
-            set ::env(DESIGN_IS_CORE) "0"
-            set ::env(FP_PDN_CORE_RING) "0"
-
-            set ::env(PRODUCTS_PATH) "{products_path}"
-
-            set ::env(INITIAL_NETLIST) "$::env(DESIGN_DIR)/{netlist_basename}"
-            set ::env(INITIAL_ODB) "$::env(DESIGN_DIR)/{placement_basename}"
-            set ::env(INITIAL_SDC) "$::env(BASE_SDC_FILE)"
-
-            set ::env(LVS_CONNECT_BY_LABEL) "1"
-
-            set ::env(SYNTH_DRIVING_CELL) "{sta_info["driving_cell"]["name"]}"
-            set ::env(SYNTH_DRIVING_CELL_PIN) "{sta_info["driving_cell"]["pin"]}"
-            set ::env(IO_PCT) "0.25"
-
-            """
-        )
-
-    openlane(
-        "flow.tcl",
-        "-design",
-        design_ol_dir,
-        "-it",
-        "-file",
-        f"{design_ol_dir}/interactive.tcl",
-    )
-
-
-@click.command()
-# Execution Flow
-@click.option("-f", "--from", "frm", default="synthesis", help="Start from this step")
-@click.option("-t", "--to", default="gds", help="End after this step")
-@click.option(
-    "--only", default=None, help="Only execute these semicolon;delimited;steps"
-)
-@click.option("--skip", default=None, help="Skip these semicolon;delimited;steps")
-
-# Configuration
-@click.option(
-    "-p",
-    "--pdk-root",
-    required=False,
-    default="./pdks",
-    help="Optionally override the used PDK root",
-)
-@click.option("-O", "--output-dir", default="./build", help="Output directory.")
-@click.option(
-    "-b",
-    "--building-blocks",
-    default="sky130A:sky130_fd_sc_hd:ram",
-    help="Format {pdk}:{scl}:{name} : ID of the building blocks to use.",
-)
-@click.option(
+@cloup.command()
+@cloup.option("-b", "--building-blocks", default="ram")
+@cloup.option(
     "-v", "--variant", default=None, help="Use design variants (such as 1RW1R)"
 )
-@click.option("-s", "--size", required=True, help="Size")
-@click.option(
+@cloup.option(
     "-C",
     "--clock-period",
     "default_clock_period",
     default=20,
-    type=float,
-    help="Fallback clock period for STA (when unspecified)",
+    type=Decimal,
+    help="Fallback clock period for STA (when unspecified by the platform)",
 )
-@click.option("--halo", default=2.5, type=float, help="Halo in microns")
-@click.option(
+@cloup.option(
     "--horizontal-halo",
-    default=0.0,
-    type=float,
-    help="Horizontal halo in microns (overrides generic halo)",
+    default=2.5,
+    type=Decimal,
+    help="Horizontal halo in µm",
 )
-@click.option(
+@cloup.option(
     "--vertical-halo",
+    default=2.5,
+    type=Decimal,
+    help="Vertical halo in µm",
+)
+@cloup.option(
+    "-H",
+    "--min-height",
     default=0.0,
-    type=float,
-    help="Vertical halo in microns (overrides generic halo)",
+    type=Decimal,
+    help="Minimum height in µm",
 )
-@click.option(
-    "-H", "--min-height", default=0.0, type=float, help="Die Area Height in microns"
-)
-@click.option(
-    "-j",
-    "--routing-threads",
-    type=int,
-    default=int(os.getenv("ROUTING_CORES") or "1"),
-    help="Number of threads to be used in routing",
-)
-
-# Enable/Disable
-@click.option(
-    "--klayout/--no-klayout",
-    default=False,
-    help="Open the last def in Klayout. (Default: False)",
-)
-@click.option(
-    "--using-local-openlane",
-    default=None,
-    type=str,
-    help="Use this local OpenLane installation instead of a Dockerized installation.",
-)
-def flow(
+@cloup_flow_opts(accept_config_files=False)
+@cloup.argument("size", default="32x32", nargs=1)
+def main(
+    pdk,
+    scl,
     frm,
     to,
-    only,
-    pdk_root,
     skip,
+    tag,
+    last_run,
+    with_initial_state,
     size,
     building_blocks,
-    default_clock_period,
-    halo,
+    variant,
     horizontal_halo,
     vertical_halo,
-    variant,
-    routing_threads,
-    klayout,
-    output_dir,
+    default_clock_period,
     min_height,
-    using_local_openlane,
+    flow_name,
+    **kwargs,
 ):
-    global build_folder
-    global pdk_family, pdk, pdk_version, scl
-    global local_openlane_path
-    global openlane_scripts_path
-    global venv_lib_path
-
-    if horizontal_halo == 0.0:
-        horizontal_halo = halo
-
-    if vertical_halo == 0.0:
-        vertical_halo = halo
-
     if variant == "DEFAULT":
         variant = None
 
-    local_openlane_path = using_local_openlane
-    if local_openlane_path is not None:
-        openlane_scripts_path = os.path.join(local_openlane_path, "scripts")
-        if not os.getenv("NO_CHECK_INSTALL") == "1":
-            install_path = os.path.join(local_openlane_path, "install")
-            if not os.path.isdir(install_path):
-                eprint(f"Error: OpenLane installation not found at {install_path}.")
-                exit(os.EX_CONFIG)
-
-            venv_lib = f"{local_openlane_path}/install/venv/lib"
-            venv_lib_vers = os.listdir(venv_lib)
-            if len(venv_lib_vers) < 1:
-                eprint("Installation venv contains no packages.")
-                exit(os.EX_CONFIG)
-
-            venv_lib_path = os.path.join(venv_lib, venv_lib_vers[0], "site-packages")
-
-    pdk, scl, blocks = building_blocks.split(":")
-    pdk = pdk or "sky130A"
     scl = scl or "sky130_fd_sc_hd"
-    blocks = blocks or "ram"
     platform = f"{pdk}:{scl}"
-    building_blocks = f"{platform}:{blocks}"
 
-    process_data_file = os.path.join(".", "platforms", pdk, "process_data.yml")
-    process_data = yaml.safe_load(open(process_data_file))
-    pdk_family = process_data["volare_pdk_family"]
-    pdk_version = process_data["volare_pdk_version"]
-
-    bb_dir = os.path.join(".", "models", blocks)
+    bb_dir = os.path.join(".", "models", building_blocks)
     if not os.path.isdir(bb_dir):
-        eprint(f"Generic building blocks {blocks} not found.")
+        err(f"Generic building blocks {building_blocks} not found.")
         exit(os.EX_NOINPUT)
 
     pdk_dir = os.path.join(".", "platforms", pdk, scl)
     if not os.path.isdir(pdk_dir):
-        eprint(f"Definitions for platform {platform} not found.")
+        err(f"Definitions for platform {platform} not found.")
         exit(os.EX_NOINPUT)
 
     block_definitions_used = os.path.join(pdk_dir, "block_definitions.v")
-
     bb_used = os.path.join(bb_dir, "model.v")
-    config_file = os.path.join(bb_dir, "config.yml")
-    config = yaml.safe_load(open(config_file))
+    platform_config_file = os.path.join(bb_dir, "config.yml")
+    platform_config = yaml.safe_load(open(platform_config_file))
 
     pin_order_file = os.path.join(bb_dir, "pin_order.cfg")
-
     m = re.match(r"(\d+)x(\d+)", size)
     if m is None:
-        eprint("Invalid RAM size '%s'." % size)
+        err(f"Invalid RAM size '{size}'.")
         exit(os.EX_USAGE)
 
     words = int(m[1])
     word_width = int(m[2])
-    word_width_bytes = word_width / 8
+    word_width_bytes = word_width // 8
 
-    if os.getenv("FORCE_ACCEPT_SIZE") is None:
-        if words not in config["counts"] or word_width not in config["widths"]:
-            eprint("Size %s not supported by %s." % (size, building_blocks))
+    if os.getenv("FORCE_ACCEPT_SIZE") != 1:
+        if (
+            words not in platform_config["counts"]
+            or word_width not in platform_config["widths"]
+        ):
+            err("Size %s not supported by %s." % (size, building_blocks))
             exit(os.EX_USAGE)
 
-        if variant not in config["variants"]:
-            eprint("Variant %s is unsupported by %s." % (variant, building_blocks))
+        if variant not in platform_config["variants"]:
+            err("Variant %s is unsupported by %s." % (variant, building_blocks))
             exit(os.EX_USAGE)
-
-    wmargin, hmargin = (horizontal_halo, vertical_halo)  # Microns
 
     variant_string = ("_%s" % variant) if variant is not None else ""
-    design_name_template = config["design_name_template"]
+    design_name_template = platform_config["design_name_template"]
     design = os.getenv("FORCE_DESIGN_NAME") or design_name_template.format(
         **{
             "count": words,
@@ -656,209 +297,81 @@ def flow(
             "variant": variant_string,
         }
     )
-    build_folder = f"{output_dir}/{size}_{variant or 'DEFAULT'}"
+
+    build_dir = os.path.join("build", design)
+    mkdirp(build_dir)
 
     tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
     tech_info = yaml.safe_load(open(tech_info_path))
 
     clock_period = default_clock_period
-    block_clock_periods = tech_info["sta"]["clock_periods"].get(blocks)
+    block_clock_periods = tech_info["sta"]["clock_periods"].get(building_blocks)
     if block_clock_periods is not None:
         for wildcard, period in block_clock_periods.items():
-            if fnmatch.fnmatch(size, wildcard):
+            if fnmatch(size, wildcard):
                 clock_period = period
                 break
 
-    site_info = tech_info.get("site")  # Normalize margins in terms of minimum units
-    if site_info is not None:
-        site_width = site_info["width"]
-        site_height = site_info["height"]
-        site_name = site_info["name"]
+    logical_width = word_width_bytes
+    if building_blocks == "rf":
+        logical_width = word_width
 
-        wmargin = math.ceil(wmargin / site_width) * site_width
-        hmargin = math.ceil(hmargin / site_height) * site_height
-    else:
-        if horizontal_halo != 0.0 or vertical_halo != 0.0:
-            eprint(
-                "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
-            )
-
-    sta_info = tech_info.get("sta")
-
-    tie_info = tech_info.get("tie")
-
-    if tie_info is not None:
-        tie_lo_cell = tie_info["tie_lo_cell"]
-        tie_lo_port = tie_info["tie_lo_port"]
-        tie_hi_cell = tie_info["tie_hi_cell"]
-        tie_hi_port = tie_info["tie_hi_port"]
-
-    metal_layer = tech_info.get("metal_layers")
-
-    ensure_dir(build_folder)
-
-    def i(ext=""):
-        return f"{build_folder}/{design}{ext}"
-
-    prep(pdk_root)
-
-    start = time.time()
-
-    netlist = i(".nl.v")
-    dimensions_file = i(".dimensions.txt")
-    density_file = i(".density.txt")
-    initial_floorplan = i(".initfp.odb")
-    initial_placement = i(".initp.odb")
-    final_floorplan = i(".fp.odb")
-    no_pins_placement = i(".npp.odb")
-    final_placement = i(".placed.odb")
-
-    products = f"{build_folder}/products"
-
-    ensure_dir(products)
-
-    width, height = 20000, 20000
-
-    def placement(in_width, in_height):
-        nonlocal width, height, hmargin, wmargin
-        min_height_flag = False
-        floorplan(
-            design,
-            sta_info,
-            wmargin,
-            hmargin,
-            in_width,
-            in_height,
-            netlist,
-            initial_floorplan,
-            min_height,
-            min_height_flag,
-            site_height,
-            site_name,
-            tie_lo_cell,
-            tie_lo_port,
-            tie_hi_cell,
-            tie_hi_port,
-        )
-        placeram(
-            initial_floorplan,
-            initial_placement,
-            size,
-            building_blocks,
-            dimensions=dimensions_file,
-        )
-        width, height = map(lambda x: float(x), open(dimensions_file).read().split("x"))
-        if height < min_height:
-            min_height_flag = True
-
-        floorplan(
-            design,
-            sta_info,
-            wmargin,
-            hmargin,
-            width,
-            height,
-            netlist,
-            final_floorplan,
-            min_height,
-            min_height_flag,
-            site_height,
-            site_name,
-            tie_lo_cell,
-            tie_lo_port,
-            tie_hi_cell,
-            tie_hi_port,
-        )
-        placeram(
-            final_floorplan,
-            no_pins_placement,
-            size,
-            building_blocks,
-            density=density_file,
-        )
-        place_pins(
-            design,
-            sta_info,
-            no_pins_placement,
-            final_placement,
-            pin_order_file,
-            metal_layer,
-        )
-        verify_placement(design, sta_info, final_placement)
-
-    steps = [
-        (
-            "synthesis",
-            lambda: synthesis(
-                design,
-                bb_used,
+    TargetFlow = Flow.factory.get(flow_name) or DFFRAM
+    dffram_flow = TargetFlow(
+        {
+            "DESIGN_NAME": design,
+            "CLOCK_PORT": "CLK",
+            "CLOCK_PERIOD": clock_period,
+            "GPL_CELL_PADDING": 0,
+            "DPL_CELL_PADDING": 0,
+            "RT_MAX_LAYER": "met4",
+            "GRT_ALLOW_CONGESTION": True,
+            "PDK": pdk,
+            "STD_CELL_LIBRARY": scl,
+            "RAM_SIZE": size,
+            "BUILDING_BLOCKS": building_blocks,
+            "VERILOG_FILES": [
                 block_definitions_used,
-                sta_info,
-                config["widths"],
-                word_width_bytes,
-                netlist,
-                word_width,
-                blocks,
-            ),
-        ),
-        ("placement", lambda: placement(width, height)),
-        (
-            "openlane_harden",
-            lambda: openlane_harden(
-                design,
-                clock_period,
-                netlist,
-                final_placement,
-                products,
-                sta_info,
-                routing_threads,
-                metal_layer,
-            ),
-        ),
-    ]
+                bb_used,
+            ],
+            "SYNTH_ELABORATE_ONLY": True,
+            "SYNTH_ELABORATE_FLATTEN": True,
+            "SYNTH_READ_BLACKBOX_LIB": True,
+            "SYNTH_EXCLUSION_CELL_LIST": "/dev/null",
+            "SYNTH_PARAMETERS": f"WSIZE={logical_width}",
+            "GRT_REPAIR_ANTENNAS": False,
+            "MINIMUM_HEIGHT": min_height,
+            "VERTICAL_HALO": vertical_halo,
+            "HORIZONTAL_HALO": horizontal_halo,
+            "CLOCK_PERIOD": clock_period,
+            # IO Placement
+            "FP_PIN_ORDER_CFG": pin_order_file,
+            "FP_IO_VTHICKNESS_MULT": Decimal(2),
+            "FP_IO_HTHICKNESS_MULT": Decimal(2),
+            "FP_IO_HEXTEND": Decimal(0),
+            "FP_IO_VEXTEND": Decimal(0),
+            "FP_IO_VLENGTH": 2,
+            "FP_IO_HLENGTH": 2,
+        },
+        design_dir=build_dir,
+    )
 
-    only = only.split(";") if only is not None else None
-    skip = skip.split(";") if skip is not None else []
+    final_state = dffram_flow.start(
+        frm=frm,
+        to=to,
+        skip=skip,
+        tag=tag,
+        last_run=last_run,
+        with_initial_state=with_initial_state,
+    )
 
-    execute_steps = False
-    for step in steps:
-        name, action = step
-        if frm == name:
-            execute_steps = True
-        if execute_steps:
-            if (only is None or name in only) and (name not in skip):
-                try:
-                    action()
-                except KeyboardInterrupt as e:
-                    eprint("\n\nStopping on keyboard interrupt...")
-                    eprint("Killing docker containers...")
-                    for id in running_docker_ids:
-                        subprocess.call(["docker", "kill", id], stdout=os.devnull)
-                    raise e
-        if to == name:
-            execute_steps = False
-
-    elapsed = time.time() - start
-
-    eprint("Done in %.2fs." % elapsed)
-    cl()
-
-    with open("./products_path", "w") as f:
-        f.write(products)
-
-
-def main():
-    try:
-        flow()
-    except subprocess.CalledProcessError as e:
-        eprint("A step has failed:", e)
-        eprint(f"Quick invoke: {' '.join(e.cmd)}")
-        cl()
-        exit(os.EX_UNAVAILABLE)
-    except Exception:
-        eprint("An unhandled exception has occurred.", traceback.format_exc())
-        cl()
-        exit(os.EX_UNAVAILABLE)
+    mkdirp("products")
+    final_state.save_snapshot(
+        os.path.join(
+            "products",
+            design,
+        )
+    )
 
 
 if __name__ == "__main__":

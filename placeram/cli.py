@@ -17,9 +17,12 @@
 # limitations under the License.
 
 import os
+import re
+import traceback
 
 try:
     import odb
+    import utl
 except ImportError:
     print(
         """
@@ -44,10 +47,9 @@ except ImportError:
 
 from . import data
 from .row import Row
+
 from .util import eprint
 from .reg_data import DFFRF
-import re
-import traceback
 
 
 class Placer:
@@ -66,9 +68,12 @@ class Placer:
         odb.read_db(self.db, odb_in)
 
         # Technology Setup
-        self.lib = self.db.getLibs()[0]
-        self.sites = self.lib.getSites()
-        self.cells = self.lib.getMasters()
+        self.libs = self.db.getLibs()
+        self.sites = []
+        self.cells = []
+        for lib in self.libs:
+            self.sites += lib.getSites()
+            self.cells += lib.getMasters()
 
         ## Extract the fill cells for later use
         ### We use decap cells to substitute fills wherever possible.
@@ -82,6 +87,7 @@ class Placer:
             filter(lambda x: re.match(fill_cell_data["tap"], x.getName()), self.cells)
         )
         self.fill_cells_by_sites = {}
+        tap_width = None
         for cell in raw_fill_cells:
             match_info = re.match(fill_cell_data["fill"], cell.getName())
             site_count = int(match_info[1])
@@ -97,6 +103,11 @@ class Placer:
             tap_width = site_count
 
         fill_cell_sizes = list(self.fill_cells_by_sites.keys())
+
+        if tap_width is None:
+            eprint("No tap cells found!")
+            print(fill_cell_sizes)
+            exit(-1)
 
         # Layout Setup
         self.block = self.db.getChip().getBlock()
@@ -169,32 +180,23 @@ class Placer:
             % (self.core_width, self.core_height)
         )
 
+        utl.metric_float("dffram__suggested__core_width", self.core_width)
+        utl.metric_float("dffram__suggested__core_height", self.core_height)
+
         die_area = self.block.getDieArea().area() / (
             self.micron_in_units * self.micron_in_units
         )
 
         self.density = logical_area / die_area
+        utl.metric_float("dffram__logic__density", self.density)
         eprint("Density: %.2f%%" % (self.density * 100))
         eprint("Done.")
 
     def write_db(self, output):
         return odb.write_db(self.db, output) == 1
 
-    def write_width_height(self, dimensions_file):
-        try:
-            with open(dimensions_file, "w") as f:
-                f.write(str(self.core_width) + "x" + str(self.core_height))
-            return True
-        except Exception:
-            return False
-
-    def write_density(self, density_file):
-        try:
-            with open(density_file, "w") as f:
-                f.write(str(self.density))
-            return True
-        except Exception:
-            return False
+    def write_def(self, output):
+        return odb.write_def(self.block, output) == 1
 
 
 def check_readable(file):
@@ -203,7 +205,8 @@ def check_readable(file):
 
 
 @click.command()
-@click.option("-o", "--output", required=True)
+@click.option("-o", "--output-odb", required=True)
+@click.option("--output-def", type=str, required=False, default=None)
 @click.option("-s", "--size", required=True, help="RAM Size (ex. 8x32, 16x32…)")
 @click.option(
     "-r",
@@ -212,30 +215,26 @@ def check_readable(file):
     help="File to print out text representation of hierarchy to. (Pass /dev/stderr or /dev/stdout for stderr or stdout.)",
 )
 @click.option(
-    "-d",
-    "--write-dimensions",
-    required=False,
-    help="File to print final width and height to (in the format '{width}x{height}')",
-)
-@click.option(
-    "-n",
-    "--write-density",
-    required=False,
-    help="File to print density to (in the format '{density}'- 0<=density<1)",
-)
-@click.option(
     "-b",
     "--building-blocks",
     default="sky130A:sky130_fd_sc_hd:ram",
     help="Format <pdk>:<scl>:<name> : Name of the building blocks to use.",
 )
+@click.option(
+    "-l",
+    "--input-lef",
+    default=[],
+    help="Input LEF files (ignored)",
+    multiple=True,
+    type=str,
+)
 @click.argument("odb_in", required=True, nargs=1)
 def cli(
-    output,
+    output_odb,
+    output_def,
+    input_lef,
     size,
     represent,
-    write_dimensions,
-    write_density,
     building_blocks,
     odb_in,
 ):
@@ -290,23 +289,16 @@ def cli(
 
     placer.place()
 
-    if not placer.write_db(output):
+    if not placer.write_db(output_odb):
         eprint("Failed to write output ODB file.")
         exit(os.EX_IOERR)
 
-    eprint("Wrote to %s." % output)
+    eprint("Wrote to %s." % output_odb)
 
-    if write_dimensions is not None:
-        if not placer.write_width_height(write_dimensions):
-            eprint("Failed to write dimensions file.")
+    if output_def is not None:
+        if not placer.write_def(output_def):
+            eprint("Failed to write output DEF file.")
             exit(os.EX_IOERR)
-        eprint("Wrote width and height to %s." % write_dimensions)
-
-    if write_density is not None:
-        if not placer.write_density(write_density):
-            eprint("Failed to write density file.")
-            exit(os.EX_IOERR)
-        eprint("Wrote density to %s." % write_dimensions)
 
     eprint("Done.")
 
