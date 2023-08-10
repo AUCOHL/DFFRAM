@@ -338,7 +338,7 @@ def main(
             "SYNTH_ELABORATE_FLATTEN": True,
             "SYNTH_READ_BLACKBOX_LIB": True,
             "SYNTH_EXCLUSION_CELL_LIST": "/dev/null",
-            "SYNTH_PARAMETERS": f"WSIZE={logical_width}",
+            "SYNTH_PARAMETERS": [f"WSIZE={logical_width}"],
             "GRT_REPAIR_ANTENNAS": False,
             "MINIMUM_HEIGHT": min_height,
             "VERTICAL_HALO": vertical_halo,
@@ -352,6 +352,7 @@ def main(
             "FP_IO_VEXTEND": Decimal(0),
             "FP_IO_VLENGTH": 2,
             "FP_IO_HLENGTH": 2,
+            "STA_CORNERS": ["nom_ss_100C_1v60"],
         },
         design_dir=build_dir,
     )

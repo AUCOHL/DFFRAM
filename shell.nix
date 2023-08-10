@@ -18,6 +18,6 @@
 let openlane-src = pkgs.fetchFromGitHub {
     owner = "efabless";
     repo = "openlane2";
-    rev = "95100bca1216ee83ff83ff5e425ad7c2fbece9f4";
-    sha256 = "sha256-z9AZTjs2QwjL83+N4KztrjBNEE3zTxagPPtXPLZhRC4=";
+    rev = "0b2cb7eb6681b644e65082701175044e6e97cc0f";
+    sha256 = "sha256-qYMZJGRfqNhf0FFf2VdF2AOsAqVTlWLrYlc3krvKp0I=";
 }; in import "${openlane-src}/shell.nix" {}
