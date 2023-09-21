@@ -106,7 +106,7 @@ jobs:
             building_blocks=rf
           fi
 
-          nix-shell --run "\
+          nix-shell --pure --run "\
             ./dffram.py ${{ matrix.count }}x${{ matrix.width }}\
             -p sky130A\
             -s sky130_fd_sc_hd\
