@@ -355,7 +355,7 @@ def main(
             # PDN
             "DESIGN_IS_CORE": False,
         },
-        design_dir=build_dir,
+        design_dir=os.path.abspath(build_dir),
     )
 
     final_state = dffram_flow.start(
