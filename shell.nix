@@ -20,4 +20,6 @@ let openlane-src = pkgs.fetchFromGitHub {
     repo = "openlane2";
     rev = "0c05b7ea04eac74203a9a33f8a8b519f33220f2f";
     sha256 = "sha256-fjYz6HuIYrGbkb1oA6wPIlEjieYU5hu0aygYQFj2d2I=";
-}; in import "${openlane-src}/shell.nix" {}
+}; in import "${openlane-src}/shell.nix" {
+    inherit pkgs;
+}
