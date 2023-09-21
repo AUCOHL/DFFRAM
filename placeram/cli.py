@@ -183,9 +183,9 @@ class Placer:
         utl.metric_float("dffram__suggested__core_width", self.core_width)
         utl.metric_float("dffram__suggested__core_height", self.core_height)
 
-        die_area = self.block.getDieArea().area() / (
-            self.micron_in_units * self.micron_in_units
-        )
+        die_width = self.block.getDieArea().dx() / self.micron_in_units
+        die_height = self.block.getDieArea().dy() / self.micron_in_units
+        die_area = die_width * die_height
 
         self.density = logical_area / die_area
         utl.metric_float("dffram__logic__density", self.density)
@@ -239,8 +239,8 @@ def cli(
     odb_in,
 ):
     pdk, scl, blocks = building_blocks.split(":")
-    fill_cells_file = os.path.join(".", "platforms", pdk, "fill_cells.yml")
-    if not os.path.isfile(fill_cells_file):
+    platform_tech_file = os.path.join(".", "platforms", pdk, scl, "tech.yml")
+    if not os.path.isfile(platform_tech_file):
         eprint("Platform %s not found." % pdk)
         exit(os.EX_NOINPUT)
 
@@ -264,7 +264,6 @@ def cli(
             "WARNING: Word length must be a non-zero multiple of 8. Results may be unexpected."
         )
 
-    platform_tech_file = os.path.join(".", "platforms", pdk, scl, "tech.yml")
     platform_tech_config = yaml.safe_load(open(platform_tech_file))
 
     tap_distance = platform_tech_config["tap_distance"]
@@ -272,7 +271,7 @@ def cli(
     for input in [odb_in]:
         check_readable(input)
 
-    fill_cell_data = yaml.load(open(fill_cells_file).read(), Loader=yaml.SafeLoader)
+    fill_cell_data = platform_tech_config["fills"]
 
     placer = Placer(
         odb_in,

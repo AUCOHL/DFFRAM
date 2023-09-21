@@ -352,9 +352,10 @@ def main(
             "FP_IO_VEXTEND": Decimal(0),
             "FP_IO_VLENGTH": 2,
             "FP_IO_HLENGTH": 2,
-            "STA_CORNERS": ["nom_ss_100C_1v60"],
+            # PDN
+            "DESIGN_IS_CORE": False,
         },
-        design_dir=build_dir,
+        design_dir=os.path.abspath(build_dir),
     )
 
     final_state = dffram_flow.start(

@@ -94,7 +94,7 @@ jobs:
       - name: Setup Nix
         uses: cachix/install-nix-action@v22
         with:
-          nix_path: nixpkgs=channel:nixos-22.11
+          nix_path: nixpkgs=channel:nixos-23.05
       - name: Setup Cachix
         uses: cachix/cachix-action@v12
         with:
@@ -106,7 +106,7 @@ jobs:
             building_blocks=rf
           fi
 
-          nix-shell --run "\
+          nix-shell --pure --run "\
             ./dffram.py ${{ matrix.count }}x${{ matrix.width }}\
             -p sky130A\
             -s sky130_fd_sc_hd\
@@ -115,6 +115,12 @@ jobs:
           "
 
           echo "PRODUCTS_PATH=$(echo products/*)" >> $GITHUB_ENV
+      # - name: Upload Build Folder [TEMP]
+      #   uses: actions/upload-artifact@v3
+      #   if: always()
+      #   with:
+      #     name: BUILD_${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
+      #     path: ./build
       - name: Upload Final Views
         uses: actions/upload-artifact@v3
         with:
