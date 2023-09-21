@@ -115,6 +115,12 @@ jobs:
           "
 
           echo "PRODUCTS_PATH=$(echo products/*)" >> $GITHUB_ENV
+      - name: Upload Build Folder [TEMP]
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: BUILD_${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
+          path: ./build
       - name: Upload Final Views
         uses: actions/upload-artifact@v3
         with:
