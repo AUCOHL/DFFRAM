@@ -183,9 +183,9 @@ class Placer:
         utl.metric_float("dffram__suggested__core_width", self.core_width)
         utl.metric_float("dffram__suggested__core_height", self.core_height)
 
-        die_area = self.block.getDieArea().area() / (
-            self.micron_in_units * self.micron_in_units
-        )
+        die_width = self.block.getDieArea().dx() / self.micron_in_units
+        die_height = self.block.getDieArea().dy() / self.micron_in_units
+        die_area = die_width * die_height
 
         self.density = logical_area / die_area
         utl.metric_float("dffram__logic__density", self.density)
