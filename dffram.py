@@ -316,6 +316,8 @@ def main(
     if building_blocks == "rf":
         logical_width = word_width
 
+    rt_max_layer = tech_info["metal_layers"]["rt-max-layer"]
+
     TargetFlow = Flow.factory.get(flow_name) or DFFRAM
     dffram_flow = TargetFlow(
         {
@@ -324,7 +326,7 @@ def main(
             "CLOCK_PERIOD": clock_period,
             "GPL_CELL_PADDING": 0,
             "DPL_CELL_PADDING": 0,
-            "RT_MAX_LAYER": "met4",
+            "RT_MAX_LAYER": rt_max_layer,
             "GRT_ALLOW_CONGESTION": True,
             "PDK": pdk,
             "STD_CELL_LIBRARY": scl,

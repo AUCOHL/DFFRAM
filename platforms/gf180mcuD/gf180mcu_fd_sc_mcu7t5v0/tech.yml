@@ -30,3 +30,8 @@ sta:
       "1024x*": 12.83
       "2048x*": 14.1
     rf: {}
+fills:
+  decap: gf180mcu_fd_sc_mcu7t5v0__fillcap_(\d+)
+  fill: gf180mcu_fd_sc_mcu7t5v0__fill_(\d+)
+  tap: gf180mcu_fd_sc_mcu7t5v0__filltie
+  diode: gf180mcu_fd_sc_mcu7t5v0__antenna
