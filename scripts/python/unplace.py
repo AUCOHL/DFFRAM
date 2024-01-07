@@ -32,29 +32,43 @@ except ImportError:
 
 @click.command()
 @click.option(
-    "-p", "--platform", required=True, help="PDK/Platform to use, e.g. sky130A"
+    "-p",
+    "--platform",
+    required=True,
+    help="Platform (PDK) to use",
+)
+@click.option(
+    "-s",
+    "--scl",
+    required=True,
+    help="SCL to use in the format",
 )
 @click.option(
     "-o",
     "--output",
     "output_file",
+    type=click.Path(file_okay=True, dir_okay=False),
     default="/dev/stdout",
     help="Output file",
     show_default=True,
 )
-@click.argument("input_file", required=True)
-def unplace(platform, output_file, input_file):
+@click.argument(
+    "input_file",
+    type=click.Path(file_okay=True, dir_okay=False, exists=True),
+    required=True,
+)
+def unplace(platform: str, scl: str, output_file: str, input_file: str):
     dn = os.path.dirname
     dffram_path = dn(dn(dn(os.path.abspath(__file__))))
-    fill_yml_path = os.path.join(dffram_path, "platforms", platform, "fill_cells.yml")
+    tech_path = os.path.join(dffram_path, "platforms", platform, scl, "tech.yml")
     try:
-        fill_yml_str = open(fill_yml_path).read()
+        tech_str = open(tech_path).read()
     except FileNotFoundError:
-        print(f"{fill_yml_path} not found.", file=sys.stderr)
+        print(f"{tech_path} not found.", file=sys.stderr)
         exit(os.EX_NOINPUT)
 
-    data: dict = yaml.load(fill_yml_str, Loader=yaml.SafeLoader)
-    rx_list = list(data.values())
+    data: dict = yaml.load(tech_str, Loader=yaml.SafeLoader)
+    rx_list = list(data["fills"].values())
 
     try:
         input_str = open(input_file).read()

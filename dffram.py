@@ -242,6 +242,7 @@ def main(
     default_clock_period,
     min_height,
     flow_name,
+    pdk_root,
     **kwargs,
 ):
     if variant == "DEFAULT":
@@ -358,6 +359,7 @@ def main(
             "DESIGN_IS_CORE": False,
         },
         design_dir=os.path.abspath(build_dir),
+        pdk_root=pdk_root,
     )
 
     final_state = dffram_flow.start(

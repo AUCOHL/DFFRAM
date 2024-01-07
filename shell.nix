@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 {
-    pkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/0218941ea68b4c625533bead7bbb94ccce52dceb.tar.gz") {}
+    pkgs ? import <nixpkgs> {}
 }:
 
 let openlane-src = pkgs.fetchFromGitHub {
     owner = "efabless";
     repo = "openlane2";
-    rev = "0c05b7ea04eac74203a9a33f8a8b519f33220f2f";
-    sha256 = "sha256-fjYz6HuIYrGbkb1oA6wPIlEjieYU5hu0aygYQFj2d2I=";
-}; in import "${openlane-src}/shell.nix" {
-    inherit pkgs;
-}
+    rev = "83ec6c32add40006cc70d951745667d30193f51d";
+    sha256 = "sha256-9Xms6eRf3yyaFJVVjk+uPYYM+EDRl4GYAYYUK5QhiLc=";
+}; in import "${openlane-src}/shell.nix" {}
