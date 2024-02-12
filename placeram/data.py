@@ -310,7 +310,8 @@ class LRPlaceable(Placeable):
                 elements: Union[List[Instance], Instance] = getattr(self, accessor)
                 if len(elements) == 0:
                     continue
-                element = elements[i]
+                if i < len(elements):
+                    element = elements[i]
                 if isinstance(element, list):
                     column += element
                 else:

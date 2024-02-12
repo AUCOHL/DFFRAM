@@ -145,9 +145,9 @@ class Floorplan(OpenROAD.Floorplan):
         kwargs, env = self.extract_env(kwargs)
 
         env["DIE_AREA"] = f"0 0 {die_width} {die_height}"
-        env[
-            "CORE_AREA"
-        ] = f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
+        env["CORE_AREA"] = (
+            f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
+        )
         env["FP_SIZING"] = "absolute"
         return super().run(state_in, env=env, **kwargs)
 
