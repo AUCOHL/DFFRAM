@@ -1,40 +1,84 @@
 # Using DFFRAM
-DFFRAM is based around two Python modules: `dffram` and `placeram`.
+DFFRAM is based around `placeram`, a Python module, and `dffram.py`, a Python
+application.
 
-`dffram.py` is a relatively self-contained flow that uses Openlane and other technologies to place, route and harden RAM. `dffram.py` runs on the host machine.
+`placeram` is a custom placer using OpenROAD's Python interface.
+It places DFFRAM RAM/RF designs in a predetermined structure to avoid a lengthy
+and inefficient manual placement process for RAM.
 
-`placeram` is a custom placer using OpenROAD's Python interface. It places DFFRAM RAM/RF designs in a predetermined structure to avoid a lengthy and inefficient manual placement process for RAM. Unlike `dffram.py`, `placeram` runs in a Docker container to avoid mandating an OpenROAD dependency (which is huge.)
+`dffram.py` is an OpenLane-based flow that performs every step of hardening
+the RAM modules from elaboration to GDS-II stream out. It incorporates `placeram`.
 
 # Dependencies
-* A Unix-like Operating System
-  * Use the Windows Subsystem for Linux on Windows (which I use)
-* The Skywater 130nm PDK
-  * See [Getting Sky130](./md/Getting%20Sky130.md)
-* Docker Container
-* Python 3.6+ with PIP
-  * PIP packages `click` and `pyyaml`: `python3 -m pip install click pyyaml`
+* macOS or Linux
+* The Nix Package Manager
 
-## Recommended
-* Klayout (to view the final result)
+## Installing Nix
+You can install Nix by following the instructions at https://nixos.org/download.html.
+
+Or more simply, on Ubuntu, run the following in your Terminal:
+
+```sh
+sudo apt-get install -y curl
+sh <(curl -L https://nixos.org/nix/install) --daemon --yes
+```
+> On not systemd-based Linux systems, replace `--daemon` with `--no-daemon`.
+
+Or on macOS:
+
+```sh
+sh <(curl -L https://nixos.org/nix/install) --yes
+```
+
+Enter your password if prompted. This hsould take around 5 minutes.
+
+Make sure to close all terminals after you're done with this step.
+
+### Setting up the binary cache
+Cachix allows the reproducible Nix builds to be stored on a cloud server so you
+do not have to build OpenLane's dependencies from scratch on every computer,
+which will take a long time.
+
+First, you want to install Cachix by running the following in your terminal:
+
+```sh
+nix-env -f "<nixpkgs>" -iA cachix
+```
+
+Then set up the OpenLane binary cache as follows:
+
+```sh
+cachix use openlane
+```
+If `cachix use openlane` fails, re-run it as follows:
+
+```sh
+sudo env PATH="$PATH" cachix use openlane
+```
 
 # Basic
 ```sh
-export PDK_ROOT=/usr/local/pdk
 git clone https://github.com/Cloud-V/DFFRAM 
 cd DFFRAM
-python3 -m pip install -r requirements.txt
-./dffram.py -s 8x32 # <8-2048>x<8-64>
+nix-shell
+./dffram.py 8x32 # <8-2048>x<8-64>
 ```
 
 # Advanced
-The compilation flow at a minimum needs two options: the building blocks and the size.
+The compilation flow has four main arguments:
+  * `--pdk`: The PDK
+  * `--scl`: The Standard Cell Library
+  * `--building-blocks`: The building blocks.
+  * The Size (passed without a flag)
+
+The building block full set `pdk:scl:blocks` corresponds to `./platforms/<pdk>/<scl>/_building_blocks/<name>/model.v`. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
+
+For example:
 
 ```sh
-export PDK_ROOT=/usr/local/pdk
-./dffram.py -b sky130A:sky130_fd_sc_hd:ram -s 8x32
+./dffram.py -p sky130A -s sky130_fd_sc_hd -b ram 8x32
 ```
 
-The building block set `pdk:scl:name` corresponds to `./platforms/<pdk>/<scl>/_building_blocks/<name>/model.v`. Building block sets are fundamentally similar with a number of exceptions, most importantly, the SCL used and supported sizes.
 
 ## Options
 For a full list of options, please invoke:
@@ -47,7 +91,6 @@ DFFRAM supports a number of secret options you can use to further customize your
 
 Variable Name|Effect
 -|-
-PRFLOW_CREATE_IMAGE|If set to any value, a step after placement and routing that creates an image with Klayout is added. It's good for sanity checks.
 FORCE_ACCEPT_SIZE|DFFRAM checks that you are not using a size not officially marked supported as available by a certain building block set. If this environment variable is set to any value, the check is bypassed.
 FORCE_DESIGN_NAME|Design names are found based on the size. If you'd like to force dffram to use a specific design name instead, set this environment variable to that name.
 

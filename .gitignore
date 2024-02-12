@@ -30,3 +30,5 @@ support/
 *.xz
 venv/
 products_path
+/products_path
+/products
