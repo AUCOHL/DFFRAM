@@ -159,6 +159,97 @@ module RAM16 #( parameter   USE_LATCH=1,
 
 endmodule
 
+// 2 x RAM8 slices (64 bytes) with registered outout and two ports
+module RAM16_1RW1R #( parameter   USE_LATCH=1,
+                            WSIZE=1 ) 
+(
+    input   wire                 CLK,    // FO: 2
+    input   wire [WSIZE-1:0]     WE0,     // FO: 1
+    input                        EN0,     // FO: 1
+    input   wire [3:0]           A0,      // FO: 1
+    input   wire [(WSIZE*8-1):0] Di0,     // FO: 1
+    output  wire [(WSIZE*8-1):0] Do0,
+    input                        EN1,
+    input   wire [3:0]           A1,
+    output  wire [(WSIZE*8-1):0] Do1
+);
+    wire [1:0]           SEL0;
+    wire [3:0]           A0_buf;
+    wire                 CLK_buf;
+    wire [WSIZE-1:0]     WE0_buf;
+    wire                 EN0_buf;
+    wire [3:0]           A1_buf;
+    wire                 EN1_buf;
+    wire [(WSIZE*8-1):0] Do1_pre;
+    wire [1:0]           SEL1;
+    
+
+    wire [(WSIZE*8-1):0] Do0_pre;
+    //wire [(WSIZE*8-1):0] Di0_buf;
+
+    // Buffers
+    // Di Buffers
+    // CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf), .A(Di0));
+    // Control signals buffers
+ 
+`ifndef NO_DIODES   
+    (* keep = "true" *)
+    DIODE    DIODE_CLK         (.DIODE(CLK));
+`endif
+    
+    CLKBUF_4   CLKBUF              (.X(CLK_buf), .A(CLK));
+    
+    CLKBUF_2   WEBUF[(WSIZE-1):0]  (.X(WE0_buf), .A(WE0));
+ 
+`ifndef NO_DIODES   
+    (* keep = "true" *)
+    DIODE    DIODE_A0 [4:0]    (.DIODE(A0[4:0]));
+    DIODE    DIODE_A1 [4:0]    (.DIODE(A1[4:0]));
+`endif
+
+    CLKBUF_2   A0BUF[3:0]           (.X(A0_buf),  .A(A0[3:0]));
+    CLKBUF_2   EN0BUF               (.X(EN0_buf), .A(EN0));
+    CLKBUF_2   A1BUF[3:0]           (.X(A1_buf),  .A(A1[3:0]));
+    CLKBUF_2   EN1BUF               (.X(EN1_buf), .A(EN1));
+
+    //DEC2x4 DEC0 (.EN(EN0_buf), .A(A0_buf[4:3]), .SEL(SEL0));
+    DEC1x2 DEC0 (.EN(EN0_buf), .A(A0_buf[3:3]), .SEL(SEL0));
+    DEC1x2 DEC1 (.EN(EN1_buf), .A(A1_buf[3:3]), .SEL(SEL1));
+    
+    generate
+        genvar i;
+        for (i=0; i< 2; i=i+1) begin : SLICE
+            RAM8_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM8 (.CLK(CLK_buf), .WE0(WE0_buf),.EN0(SEL0[i]), .EN1(SEL1[i]), .Di0(Di0), .Do0(Do0_pre), .Do1(Do1_pre), .A0(A0_buf[2:0]), .A1(A1_buf[2:0]) ); 
+        end
+    endgenerate
+
+    // Ensure that the Do0_pre lines are not floating when EN = 0
+    wire [WSIZE-1:0] lo;
+    wire [WSIZE-1:0] float_buf_en;
+    CLKBUF_2   FBUFENBUF0[WSIZE-1:0] ( .X(float_buf_en), .A(EN0) );
+    CONB     TIE0[WSIZE-1:0] (.LO(lo), .HI());
+    
+    
+    wire [WSIZE-1:0] lo_1;
+    wire [WSIZE-1:0] float_buf_en_1;
+    CLKBUF_2   FBUFENBUF1[WSIZE-1:0] ( .X(float_buf_en_1), .A(EN1) );
+    CONB     TIE1[WSIZE-1:0] (.LO(lo_1), .HI());
+    
+
+    // Following split by group because each is done by one TIE CELL and ONE CLKINV_4
+    // Provides default values for floating lines (lo)
+    generate
+        for (i=0; i< WSIZE; i=i+1) begin : BYTE
+            EBUFN_2 FLOATBUF0[(8*(i+1))-1:8*i] ( .A( lo[i] ), .Z(Do0_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en[i]) );  
+            EBUFN_2 FLOATBUF1[(8*(i+1))-1:8*i] ( .A( lo_1[i] ), .Z(Do1_pre[(8*(i+1))-1:8*i]), .TE_B(float_buf_en_1[i]) );        
+        end
+    endgenerate
+
+    OUTREG #(.WIDTH(WSIZE*8)) Do0_REG ( .CLK(CLK_buf), .Di(Do0_pre), .Do(Do0) );
+    OUTREG #(.WIDTH(WSIZE*8)) Do1_REG ( .CLK(CLK_buf), .Di(Do1_pre), .Do(Do1) );
+
+endmodule
+
 // 2 x RAM16 slices (128 bytes) with registered outout 
 module RAM32 #( parameter    USE_LATCH=1,
                                 WSIZE=4 ) 
@@ -248,7 +339,7 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
      generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : SLICE_16
-            RAM16 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM16 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .A0(A0_buf[3:0]) );        
+            RAM16_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM16 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0_buf), .Di0(Di0_buf), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0_buf[3:0]), .A1(A1_buf[3:0]) );        
         end
      endgenerate
 
