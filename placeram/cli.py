@@ -23,6 +23,7 @@ import traceback
 try:
     import odb
     import utl
+    from openroad import Tech, Design
 except ImportError:
     print(
         """
@@ -63,9 +64,10 @@ class Placer:
         tap_distance,
     ):
         # Initialize Database
-        self.db = odb.dbDatabase.create()
-
-        odb.read_db(self.db, odb_in)
+        self.tech = Tech()
+        self.design = Design(self.tech)
+        self.design.readDb(odb_in)
+        self.db = self.tech.getDB()
 
         # Technology Setup
         self.libs = self.db.getLibs()
