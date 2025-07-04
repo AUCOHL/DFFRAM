@@ -1,11 +1,8 @@
 <h1 align="center"> DFFRAM Compiler</h1>
 <p align="center">
-  <a href="https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Google Colab"/></a>
-</p>
-<p align="center">
     <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"/></a>
-    <img src="https://github.com/Cloud-V/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main" alt="CI Status" />
-    <a href="https://invite.skywater.tools"><img src="https://img.shields.io/badge/Community-Skywater%20PDK%20Slack-ff69b4?logo=slack" alt="Invite to the Skywater PDK Slack"/></a>
+    <img src="https://github.com/AUCOHL/DFFRAM/actions/workflows/main.yml/badge.svg?branch=main" alt="CI Status" />
+    <a href="https://fossi-chat.org"><img src="https://img.shields.io/badge/Community-FOSSi%20Chat-1bb378?logo=element" alt="Invite to FOSSi Chat"/></a>
     <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style: Black"/></a>
 </p>
 
@@ -14,10 +11,6 @@ Standard Cell Library based Memory Compiler using DFF/Latch cells.
 # ✨ Installation & Usage
 
 See [this document](./docs/Usage.md).
-
-You can try the
-[Google Colaboratory](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb),
-but it is a bit out-of-date at this point.
 
 ## Platform Support Status
 
@@ -76,7 +69,10 @@ blocks are as follows:
 
 Currently, the can compiler generate the layout of the following configurations:
 
-> 1RW1R variants are temporarily disabled due to a bug.
+> We currently do not recommend the use of 1RW1R. See this discussion for more
+> info:
+>
+> https://github.com/AUCOHL/DFFRAM/issues/198
 
 * RAM
   * 32 words with byte write enable (1RW and 1RW1R).
@@ -87,9 +83,6 @@ Currently, the can compiler generate the layout of the following configurations:
   * 2048 words with byte write enable (1RW and 1RW1R).
 * Register File
   * 32 x 32-bit words (2R1W)
-
-The [`OpenLane/`](./OpenLane) folder will contain good known OpenLane
-configurations to build DFFRAM different macros.
 
 ## File Structure
 
@@ -116,8 +109,8 @@ using different means.
     <th rowspan="2">Size<sup>1</sup></th> 
     <th colspan="2">OpenRAM<sup>2</sup></th> 
     <th colspan="2">DFFRAM Compiler</th> 
-    <th colspan="2">DFFRAM/OpenLane</th> 
-    <th colspan="2">RTL/OpenLane</th>
+    <th colspan="2">DFFRAM + OpenROAD Placer</th> 
+    <th colspan="2">Memory RTL with OpenLane</th>
   </tr>
   <tr style="border-top:4px solid darkblue;">
     <td> Dim WxH (μm) </td> <td> Bit Density (bits/mm<sup>2</sup>) </td>

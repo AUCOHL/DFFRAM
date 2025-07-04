@@ -14,53 +14,16 @@ the RAM modules from elaboration to GDS-II stream out. It incorporates `placeram
 * The Nix Package Manager
 
 ## Installing Nix
-You can install Nix by following the instructions at https://nixos.org/download.html.
 
-Or more simply, on Ubuntu, run the following in your Terminal:
+Please follow the LibreLane installation guide for Nix:
 
-```sh
-sudo apt-get install -y curl
-sh <(curl -L https://nixos.org/nix/install) --daemon --yes
-```
-> On not systemd-based Linux systems, replace `--daemon` with `--no-daemon`.
-
-Or on macOS:
-
-```sh
-sh <(curl -L https://nixos.org/nix/install) --yes
-```
-
-Enter your password if prompted. This hsould take around 5 minutes.
-
-Make sure to close all terminals after you're done with this step.
-
-### Setting up the binary cache
-Cachix allows the reproducible Nix builds to be stored on a cloud server so you
-do not have to build OpenLane's dependencies from scratch on every computer,
-which will take a long time.
-
-First, you want to install Cachix by running the following in your terminal:
-
-```sh
-nix-env -f "<nixpkgs>" -iA cachix
-```
-
-Then set up the OpenLane binary cache as follows:
-
-```sh
-cachix use openlane
-```
-If `cachix use openlane` fails, re-run it as follows:
-
-```sh
-sudo env PATH="$PATH" cachix use openlane
-```
+https://librelane.readthedocs.io/en/latest/getting_started/common/nix_installation/index.html
 
 # Basic
 ```sh
 git clone https://github.com/Cloud-V/DFFRAM 
 cd DFFRAM
-nix-shell
+nix develop github:librelane/librelane/3.0.0dev25
 ./dffram.py 8x32 # <8-2048>x<8-64>
 ```
 

@@ -26,12 +26,12 @@ from decimal import Decimal
 
 import yaml
 import cloup
-from openlane.common import mkdirp
-from openlane.config import Variable
-from openlane.logging import warn, err
-from openlane.state import DesignFormat
-from openlane.flows import SequentialFlow, cloup_flow_opts, Flow
-from openlane.steps import Yosys, OpenROAD, Magic, KLayout, Netgen, Odb, Checker, Misc
+from librelane.common import mkdirp
+from librelane.config import Variable
+from librelane.logging import warn, err
+from librelane.state import DesignFormat
+from librelane.flows import SequentialFlow, cloup_flow_opts, Flow
+from librelane.steps import Yosys, OpenROAD, Magic, KLayout, Netgen, Odb, Checker, Misc
 
 
 class PlaceRAM(Odb.OdbpyStep):
@@ -153,41 +153,20 @@ class Floorplan(OpenROAD.Floorplan):
 
 
 @Flow.factory.register()
-class DFFRAM(SequentialFlow):
-    Steps = [
-        Yosys.Synthesis,
-        Misc.LoadBaseSDC,
-        OpenROAD.STAPrePNR,
-        Floorplan,
-        PlaceRAM,
-        Floorplan,
-        PlaceRAM,
-        OpenROAD.IOPlacement,
-        Odb.CustomIOPlacement,
-        OpenROAD.GeneratePDN,
-        OpenROAD.STAMidPNR,
-        OpenROAD.GlobalRouting,
-        OpenROAD.STAMidPNR,
-        OpenROAD.DetailedRouting,
-        Checker.TrDRC,
-        Odb.ReportDisconnectedPins,
-        Checker.DisconnectedPins,
-        Odb.ReportWireLength,
-        Checker.WireLength,
-        OpenROAD.RCX,
-        OpenROAD.STAPostPNR,
-        OpenROAD.IRDropReport,
-        Magic.StreamOut,
-        Magic.WriteLEF,
-        KLayout.StreamOut,
-        KLayout.XOR,
-        Checker.XOR,
-        Magic.DRC,
-        Checker.MagicDRC,
-        Magic.SpiceExtraction,
-        Checker.IllegalOverlap,
-        Netgen.LVS,
-        Checker.LVS,
+class DFFRAM(Flow.factory.get("Classic")):
+    Substitutions = [
+        ("*Lint*", None),
+        ("Checker.NetlistAssignStatements", None),
+        ("OpenROAD.GlobalPlacement", None),
+        ("OpenROAD.DetailedPlacement", None),
+        ("OpenROAD.Resizer*", None),
+        ("OpenROAD.RepairDesign*", None),
+        ("OpenROAD.CTS", None),
+        ("OpenROAD.TapEndcapInsertion", None),
+        ("OpenROAD.Floorplan", Floorplan),
+        ("+DFFRAM.Floorplan", PlaceRAM),
+        ("+DFFRAM.PlaceRAM", Floorplan),
+        ("+DFFRAM.Floorplan-1", PlaceRAM),
     ]
 
 
@@ -245,6 +224,9 @@ def main(
     pdk_root,
     **kwargs,
 ):
+    if building_blocks == "ram" and variant == "1RW1R":
+        warn("See this issue for discussion on 1RW1R: https://github.com/AUCOHL/DFFRAM/issues/198")
+        
     if variant == "DEFAULT":
         variant = None
 
@@ -339,24 +321,25 @@ def main(
             ],
             "SYNTH_ELABORATE_ONLY": True,
             "SYNTH_ELABORATE_FLATTEN": True,
-            "SYNTH_READ_BLACKBOX_LIB": True,
-            "SYNTH_EXCLUSION_CELL_LIST": "/dev/null",
+            "ERROR_ON_NL_ASSIGN_STATEMENTS": False,
+            "ERROR_ON_SYNTH_CHECKS": False,
+            "SYNTH_EXCLUDED_CELL_FILE": "/dev/null",
             "SYNTH_PARAMETERS": [f"WSIZE={logical_width}"],
-            "GRT_REPAIR_ANTENNAS": False,
+            "RUN_ANTENNA_REPAIR": False,
             "MINIMUM_HEIGHT": min_height,
             "VERTICAL_HALO": vertical_halo,
             "HORIZONTAL_HALO": horizontal_halo,
             "CLOCK_PERIOD": clock_period,
             # IO Placement
-            "FP_PIN_ORDER_CFG": pin_order_file,
-            "FP_IO_VTHICKNESS_MULT": Decimal(2),
-            "FP_IO_HTHICKNESS_MULT": Decimal(2),
-            "FP_IO_HEXTEND": Decimal(0),
-            "FP_IO_VEXTEND": Decimal(0),
-            "FP_IO_VLENGTH": 2,
-            "FP_IO_HLENGTH": 2,
+            "IO_PIN_ORDER_CFG": pin_order_file,
+            "IO_PIN_V_THICKNESS_MULT": Decimal(2),
+            "IO_PIN_H_THICKNESS_MULT": Decimal(2),
+            "IO_PIN_H_EXTENSION": Decimal(0),
+            "IO_PIN_V_EXTENSION": Decimal(0),
+            "IO_PIN_V_LENGTH": 2,
+            "IO_PIN_H_LENGTH": 2,
             # PDN
-            "DESIGN_IS_CORE": False,
+            "PDN_MULTILAYER": False,
         },
         design_dir=os.path.abspath(build_dir),
         pdk_root=pdk_root,

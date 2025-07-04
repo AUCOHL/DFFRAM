@@ -31,3 +31,4 @@ support/
 venv/
 /products_path
 /products
+/dist
