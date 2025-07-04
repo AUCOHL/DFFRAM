@@ -145,9 +145,9 @@ class Floorplan(OpenROAD.Floorplan):
         kwargs, env = self.extract_env(kwargs)
 
         env["DIE_AREA"] = f"0 0 {die_width} {die_height}"
-        env[
-            "CORE_AREA"
-        ] = f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
+        env["CORE_AREA"] = (
+            f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
+        )
         env["FP_SIZING"] = "absolute"
         return super().run(state_in, env=env, **kwargs)
 
@@ -225,8 +225,10 @@ def main(
     **kwargs,
 ):
     if building_blocks == "ram" and variant == "1RW1R":
-        warn("See this issue for discussion on 1RW1R: https://github.com/AUCOHL/DFFRAM/issues/198")
-        
+        warn(
+            "See this issue for discussion on 1RW1R: https://github.com/AUCOHL/DFFRAM/issues/198"
+        )
+
     if variant == "DEFAULT":
         variant = None
 

@@ -65,7 +65,7 @@ class Placer:
     ):
         self.ord_tech = Tech()
         self.design = Design(self.ord_tech)
-        
+
         self.design.readDb(odb_in)
         self.db = self.ord_tech.getDB()
 
