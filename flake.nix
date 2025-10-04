@@ -1,7 +1,7 @@
 # The nix-eda flake template
 {
   inputs = {
-    librelane.url = "github:librelane/librelane/2.4.2";
+    librelane.url = "github:librelane/librelane";
   };
 
   outputs = {
