@@ -12,10 +12,6 @@ Standard Cell Library based Memory Compiler using DFF/Latch cells.
 
 See [this document](./docs/Usage.md).
 
-You can try the
-[Google Colaboratory](https://colab.research.google.com/github/Cloud-V/DFFRAM/blob/main/dffram.ipynb),
-but it is a bit out-of-date at this point.
-
 ## Platform Support Status
 
 | Configured Platform | Signoff-clean | Silicon-proven\* |

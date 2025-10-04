@@ -106,7 +106,7 @@ jobs:
             building_blocks=rf
           fi
 
-          nix develop --command "\
+          nix develop --command bash -c "\
             ./dffram.py ${{ matrix.count }}x${{ matrix.width }}\
               -p sky130A\
               -s sky130_fd_sc_hd\
