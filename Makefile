@@ -16,7 +16,7 @@ venv/manifest.txt: ./requirements_dev.txt
 	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade pip
 	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade wheel
 	PYTHONPATH= ./venv/bin/python3 -m pip install --upgrade\
-		-r ./requirements_dev.txt
+		-r ./requirements_dev.txt -r ./requirements.txt
 	PYTHONPATH= ./venv/bin/python3 -m pip freeze > $@
 	touch venv/manifest.txt
 

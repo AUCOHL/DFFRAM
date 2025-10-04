@@ -7,10 +7,8 @@ from .util import d2a
 from .placeable import Placeable
 from .common_data import Decoder5x32
 
-from odb import dbInst
+from odb import dbInst as Instance
 from typing import Dict, List
-
-Instance = dbInst
 
 P = Placeable
 S = Placeable.Sieve

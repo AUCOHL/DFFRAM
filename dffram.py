@@ -47,6 +47,7 @@ from librelane.flows import cloup_flow_opts, Flow
     type=Decimal,
     help="Minimum height in µm",
 )
+@cloup.option("--latch/--dff", default=True, help="Whether to use latches or dffs")
 @cloup_flow_opts(accept_config_files=False)
 @cloup.argument("size", default="32x32", nargs=1)
 def main(
@@ -67,6 +68,7 @@ def main(
     min_height,
     flow_name,
     pdk_root,
+    latch,
     **kwargs,
 ):
     if variant == "DEFAULT":
@@ -123,7 +125,9 @@ def main(
         }
     )
 
-    build_dir = os.path.join("build", design)
+    build_dir = os.path.join(
+        "build", f"{pdk}-{scl}-{'latch' if latch else 'dff'}", design
+    )
     mkdirp(build_dir)
 
     tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
@@ -163,7 +167,7 @@ def main(
             ],
             "SYNTH_ELABORATE_ONLY": True,
             "SYNTH_ELABORATE_FLATTEN": True,
-            "SYNTH_PARAMETERS": [f"WSIZE={logical_width}"],
+            "SYNTH_PARAMETERS": [f"WSIZE={logical_width}", f"USE_LATCH={int(latch)}"],
             "GRT_REPAIR_ANTENNAS": False,
             "MINIMUM_HEIGHT": min_height,
             "VERTICAL_HALO": vertical_halo,

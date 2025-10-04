@@ -18,15 +18,22 @@ def dbInst__repr__(self):
 
 Instance.__repr__ = dbInst__repr__
 
-RegExp = str
+
+def _load_regexes():
+    compiled = {}
+    with open(os.path.join(os.path.dirname(__file__), "rx.yml"), encoding="utf8") as f:
+        _loading: Dict[str, Dict[str, str]] = yaml.safe_load(f)
+        for cls, patterns in _loading.items():
+            compiled.setdefault(cls, {})
+            for variable, rx in patterns.items():
+                compiled[cls][variable] = re.compile(rx)
+    return compiled
 
 
 class Placeable(object):
-    RegexDictionary: Dict[str, Dict[str, RegExp]] = yaml.safe_load(
-        open(os.path.join(os.path.dirname(__file__), "rx.yml"))
-    )
+    RegexDictionary: Dict[str, Dict[str, re.Pattern]] = _load_regexes()
 
-    def regex_dict(self) -> Dict[str, RegExp]:
+    def regex_dict(self) -> Dict[str, re.Pattern]:
         return Placeable.RegexDictionary[self.__class__.__name__]
 
     class Sieve(object):
@@ -44,7 +51,6 @@ class Placeable(object):
 
     def sieve(self, instances: List[Instance], sieves: List[Sieve]):
         regexes = self.regex_dict()
-        compiled_regexes = {k: re.compile(v) for k, v in regexes.items()}
         for sieve in sieves:
             depth = len(sieve.groups)
             if depth == 0:
@@ -56,7 +62,7 @@ class Placeable(object):
             n = instance.getName()
             found = False
             for sieve in sieves:
-                rx = compiled_regexes[sieve.variable]
+                rx = regexes[sieve.variable]
                 result = rx.search(n)
                 if result is None:
                     continue

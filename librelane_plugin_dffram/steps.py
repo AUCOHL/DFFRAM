@@ -4,17 +4,21 @@
 # Copyright ©2023 Efabless Corporation
 import os
 import math
+from pathlib import Path
 from typing import List
 from decimal import Decimal
 
 import yaml
-from librelane.config import Variable
+from librelane.config import Variable, Config
 from librelane.logging import warn
 from librelane.state import DesignFormat
-from librelane.steps import OpenROAD, Odb
+from librelane.steps import OpenROAD, OdbpyStep, Step
+
+__file_dir__ = Path(__file__).absolute().parent
 
 
-class PlaceRAM(Odb.OdbpyStep):
+@Step.factory.register()
+class PlaceRAM(OdbpyStep):
     id = "DFFRAM.PlaceRAM"
 
     config_vars = [
@@ -44,7 +48,40 @@ class PlaceRAM(Odb.OdbpyStep):
         raw.insert(raw.index("placeram"), "-m")
         return raw
 
+    def run(self, state_in, **kwargs):
+        kwargs, env = self.extract_env(kwargs)
+        env["PYTHONPATH"] = str(__file_dir__ / "scripts" / "odbpy")
+        return super().run(state_in, env=env, **kwargs)
 
+
+def calculate_halo(config: Config):
+    pdk = config["PDK"]
+    scl = config["STD_CELL_LIBRARY"]
+    horizontal_halo = config["HORIZONTAL_HALO"]
+    vertical_halo = config["VERTICAL_HALO"]
+
+    tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
+    tech_info = yaml.safe_load(open(tech_info_path))
+    site_info = tech_info.get("site")
+
+    site_width = Decimal(1)
+    site_height = Decimal(1)
+
+    if site_info is not None:
+        site_width = Decimal(site_info["width"])
+        site_height = Decimal(site_info["height"])
+
+        horizontal_halo = math.ceil(horizontal_halo / site_width) * site_width
+        vertical_halo = math.ceil(vertical_halo / site_height) * site_height
+    else:
+        if horizontal_halo != 0.0 or vertical_halo != 0.0:
+            warn(
+                "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
+            )
+    return horizontal_halo, vertical_halo, site_width, site_height
+
+
+@Step.factory.register()
 class Floorplan(OpenROAD.Floorplan):
     id = "DFFRAM.Floorplan"
 
@@ -81,8 +118,6 @@ class Floorplan(OpenROAD.Floorplan):
     ]
 
     def run(self, state_in, **kwargs):
-        min_height = self.config["MINIMUM_HEIGHT"]
-
         core_width = Decimal(
             state_in.metrics.get("dffram__suggested__core_width") or 20000
         )
@@ -90,33 +125,11 @@ class Floorplan(OpenROAD.Floorplan):
             state_in.metrics.get("dffram__suggested__core_height") or 20000
         )
 
-        horizontal_halo = self.config["HORIZONTAL_HALO"]
-        vertical_halo = self.config["VERTICAL_HALO"]
-
-        pdk = self.config["PDK"]
-        scl = self.config["STD_CELL_LIBRARY"]
-
-        tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
-        tech_info = yaml.safe_load(open(tech_info_path))
-        site_info = tech_info.get("site")
-
-        site_width = Decimal(1)
-        site_height = Decimal(1)
-
-        if site_info is not None:
-            site_width = Decimal(site_info["width"])
-            site_height = Decimal(site_info["height"])
-
-            horizontal_halo = math.ceil(horizontal_halo / site_width) * site_width
-            vertical_halo = math.ceil(vertical_halo / site_height) * site_height
-        else:
-            if horizontal_halo != 0.0 or vertical_halo != 0.0:
-                warn(
-                    "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
-                )
+        horizontal_halo, vertical_halo, _, site_height = calculate_halo(self.config)
 
         die_width = core_width + horizontal_halo * 2
         die_height = core_height + vertical_halo * 2
+        min_height = self.config["MINIMUM_HEIGHT"]
         if die_height < min_height:
             die_height = min_height
             vertical_halo = (die_height - core_height) / 2
