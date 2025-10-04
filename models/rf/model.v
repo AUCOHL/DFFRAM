@@ -13,7 +13,9 @@
 
 module DFFRF_2R1W #(parameter   WSIZE=32,
                                 RCOUNT=32,
-                                R0_ZERO=1 )
+                                R0_ZERO=1,
+                                USE_LATCH=1 // does nothing. just to prevent a flow crash
+)
 (
 	input   wire    [4:0]                   RA, RB, RW,
 	input   wire    [WSIZE-1:0]         	DW,
