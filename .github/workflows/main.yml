@@ -8,10 +8,10 @@ name: CI
 jobs:
   lint_models:
     name: Lint All Models
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
@@ -24,7 +24,7 @@ jobs:
           done
   lint_python:
     name: Lint Python Code
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
         run: make lint
   verify_models:
     name: Verify (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [lint_models]
     strategy:
       matrix:
@@ -53,7 +53,7 @@ jobs:
           - { count: "2048", width: "32", variant: "1RW1R" }
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       - name: Get IcarusVerilog
         run: |
           sudo apt-get install -y iverilog
@@ -68,7 +68,7 @@ jobs:
           /bin/bash -c "! make | grep -c FATAL"
   harden:
     name: Harden (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [lint_models, lint_python]
     strategy:
       fail-fast: false
@@ -90,15 +90,15 @@ jobs:
           #- { count: "256", width: "32", variant: "1RW1R" } # Timeout
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Nix
-        uses: cachix/install-nix-action@v22
-        with:
-          nix_path: nixpkgs=channel:nixos-23.05
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v12
-        with:
-          name: openlane
+        uses: actions/checkout@v5
+      - name: Install Lix
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf -L https://install.lix.systems/lix | sh -s -- install --no-confirm --extra-conf "
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+          "
+          echo "extra-substituters = https://nix-cache.fossi-foundation.org" | sudo tee -a /etc/nix/nix.conf
+          echo "extra-trusted-public-keys = nix-cache.fossi-foundation.org:3+K59iFwXqKsL7BNu6Guy0v+uTlwsxYQxjspXzqLYQs=" | sudo tee -a /etc/nix/nix.conf
       - name: Run
         run: |
           building_blocks=ram
@@ -106,12 +106,12 @@ jobs:
             building_blocks=rf
           fi
 
-          nix-shell --pure --run "\
+          nix develop --command bash -c "\
             ./dffram.py ${{ matrix.count }}x${{ matrix.width }}\
-            -p sky130A\
-            -s sky130_fd_sc_hd\
-            -v ${{ matrix.variant }}\
-            -b $building_blocks\
+              -p sky130A\
+              -s sky130_fd_sc_hd\
+              -v ${{ matrix.variant }}\
+              -b $building_blocks\
           "
 
           echo "PRODUCTS_PATH=$(echo products/*)" >> $GITHUB_ENV
@@ -122,7 +122,7 @@ jobs:
       #     name: BUILD_${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
       #     path: ./build
       - name: Upload Final Views
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }}
           path: ${{ env.PRODUCTS_PATH }}
@@ -130,9 +130,9 @@ jobs:
     name: Publish Release
     if: always()
     needs: [harden, verify_models]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Export Repo URL
@@ -147,8 +147,12 @@ jobs:
           if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ env.BRANCH_NAME }}" = "main" ]; then
             python3 ./.github/scripts/generate_tag.py
           fi
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v3
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          delete-merged: true
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
         with:
           path: ./artifacts
       - name: Create Release

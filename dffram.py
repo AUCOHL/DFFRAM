@@ -1,194 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
-# Copyright ©2020-2023 The American University in Cairo
+# SPDX-License-Identifier: Apache-2.0
+# Copyright ©2020-2025, The American University in Cairo
 # Copyright ©2023 Efabless Corporation
-#
-# This file is part of the DFFRAM Memory Compiler.
-# See https://github.com/Cloud-V/DFFRAM for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 import os
 import re
-import math
-from typing import List
 from fnmatch import fnmatch
 from decimal import Decimal
 
 import yaml
 import cloup
-from openlane.common import mkdirp
-from openlane.config import Variable
-from openlane.logging import warn, err
-from openlane.state import DesignFormat
-from openlane.flows import SequentialFlow, cloup_flow_opts, Flow
-from openlane.steps import Yosys, OpenROAD, Magic, KLayout, Netgen, Odb, Checker, Misc
-
-
-class PlaceRAM(Odb.OdbpyStep):
-    id = "DFFRAM.PlaceRAM"
-
-    config_vars = [
-        Variable(
-            "RAM_SIZE",
-            str,
-            "The size of the RAM macro being hardened the format {words}x{bits}",
-        ),
-        Variable(
-            "BUILDING_BLOCKS",
-            str,
-            "The set of building blocks being used.",
-            default="ram",
-        ),
-    ]
-
-    def get_script_path(self):
-        return "placeram"
-
-    def get_command(self) -> List[str]:
-        raw = super().get_command() + [
-            "--building-blocks",
-            f"{self.config['PDK']}:{self.config['STD_CELL_LIBRARY']}:{self.config['BUILDING_BLOCKS']}",
-            "--size",
-            self.config["RAM_SIZE"],
-        ]
-        raw.insert(raw.index("placeram"), "-m")
-        return raw
-
-
-class Floorplan(OpenROAD.Floorplan):
-    id = "DFFRAM.Floorplan"
-
-    outputs = [
-        DesignFormat.ODB,
-    ]
-
-    config_vars = [
-        var
-        for var in OpenROAD.Floorplan.config_vars
-        if var.name not in ["FP_SIZING", "CORE_AREA", "DIE_AREA"]
-    ] + [
-        Variable(
-            "HORIZONTAL_HALO",
-            type=Decimal,
-            description="The space between the horizontal edges of the die area and the core area in microns.",
-            units="µm",
-            default=2.5,
-        ),
-        Variable(
-            "VERTICAL_HALO",
-            type=Decimal,
-            description="The space between the vertical edges of the die area and the core area in microns.",
-            units="µm",
-            default=2.5,
-        ),
-        Variable(
-            "MINIMUM_HEIGHT",
-            type=Decimal,
-            description="A minimum height to be applied",
-            default=0,
-            units="µm",
-        ),
-    ]
-
-    def run(self, state_in, **kwargs):
-        min_height = self.config["MINIMUM_HEIGHT"]
-
-        core_width = Decimal(
-            state_in.metrics.get("dffram__suggested__core_width") or 20000
-        )
-        core_height = Decimal(
-            state_in.metrics.get("dffram__suggested__core_height") or 20000
-        )
-
-        horizontal_halo = self.config["HORIZONTAL_HALO"]
-        vertical_halo = self.config["VERTICAL_HALO"]
-
-        pdk = self.config["PDK"]
-        scl = self.config["STD_CELL_LIBRARY"]
-
-        tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
-        tech_info = yaml.safe_load(open(tech_info_path))
-        site_info = tech_info.get("site")
-
-        site_width = Decimal(1)
-        site_height = Decimal(1)
-
-        if site_info is not None:
-            site_width = Decimal(site_info["width"])
-            site_height = Decimal(site_info["height"])
-
-            horizontal_halo = math.ceil(horizontal_halo / site_width) * site_width
-            vertical_halo = math.ceil(vertical_halo / site_height) * site_height
-        else:
-            if horizontal_halo != 0.0 or vertical_halo != 0.0:
-                warn(
-                    "Note: This platform does not have site information. The halo will not be rounded up to the nearest number of sites. This may cause off-by-one issues with some tools."
-                )
-
-        die_width = core_width + horizontal_halo * 2
-        die_height = core_height + vertical_halo * 2
-        if die_height < min_height:
-            die_height = min_height
-            vertical_halo = (die_height - core_height) / 2
-            vertical_halo = math.ceil(vertical_halo / site_height) * site_height
-
-        kwargs, env = self.extract_env(kwargs)
-
-        env["DIE_AREA"] = f"0 0 {die_width} {die_height}"
-        env[
-            "CORE_AREA"
-        ] = f"{horizontal_halo} {vertical_halo} {horizontal_halo + core_width} {vertical_halo + core_height}"
-        env["FP_SIZING"] = "absolute"
-        return super().run(state_in, env=env, **kwargs)
-
-
-@Flow.factory.register()
-class DFFRAM(SequentialFlow):
-    Steps = [
-        Yosys.Synthesis,
-        Misc.LoadBaseSDC,
-        OpenROAD.STAPrePNR,
-        Floorplan,
-        PlaceRAM,
-        Floorplan,
-        PlaceRAM,
-        OpenROAD.IOPlacement,
-        Odb.CustomIOPlacement,
-        OpenROAD.GeneratePDN,
-        OpenROAD.STAMidPNR,
-        OpenROAD.GlobalRouting,
-        OpenROAD.STAMidPNR,
-        OpenROAD.DetailedRouting,
-        Checker.TrDRC,
-        Odb.ReportDisconnectedPins,
-        Checker.DisconnectedPins,
-        Odb.ReportWireLength,
-        Checker.WireLength,
-        OpenROAD.RCX,
-        OpenROAD.STAPostPNR,
-        OpenROAD.IRDropReport,
-        Magic.StreamOut,
-        Magic.WriteLEF,
-        KLayout.StreamOut,
-        KLayout.XOR,
-        Checker.XOR,
-        Magic.DRC,
-        Checker.MagicDRC,
-        Magic.SpiceExtraction,
-        Checker.IllegalOverlap,
-        Netgen.LVS,
-        Checker.LVS,
-    ]
+from librelane.common import mkdirp
+from librelane.logging import err
+from librelane.flows import cloup_flow_opts, Flow
 
 
 @cloup.command()
@@ -223,6 +47,7 @@ class DFFRAM(SequentialFlow):
     type=Decimal,
     help="Minimum height in µm",
 )
+@cloup.option("--latch/--dff", default=True, help="Whether to use latches or dffs")
 @cloup_flow_opts(accept_config_files=False)
 @cloup.argument("size", default="32x32", nargs=1)
 def main(
@@ -243,6 +68,7 @@ def main(
     min_height,
     flow_name,
     pdk_root,
+    latch,
     **kwargs,
 ):
     if variant == "DEFAULT":
@@ -299,7 +125,9 @@ def main(
         }
     )
 
-    build_dir = os.path.join("build", design)
+    build_dir = os.path.join(
+        "build", f"{pdk}-{scl}-{'latch' if latch else 'dff'}", design
+    )
     mkdirp(build_dir)
 
     tech_info_path = os.path.join(".", "platforms", pdk, scl, "tech.yml")
@@ -319,7 +147,7 @@ def main(
 
     rt_max_layer = tech_info["metal_layers"]["rt-max-layer"]
 
-    TargetFlow = Flow.factory.get(flow_name) or DFFRAM
+    TargetFlow = Flow.factory.get(flow_name) or Flow.factory.get("DFFRAMFlow")
     dffram_flow = TargetFlow(
         {
             "DESIGN_NAME": design,
@@ -339,9 +167,7 @@ def main(
             ],
             "SYNTH_ELABORATE_ONLY": True,
             "SYNTH_ELABORATE_FLATTEN": True,
-            "SYNTH_READ_BLACKBOX_LIB": True,
-            "SYNTH_EXCLUSION_CELL_LIST": "/dev/null",
-            "SYNTH_PARAMETERS": [f"WSIZE={logical_width}"],
+            "SYNTH_PARAMETERS": [f"WSIZE={logical_width}", f"USE_LATCH={int(latch)}"],
             "GRT_REPAIR_ANTENNAS": False,
             "MINIMUM_HEIGHT": min_height,
             "VERTICAL_HALO": vertical_halo,
@@ -356,7 +182,7 @@ def main(
             "FP_IO_VLENGTH": 2,
             "FP_IO_HLENGTH": 2,
             # PDN
-            "DESIGN_IS_CORE": False,
+            "FP_PDN_MULTILAYER": False,
         },
         design_dir=os.path.abspath(build_dir),
         pdk_root=pdk_root,

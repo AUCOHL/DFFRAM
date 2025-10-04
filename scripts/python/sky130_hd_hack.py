@@ -3,7 +3,7 @@
 # Copyright ©2021 The American University in Cairo
 #
 # This file is part of the DFFRAM Memory Compiler.
-# See https://github.com/Cloud-V/DFFRAM for further info.
+# See https://github.com/AUCOHL/DFFRAM for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

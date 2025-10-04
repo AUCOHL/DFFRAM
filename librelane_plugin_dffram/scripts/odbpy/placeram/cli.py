@@ -1,20 +1,6 @@
 # -*- coding: utf8 -*-
-# Copyright ©2020-2022 The American University in Cairo
-#
-# This file is part of the DFFRAM Memory Compiler.
-# See https://github.com/Cloud-V/DFFRAM for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
+# Copyright ©2020-2025, The American University in Cairo
 
 import os
 import re
@@ -23,6 +9,7 @@ import traceback
 try:
     import odb
     import utl
+    from openroad import Tech, Design
 except ImportError:
     print(
         """
@@ -63,7 +50,9 @@ class Placer:
         tap_distance,
     ):
         # Initialize Database
-        self.db = odb.dbDatabase.create()
+        self.ord_tech = Tech()
+        self.design = Design(self.ord_tech)
+        self.db = self.ord_tech.getDB()
 
         odb.read_db(self.db, odb_in)
 
@@ -118,8 +107,8 @@ class Placer:
             fill_cell = self.fill_cells_by_sites[sites]
             return odb.dbInst_create(self.block, fill_cell, name)
 
-        self.micron_in_units = self.block.getDefUnits()
-        tap_distance = self.micron_in_units * tap_distance
+        self.micron_in_dbus: int = self.block.getDefUnits()
+        tap_distance = self.micron_in_dbus * tap_distance
 
         self.rows = Row.from_odb(
             self.block.getRows(),
@@ -143,22 +132,49 @@ class Placer:
 
     def place(self):
         eprint("Starting placement…")
-        print(f"Placing across {len(self.rows)} rows...")
+        print(f"Placing across {len(self.rows)} rows…")
         last_row = self.hierarchy.place(self.rows)
-        print(f"Placement concluded with {last_row} rows...")
+
+        print(f"Placement concluded with {last_row} rows…")
         Row.fill_rows(self.rows, 0, last_row)
 
         # We can't rely on the fact that a placeable will probably fill
         # before returning and pick the width of the nth row or whatever.
-        width_units = 0
+        width_dbus: int = 0
         for row in self.rows:
-            width_units = max(row.width, width_units)
+            width_dbus = max(row.width, width_dbus)
 
-        self.core_width = width_units / self.micron_in_units
+        height_dbus: int = self.rows[last_row - 1].ymax - self.rows[0].y
 
-        height_units = self.rows[last_row - 1].ymax - self.rows[0].y
+        self.core_width = width_dbus / self.micron_in_dbus
+        self.core_height = height_dbus / self.micron_in_dbus
 
-        self.core_height = height_units / self.micron_in_units
+        utl.metric_float("dffram__suggested__core_width", self.core_width)
+        utl.metric_float("dffram__suggested__core_height", self.core_height)
+
+        eprint(
+            "Placement concluded with core area of %fµm x %fµm."
+            % (self.core_width, self.core_height)
+        )
+
+        # resizing doesn't work - rows widths are immutable from python
+        # # resize
+        # width_margin: int = self.rows[0].x
+        # height_margin: int = self.rows[0].y
+        # die_height_dbus = height_dbus + height_margin * 2
+        # die_width_dbus = width_dbus + width_margin * 2
+
+        # die_rect = odb.Rect(0, 0, die_width_dbus, die_height_dbus)
+        # self.block.setDieArea(die_rect)
+        # for row in self.block.getRows():
+        #     _, row_y = row.getOrigin()
+        #     if row_y >= width_dbus + width_margin:
+        #         odb.dbRow.destroy(row)
+
+        # calculate density
+        die_width = self.block.getDieArea().dx() / self.micron_in_dbus
+        die_height = self.block.getDieArea().dy() / self.micron_in_dbus
+        die_area = die_width * die_height
 
         logical_area: float = 0
         for cell in self.block.getInsts():
@@ -171,24 +187,13 @@ class Placer:
                     break
             if type not in ["nonfiller"]:
                 continue
-            width = master.getWidth() / self.micron_in_units
-            height = master.getHeight() / self.micron_in_units
+            width = master.getWidth() / self.micron_in_dbus
+            height = master.getHeight() / self.micron_in_dbus
             logical_area += width * height
-
-        eprint(
-            "Placement concluded with core area of %fµm x %fµm."
-            % (self.core_width, self.core_height)
-        )
-
-        utl.metric_float("dffram__suggested__core_width", self.core_width)
-        utl.metric_float("dffram__suggested__core_height", self.core_height)
-
-        die_width = self.block.getDieArea().dx() / self.micron_in_units
-        die_height = self.block.getDieArea().dy() / self.micron_in_units
-        die_area = die_width * die_height
 
         self.density = logical_area / die_area
         utl.metric_float("dffram__logic__density", self.density)
+
         eprint("Density: %.2f%%" % (self.density * 100))
         eprint("Done.")
 
