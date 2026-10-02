@@ -67,20 +67,26 @@ endmodule
 
 module MUX4x1 #(parameter   WIDTH=32)
 (
+    input   wire                CLK,
     input   wire [WIDTH-1:0]     A0, A1, A2, A3,
     input   wire [1:0]          S,
     output  wire [WIDTH-1:0]     X
 );
     localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL0, SEL1;
+    wire [1:0] S_REG;
 
 `ifndef NO_DIODES
     (* keep = "true" *)
     sky130_fd_sc_hd__diode_2 SEL_DIODE [1:0] (.DIODE(S));
 `endif
 
-    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL0), .A(S[0]));
-    sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S[1]));
+    // The select is registered at the rising edge of CLK, like the data in the slices' output
+    // registers (OUTREG): the output is the word addressed at that edge, whatever the address
+    // is afterwards. Without it, the output followed the current address bits.
+    sky130_fd_sc_hd__dfxtp_1 SELREG[1:0] (.D(S), .Q(S_REG), .CLK(CLK));
+    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL0), .A(S_REG[0]));
+    sky130_fd_sc_hd__clkbuf_2 SEL1BUF[SIZE-1:0] (.X(SEL1), .A(S_REG[1]));
     generate
         genvar i;
 
@@ -111,13 +117,19 @@ endmodule
 
 module MUX2x1 #(parameter   WIDTH=32)
 (
+    input   wire                CLK,
     input   wire [WIDTH-1:0]    A0, A1,
     input   wire                S,
     output  wire [WIDTH-1:0]    X
 );
     localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL;
-    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL), .A(S));
+    wire [0:0] S_REG;
+    // The select is registered at the rising edge of CLK, like the data in the slices' output
+    // registers (OUTREG): the output is the word addressed at that edge, whatever the address
+    // is afterwards. Without it, the output followed the current address bits.
+    sky130_fd_sc_hd__dfxtp_1 SELREG[0:0] (.D(S), .Q(S_REG), .CLK(CLK));
+    sky130_fd_sc_hd__clkbuf_2 SEL0BUF[SIZE-1:0] (.X(SEL), .A(S_REG[0]));
     generate
         genvar i;
         for(i=0; i<SIZE; i=i+1) begin : M

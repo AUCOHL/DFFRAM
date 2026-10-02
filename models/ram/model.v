@@ -180,7 +180,7 @@ module RAM32 #( parameter    USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[4]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[4]), .X(Do0) );
 endmodule 
 
 
@@ -237,8 +237,8 @@ module RAM32_1RW1R #( parameter     USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[4]), .X(Do0) );
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1_buf[4]), .X(Do1) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[4]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1_buf[4]), .X(Do1) );
     
 endmodule 
 
@@ -279,7 +279,7 @@ module RAM128 #(parameter   USE_LATCH=1,
     (* keep = "true" *)
     DIODE    DIODE_CLK            (.DIODE(CLK));
 `endif
-    CLKBUF_4   CLKBUF          (.X(CLK_buf), .A(CLK));
+    CLKBUF_16   CLKBUF          (.X(CLK_buf), .A(CLK));
 
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     CLKBUF_2   EN0BUF                (.X(EN0_buf),  .A(EN0));
@@ -301,7 +301,7 @@ module RAM128 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
 
 endmodule
 
@@ -344,7 +344,7 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
     (* keep = "true" *)
     DIODE    DIODE_CLK            (.DIODE(CLK));
 `endif
-    CLKBUF_4   CLKBUF         (.X(CLK_buf), .A(CLK));
+    CLKBUF_16   CLKBUF         (.X(CLK_buf), .A(CLK));
 
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     
@@ -373,8 +373,8 @@ module RAM128_1RW1R #( parameter    USE_LATCH=1,
      endgenerate
 
     // Output MUXs
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[6:5]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK_buf), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[6:5]), .X(Do1) );
     
 
 endmodule
@@ -391,6 +391,11 @@ module RAM256 #(parameter   USE_LATCH=1,
 
 );
 
+    // Root of the clock tree: the clock pin would otherwise drive every bank and the
+    // output mux across the whole macro (slow edges, hold violations at ss)
+    wire                    CLK_buf;
+    CLKBUF_16  CLKBUF          (.X(CLK_buf), .A(CLK));
+
     wire [1:0]             SEL0;
     wire [(WSIZE*8-1):0]    Do0_pre[1:0]; 
 
@@ -400,12 +405,12 @@ module RAM256 #(parameter   USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : BANK128
-            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .A0(A0[6:0]) );        
+            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK_buf), .EN0(SEL0[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .A0(A0[6:0]) );
         end
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
 
 endmodule
 
@@ -424,6 +429,11 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
     
 );
 
+    // Root of the clock tree: the clock pin would otherwise drive every bank and the
+    // output mux across the whole macro (slow edges, hold violations at ss)
+    wire                    CLK_buf;
+    CLKBUF_16  CLKBUF          (.X(CLK_buf), .A(CLK));
+
     wire [1:0]               SEL0, SEL1;
     wire [(WSIZE*8-1):0]     Do0_pre[1:0],
                              Do1_pre[1:0]; 
@@ -434,13 +444,13 @@ module RAM256_1RW1R #(parameter USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 2; i=i+1) begin : BANK128
-            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
+            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );
         end
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0[7]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK_buf), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1[7]), .X(Do1) );
 
 endmodule
 
@@ -457,6 +467,11 @@ module RAM512 #(parameter   USE_LATCH=1,
     
 );
 
+    // Root of the clock tree: the clock pin would otherwise drive every bank and the
+    // output mux across the whole macro (slow edges, hold violations at ss)
+    wire                    CLK_buf;
+    CLKBUF_16  CLKBUF          (.X(CLK_buf), .A(CLK));
+
     wire [3:0]              SEL0;
     wire [(WSIZE*8-1):0]    Do0_pre[3:0]; 
 
@@ -465,7 +480,7 @@ module RAM512 #(parameter   USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : BANK128
-            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), 
+            RAM128 #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK_buf),
                 .EN0(SEL0[i]), 
                 .WE0(WE0), 
                 .Di0(Di0), 
@@ -475,7 +490,7 @@ module RAM512 #(parameter   USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), 
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]),
         .A1(Do0_pre[1]), 
         .A2(Do0_pre[2]), 
         .A3(Do0_pre[3]), 
@@ -500,6 +515,11 @@ module RAM512_1RW1R  #(parameter    USE_LATCH=1,
     output  wire [(WSIZE*8-1):0]    Do1  
 );
 
+    // Root of the clock tree: the clock pin would otherwise drive every bank and the
+    // output mux across the whole macro (slow edges, hold violations at ss)
+    wire                    CLK_buf;
+    CLKBUF_16  CLKBUF          (.X(CLK_buf), .A(CLK));
+
     wire [3:0]              SEL0, SEL1;
     wire [(WSIZE*8-1):0]    Do0_pre[3:0],
                             Do1_pre[3:0]; 
@@ -510,13 +530,13 @@ module RAM512_1RW1R  #(parameter    USE_LATCH=1,
     generate
         genvar i;
         for (i=0; i< 4; i=i+1) begin : BANK128
-            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );        
+            RAM128_1RW1R #(.USE_LATCH(USE_LATCH), .WSIZE(WSIZE)) RAM128 (.CLK(CLK_buf), .EN0(SEL0[i]), .EN1(SEL1[i]), .WE0(WE0), .Di0(Di0), .Do0(Do0_pre[i]), .Do1(Do1_pre[i]), .A0(A0[6:0]), .A1(A1[6:0]) );
         end
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0[8:7]), .X(Do0) );
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1[8:7]), .X(Do1) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0[8:7]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK_buf), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1[8:7]), .X(Do1) );
 
 endmodule
 
@@ -543,7 +563,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
                             
     // Buffers
     CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
-    CLKBUF_4   CLKBUF               (.X(CLK_buf),  .A(CLK));
+    CLKBUF_16   CLKBUF               (.X(CLK_buf),  .A(CLK));
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     CLKBUF_2   EN0BUF                (.X(EN0_buf),  .A(EN0));
     CLKBUF_2   A0BUF[9:0]            (.X(A0_buf),   .A(A0));
@@ -559,7 +579,7 @@ module RAM1024 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[9]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[9]), .X(Do0) );
 
 endmodule
 
@@ -591,7 +611,7 @@ module RAM1024_1RW1R #(parameter  USE_LATCH=1,
                             
     // Buffers
     CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
-    CLKBUF_4   CLKBUF               (.X(CLK_buf),  .A(CLK));
+    CLKBUF_16   CLKBUF               (.X(CLK_buf),  .A(CLK));
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     CLKBUF_2   EN0BUF               (.X(EN0_buf),  .A(EN0));
     CLKBUF_2   A0BUF[9:0]           (.X(A0_buf),   .A(A0));
@@ -610,8 +630,8 @@ module RAM1024_1RW1R #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[9]), .X(Do0) );
-    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1_buf[9]), .X(Do1) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .S(A0_buf[9]), .X(Do0) );
+    MUX2x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK_buf), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .S(A1_buf[9]), .X(Do1) );
 
 endmodule
 
@@ -638,7 +658,7 @@ module RAM2048 #(parameter  USE_LATCH=1,
                             
     // Buffers
     CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
-    CLKBUF_4   CLKBUF               (.X(CLK_buf), .A(CLK));
+    CLKBUF_16   CLKBUF               (.X(CLK_buf), .A(CLK));
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     CLKBUF_2   EN0BUF                (.X(EN0_buf),  .A(EN0));
     CLKBUF_2   A0BUF[10:0]           (.X(A0_buf),   .A(A0));
@@ -653,7 +673,7 @@ module RAM2048 #(parameter  USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[10:9]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[10:9]), .X(Do0) );
 
 endmodule
 
@@ -685,7 +705,7 @@ module RAM2048_1RW1R #(parameter    USE_LATCH=1,
                             
     // Buffers
     CLKBUF_16  DIBUF[(WSIZE*8-1):0] (.X(Di0_buf),  .A(Di0));
-    CLKBUF_4   CLKBUF               (.X(CLK_buf), .A(CLK));
+    CLKBUF_16   CLKBUF               (.X(CLK_buf), .A(CLK));
     CLKBUF_2   WEBUF[WSIZE-1:0]     (.X(WE0_buf),  .A(WE0));
     CLKBUF_2   EN0BUF               (.X(EN0_buf),  .A(EN0));
     CLKBUF_2   A0BUF[10:0]          (.X(A0_buf),   .A(A0));
@@ -703,8 +723,8 @@ module RAM2048_1RW1R #(parameter    USE_LATCH=1,
      endgenerate
 
     // Output MUX    
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[10:9]), .X(Do0) );
-    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[10:9]), .X(Do1) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do0MUX ( .CLK(CLK_buf), .A0(Do0_pre[0]), .A1(Do0_pre[1]), .A2(Do0_pre[2]), .A3(Do0_pre[3]), .S(A0_buf[10:9]), .X(Do0) );
+    MUX4x1 #(.WIDTH(WSIZE*8)) Do1MUX ( .CLK(CLK_buf), .A0(Do1_pre[0]), .A1(Do1_pre[1]), .A2(Do1_pre[2]), .A3(Do1_pre[3]), .S(A1_buf[10:9]), .X(Do1) );
 
 endmodule
 

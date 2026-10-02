@@ -24,6 +24,7 @@ class Mux(Placeable):
             instances,
             [
                 S(variable="sel_diodes", groups=["selection_line"]),
+                S(variable="selregs", groups=["selection_line"]),
                 S(variable="selbufs", groups=["selection_line", "byte"]),
                 S(variable="muxes", groups=["byte", "bit"]),
                 S(
@@ -51,9 +52,14 @@ class Mux(Placeable):
 
         fill_to = current_row + row_increment
 
-        for diode, line_buffers in zip_longest(self.sel_diodes, self.selbufs):
+        # the selection registers go in front of the buffers they drive
+        for diode, reg, line_buffers in zip_longest(
+            self.sel_diodes, self.selregs, self.selbufs
+        ):
             if diode is not None:
                 diode_row.place(diode)
+            if reg is not None:
+                row.place(reg)
             for buf in line_buffers:
                 row.place(buf)
             Row.fill_rows(row_list, fill_from, fill_to)

@@ -1,5 +1,6 @@
 # Common
 Mux:
+  selregs: \bSELREG\\\[(\d+)\\\]
   selbufs: \bSEL(\d+)BUF\\\[(\d+)\\\]
   sel_diodes: \bSEL_DIODE\\\[(\d+)\\\]
   muxes: \bM\\\[(\d+)\\\]\.MUX\\\[(\d+)\\\]

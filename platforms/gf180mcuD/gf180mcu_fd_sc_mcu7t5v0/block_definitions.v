@@ -93,20 +93,26 @@ endmodule
 
 module MUX4x1 #(parameter   WIDTH=32)
 (
+    input   wire                CLK,
     input   wire [WIDTH-1:0]     A0, A1, A2, A3,
     input   wire [1:0]          S,
     output  wire [WIDTH-1:0]     X
 );
     localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL0, SEL1;
+    wire [1:0] S_REG;
 
 `ifndef NO_DIODES
     (* keep = "true" *)
     gf180mcu_fd_sc_mcu7t5v0__antenna SEL_DIODE [1:0] (.I(S));
 `endif
 
-    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL0BUF[SIZE-1:0] (.Z(SEL0), .I(S[0]));
-    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL1BUF[SIZE-1:0] (.Z(SEL1), .I(S[1]));
+    // The select is registered at the rising edge of CLK, like the data in the slices' output
+    // registers (OUTREG): the output is the word addressed at that edge, whatever the address
+    // is afterwards. Without it, the output followed the current address bits.
+    gf180mcu_fd_sc_mcu7t5v0__dffq_1 SELREG[1:0] (.D(S), .Q(S_REG), .CLK(CLK));
+    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL0BUF[SIZE-1:0] (.Z(SEL0), .I(S_REG[0]));
+    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL1BUF[SIZE-1:0] (.Z(SEL1), .I(S_REG[1]));
     generate
         genvar i;
 
@@ -137,13 +143,19 @@ endmodule
 
 module MUX2x1 #(parameter   WIDTH=32)
 (
+    input   wire                CLK,
     input   wire [WIDTH-1:0]    A0, A1,
     input   wire                S,
     output  wire [WIDTH-1:0]    X
 );
     localparam SIZE = WIDTH/8;
     wire [SIZE-1:0] SEL;
-    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL0BUF[SIZE-1:0] (.Z(SEL), .I(S));
+    wire [0:0] S_REG;
+    // The select is registered at the rising edge of CLK, like the data in the slices' output
+    // registers (OUTREG): the output is the word addressed at that edge, whatever the address
+    // is afterwards. Without it, the output followed the current address bits.
+    gf180mcu_fd_sc_mcu7t5v0__dffq_1 SELREG[0:0] (.D(S), .Q(S_REG), .CLK(CLK));
+    gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 SEL0BUF[SIZE-1:0] (.Z(SEL), .I(S_REG[0]));
     generate
         genvar i;
         for(i=0; i<SIZE; i=i+1) begin : M
