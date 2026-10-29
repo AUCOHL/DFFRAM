@@ -66,6 +66,31 @@ jobs:
           export PATTERN=tb_RAM${{ matrix.count }}x${{ matrix.width }}$variant_postfix
           cd verification/
           /bin/bash -c "! make | grep -c FATAL"
+  verify_models_gf180mcuD:
+    name: Verify gf180mcuD (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    needs: [lint_models]
+    strategy:
+      matrix:
+        include:
+          - { count: "8", width: "32", variant: "DEFAULT" }
+          - { count: "32", width: "32", variant: "DEFAULT" }
+          - { count: "128", width: "32", variant: "DEFAULT" }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Get IcarusVerilog
+        run: |
+          sudo apt-get install -y iverilog
+      - name: Run Verification
+        run: |
+          variant_postfix=
+          if [ "${{ matrix.variant }}" != "DEFAULT" ]; then
+            variant_postfix="_${{ matrix.variant }}"
+          fi
+          export PATTERN=tb_RAM${{ matrix.count }}x${{ matrix.width }}$variant_postfix
+          cd verification/
+          /bin/bash -c "! make PDK=gf180mcuD SCL=gf180mcu_fd_sc_mcu7t5v0 | grep -c FATAL"
   harden:
     name: Harden (${{ matrix.count }}x${{ matrix.width }}_${{ matrix.variant }})
     runs-on: ubuntu-24.04
@@ -129,7 +154,7 @@ jobs:
   publish:
     name: Publish Release
     if: always()
-    needs: [harden, verify_models]
+    needs: [harden, verify_models, verify_models_gf180mcuD]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

@@ -8,6 +8,27 @@ import re
 import math
 import os
 
+# The platform's cell models the testbench includes (from the platform's
+# directory, which the Makefile puts on the include path): a standard cell
+# library whose Verilog comes in one file is just "<SCL>.v"; gf180mcu's
+# needs its UDP primitives first.
+CELL_MODELS = {
+    "sky130_fd_sc_hd": ["sky130_fd_sc_hd.v"],
+    "gf180mcu_fd_sc_mcu7t5v0": ["primitives.v", "gf180mcu_fd_sc_mcu7t5v0.v"],
+}
+
+
+def cell_model_includes():
+    # The block definitions switch implicit nets off (`default_nettype none)
+    # and a vendor's cell models may rely on them (gf180mcu's do), so they
+    # are included with implicit nets on and the strict setting restored.
+    scl = os.getenv("SCL") or "sky130_fd_sc_hd"
+    files = CELL_MODELS.get(scl, [f"{scl}.v"])
+    lines = ["`default_nettype wire"]
+    lines += [f'`include "{f}"' for f in files]
+    lines += ["`default_nettype none"]
+    return "\n".join(lines)
+
 
 def dual_ported_test(word_num, word_size, addr_width, model_filename):
     tb = RAM_tb.RAM_instantiation_1RW1R.format(
@@ -16,6 +37,7 @@ def dual_ported_test(word_num, word_size, addr_width, model_filename):
         addr_width=addr_width,
         filename=model_filename,
         pdk_root=os.environ["PDK_ROOT"],
+        cell_models=cell_model_includes(),
     )
 
     tb += RAM_tb.start_test_common
@@ -38,6 +60,7 @@ def single_ported_test(word_num, word_size, addr_width, model_filename):
         addr_width=addr_width,
         filename=model_filename,
         pdk_root=os.getenv("PDK_ROOT") or "/",
+        cell_models=cell_model_includes(),
     )
     tb += RAM_tb.start_test_common
     tb += RAM_tb.begin_single_ported_test

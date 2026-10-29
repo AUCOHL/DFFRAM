@@ -17,10 +17,8 @@ RAM_instantiation = """
 
 `define     SIZE        {word_size}/8
 
-//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
-// // Temporary override: IcarusVerilog cannot read these for some reason ^
-`include "sky130_fd_sc_hd.v"
+// The platform's standard cell models (the platform directory is on the include path)
+{cell_models}
 
 `include "{filename}"
 
@@ -101,10 +99,8 @@ RAM_instantiation_1RW1R = """
 `define     USE_LATCH   1
 
 `define     SIZE        {word_size}/8
-//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v"
-//`include "{pdk_root}/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v"
-// // Temporary override: IcarusVerilog cannot read these for some reason ^
-`include "sky130_fd_sc_hd.v"
+// The platform's standard cell models (the platform directory is on the include path)
+{cell_models}
 
 `include "{filename}"
 

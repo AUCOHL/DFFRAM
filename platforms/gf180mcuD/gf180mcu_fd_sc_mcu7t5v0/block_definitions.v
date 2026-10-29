@@ -59,7 +59,7 @@ module DEC3x8 (
 
     gf180mcu_fd_sc_mcu7t5v0__inv_2 INV1 (.ZN(A_buf_N[0]), .I(A_buf[0]));
     gf180mcu_fd_sc_mcu7t5v0__inv_2 INV2 (.ZN(A_buf_N[1]), .I(A_buf[1]));
-    gf180mcu_fd_sc_mcu7t5v0__inv_2 INV3 (.ZN(A_buf_N[1]), .I(A_buf[1]));
+    gf180mcu_fd_sc_mcu7t5v0__inv_2 INV3 (.ZN(A_buf_N[2]), .I(A_buf[2]));   // was A_buf_N[1] <- A_buf[1] (upstream typo): A_buf_N[2] floated, SEL[1..3] of every RAM8 undefined
 
     gf180mcu_fd_sc_mcu7t5v0__inv_2 INV4 (.ZN(EN_buf_N), .I(EN_buf));
     

@@ -11,13 +11,11 @@ try:
     import utl
     from openroad import Tech, Design
 except ImportError:
-    print(
-        """
+    print("""
         placeram needs to be inside OpenROAD:
 
         openroad -python -m placeram [args]
-        """
-    )
+        """)
     exit(os.EX_CONFIG)
 
 try:

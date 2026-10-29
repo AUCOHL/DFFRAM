@@ -3,7 +3,7 @@ PATTERN = tb_RAM32x32
 PDK_ROOT ?= ../pdks
 PDK ?= sky130A
 SCL ?= sky130_fd_sc_hd
-export PDK_ROOT
+export PDK_ROOT PDK SCL
 
 INCLUDE_PATHS=../platforms/${PDK}/${SCL}
 DEFINITIONS_FILE=../platforms/${PDK}/${SCL}/block_definitions.v
@@ -32,8 +32,10 @@ lint: ${PATTERN}.v
 
 .PHONY: help clean
 help:
-	@echo  'Usage: make [PATTERN=tb_RAM<WORDNUM>x32] '
+	@echo  'Usage: make [PATTERN=tb_RAM<WORDNUM>x32] [PDK=sky130A SCL=sky130_fd_sc_hd]'
 	@echo  'WORDNUM is 8, 32, 128, 256, 512, 1024, 2048. (Default: 32)'
+	@echo  'PDK / SCL select the platform (platforms/<PDK>/<SCL>): sky130A / sky130_fd_sc_hd,'
+	@echo  'gf180mcuD / gf180mcu_fd_sc_mcu7t5v0'
 	@echo  'clean           - Remove generated files'
 	@echo  ''
 
